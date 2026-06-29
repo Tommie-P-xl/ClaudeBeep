@@ -42,6 +42,10 @@ def create_app() -> Flask:
     def index():
         return send_from_directory(app.static_folder, "index.html")
 
+    @app.route("/assets/<path:filename>")
+    def serve_assets(filename):
+        return send_from_directory(str(RESOURCE_DIR / "assets"), filename)
+
     # --- SSE 持久连接（标签页关闭检测） ---
     @app.route("/api/stream")
     def stream():

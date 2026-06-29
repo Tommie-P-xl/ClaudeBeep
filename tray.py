@@ -55,6 +55,7 @@ MF_GRAYED = 0x0001
 MF_POPUP = 0x0010
 TPM_RIGHTBUTTON = 0x0002
 TPM_BOTTOMALIGN = 0x0020
+WM_NULL = 0x0000
 IMAGE_ICON = 1
 LR_LOADFROMFILE = 0x0010
 LR_DEFAULTSIZE = 0x0040
@@ -125,6 +126,47 @@ class WNDCLASSEXW(ctypes.Structure):
         ("lpszClassName", ctypes.c_wchar_p),
         ("hIconSm", ctypes.wintypes.HICON),
     ]
+
+
+# ─── Win32 function signatures (required for string args) ───────────────────
+user32.AppendMenuW.argtypes = [ctypes.wintypes.HMENU, ctypes.wintypes.UINT, ctypes.wintypes.UINT_PTR, ctypes.wintypes.LPCWSTR]
+user32.AppendMenuW.restype = ctypes.wintypes.BOOL
+
+user32.InsertMenuItemW.argtypes = [ctypes.wintypes.HMENU, ctypes.wintypes.UINT, ctypes.wintypes.BOOL, ctypes.c_void_p]
+user32.InsertMenuItemW.restype = ctypes.wintypes.BOOL
+
+user32.CreatePopupMenu.argtypes = []
+user32.CreatePopupMenu.restype = ctypes.wintypes.HMENU
+
+user32.TrackPopupMenu.argtypes = [ctypes.wintypes.HMENU, ctypes.wintypes.UINT, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.wintypes.HWND, ctypes.c_void_p]
+user32.TrackPopupMenu.restype = ctypes.wintypes.BOOL
+
+user32.TrackPopupMenuEx.argtypes = [ctypes.wintypes.HMENU, ctypes.wintypes.UINT, ctypes.c_int, ctypes.c_int, ctypes.wintypes.HWND, ctypes.c_void_p]
+user32.TrackPopupMenuEx.restype = ctypes.wintypes.BOOL
+
+user32.DestroyMenu.argtypes = [ctypes.wintypes.HMENU]
+user32.DestroyMenu.restype = ctypes.wintypes.BOOL
+
+user32.SetForegroundWindow.argtypes = [ctypes.wintypes.HWND]
+user32.SetForegroundWindow.restype = ctypes.wintypes.BOOL
+
+user32.PostMessageW.argtypes = [ctypes.wintypes.HWND, ctypes.wintypes.UINT, ctypes.wintypes.WPARAM, ctypes.wintypes.LPARAM]
+user32.PostMessageW.restype = ctypes.wintypes.BOOL
+
+user32.GetCursorPos.argtypes = [ctypes.POINTER(POINT)]
+user32.GetCursorPos.restype = ctypes.wintypes.BOOL
+
+user32.RegisterClassExW.argtypes = [ctypes.POINTER(WNDCLASSEXW)]
+user32.RegisterClassExW.restype = ctypes.wintypes.ATOM
+
+user32.CreateWindowExW.argtypes = [ctypes.wintypes.DWORD, ctypes.wintypes.LPCWSTR, ctypes.wintypes.LPCWSTR, ctypes.wintypes.DWORD, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.wintypes.HWND, ctypes.wintypes.HMENU, ctypes.wintypes.HINSTANCE, ctypes.c_void_p]
+user32.CreateWindowExW.restype = ctypes.wintypes.HWND
+
+user32.DefWindowProcW.argtypes = [ctypes.wintypes.HWND, ctypes.wintypes.UINT, ctypes.wintypes.WPARAM, ctypes.wintypes.LPARAM]
+user32.DefWindowProcW.restype = ctypes.c_long
+
+user32.LoadImageW.argtypes = [ctypes.wintypes.HINSTANCE, ctypes.wintypes.LPCWSTR, ctypes.wintypes.UINT, ctypes.c_int, ctypes.c_int, ctypes.wintypes.UINT]
+user32.LoadImageW.restype = ctypes.wintypes.HANDLE
 
 
 # ─── uxtheme dark mode APIs (Windows 10 1903+) ──────────────────────────────
@@ -199,9 +241,10 @@ _wnd_proc_ref = None  # prevent GC of callback
 
 
 def _load_icon() -> int:
-    """Load the application icon, falling back to default."""
+    """Load the application icon at high resolution for crisp rendering."""
     if ICON_FILE.exists():
-        h = user32.LoadImageW(None, str(ICON_FILE), IMAGE_ICON, 0, 0, LR_LOADFROMFILE)
+        # Load at 64x64 for high-DPI tray icons (system will scale down as needed)
+        h = user32.LoadImageW(None, str(ICON_FILE), IMAGE_ICON, 64, 64, LR_LOADFROMFILE)
         if h:
             return h
     return user32.LoadIconW(None, IDI_APPLICATION)
@@ -330,11 +373,16 @@ def _show_context_menu(hwnd: int) -> None:
     # Get cursor position and show menu
     pt = POINT()
     user32.GetCursorPos(ctypes.byref(pt))
+
+    # Required: SetForegroundWindow before TrackPopupMenu for proper dismiss behavior
+    user32.SetForegroundWindow(hwnd)
     user32.TrackPopupMenu(
         hMenu,
         TPM_RIGHTBUTTON | TPM_BOTTOMALIGN,
         pt.x, pt.y, 0, hwnd, None
     )
+    # Required: PostMessage(WM_NULL) after TrackPopupMenu per MSDN
+    user32.PostMessageW(hwnd, WM_NULL, 0, 0)
     user32.DestroyMenu(hMenu)
 
 
