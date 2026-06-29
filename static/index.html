@@ -4,45 +4,184 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ClaudeBeep</title>
+<link rel="icon" href="/assets/icon.png" type="image/png">
 <script src="/static/vendor/tailwindcss.js"></script>
 <script src="/static/vendor/qrcode.min.js"></script>
 <script defer src="/static/vendor/alpine.min.js"></script>
 <style>
   [x-cloak] { display: none !important; }
+
+  /* ─── Theme Variables ─── */
+  :root {
+    --bg-primary: #f8fafc;
+    --bg-secondary: #ffffff;
+    --bg-tertiary: #f1f5f9;
+    --bg-glass: rgba(255,255,255,0.85);
+    --border-primary: #e2e8f0;
+    --border-hover: #cbd5e1;
+    --text-primary: #0f172a;
+    --text-secondary: #334155;
+    --text-tertiary: #64748b;
+    --text-muted: #94a3b8;
+    --accent: #6366f1;
+    --accent-light: #818cf8;
+    --accent-bg: rgba(99,102,241,0.08);
+    --card-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    --card-shadow-hover: 0 4px 16px rgba(0,0,0,0.08);
+    --toast-bg: rgba(15,23,42,0.9);
+    --input-bg: #ffffff;
+    --input-border: #d1d5db;
+    --input-focus: #6366f1;
+    --status-bar-bg: rgba(241,245,249,0.8);
+  }
+
+  [data-theme="dark"] {
+    --bg-primary: #0b0f19;
+    --bg-secondary: #111827;
+    --bg-tertiary: #1e293b;
+    --bg-glass: rgba(17,24,39,0.9);
+    --border-primary: #1e293b;
+    --border-hover: #334155;
+    --text-primary: #f1f5f9;
+    --text-secondary: #cbd5e1;
+    --text-tertiary: #94a3b8;
+    --text-muted: #64748b;
+    --accent: #818cf8;
+    --accent-light: #a5b4fc;
+    --accent-bg: rgba(129,140,248,0.12);
+    --card-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    --card-shadow-hover: 0 4px 16px rgba(0,0,0,0.4);
+    --toast-bg: rgba(15,23,42,0.95);
+    --input-bg: #1e293b;
+    --input-border: #334155;
+    --input-focus: #818cf8;
+    --status-bar-bg: rgba(30,41,59,0.8);
+  }
+
+  /* ─── Animations ─── */
   @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
   .toast-in { animation: fadeIn 0.3s ease-out; }
   @keyframes pulse-ring { 0% { transform: scale(0.8); opacity: 1; } 100% { transform: scale(2.2); opacity: 0; } }
   .pulse-dot::before { content: ''; position: absolute; inset: 0; border-radius: 50%; background: inherit; animation: pulse-ring 1.5s infinite; }
-  .glass { background: rgba(255,255,255,0.85); backdrop-filter: blur(12px); border-bottom: 1px solid #e2e8f0; }
-  body { background: #f8fafc; min-height: 100vh; }
-  .card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; transition: all 0.3s; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-  .card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); border-color: #cbd5e1; }
-  .btn-primary { background: linear-gradient(135deg, #6366f1, #8b5cf6); transition: all 0.2s; }
-  .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(99,102,241,0.4); }
+  @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+
+  /* ─── Base ─── */
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg-primary);
+    color: var(--text-secondary);
+    min-height: 100vh;
+    transition: background 0.3s, color 0.3s;
+  }
+
+  /* ─── Glass Header ─── */
+  .glass {
+    background: var(--bg-glass);
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    border-bottom: 1px solid var(--border-primary);
+  }
+
+  /* ─── Cards ─── */
+  .card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-primary);
+    border-radius: 16px;
+    transition: all 0.3s;
+    box-shadow: var(--card-shadow);
+  }
+  .card:hover {
+    box-shadow: var(--card-shadow-hover);
+    border-color: var(--border-hover);
+  }
+
+  /* ─── Buttons ─── */
+  .btn-primary {
+    background: linear-gradient(135deg, #6366f1, #7c3aed);
+    transition: all 0.2s;
+    box-shadow: 0 2px 8px rgba(99,102,241,0.3);
+  }
+  .btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(99,102,241,0.4);
+  }
   .btn-primary:active { transform: translateY(0); }
-  .btn-danger { background: linear-gradient(135deg, #ef4444, #dc2626); }
-  .btn-danger:hover { box-shadow: 0 4px 12px rgba(239,68,68,0.4); }
+  .btn-danger {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    box-shadow: 0 2px 8px rgba(239,68,68,0.3);
+  }
+  .btn-danger:hover { box-shadow: 0 6px 20px rgba(239,68,68,0.4); }
+
+  /* ─── Toggle ─── */
   .toggle-track { transition: background 0.3s; }
   .toggle-thumb { transition: transform 0.3s; }
-  .tab-active { border-bottom: 2px solid #6366f1; color: #4f46e5; }
-  .tab-inactive { border-bottom: 2px solid transparent; color: #64748b; }
-  .tab-inactive:hover { color: #334155; }
+
+  /* ─── Tabs ─── */
+  .tab-active {
+    border-bottom: 2px solid var(--accent);
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .tab-inactive {
+    border-bottom: 2px solid transparent;
+    color: var(--text-muted);
+  }
+  .tab-inactive:hover { color: var(--text-secondary); }
+
+  /* ─── Log ─── */
   .log-line { font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 12px; }
+
+  /* ─── Theme Toggle ─── */
+  .theme-btn {
+    width: 32px; height: 32px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 10px;
+    border: 1px solid var(--border-primary);
+    background: var(--bg-tertiary);
+    color: var(--text-tertiary);
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 16px;
+  }
+  .theme-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-bg);
+  }
+
+  /* ─── Input Styles ─── */
+  input[type="text"], input[type="password"], input[type="number"], select {
+    background: var(--input-bg);
+    border: 1px solid var(--input-border);
+    color: var(--text-primary);
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  input:focus, select:focus {
+    border-color: var(--input-focus);
+    box-shadow: 0 0 0 3px var(--accent-bg);
+    outline: none;
+  }
+
+  /* ─── Scrollbar ─── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border-primary); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--border-hover); }
 </style>
 </head>
-<body class="text-gray-700" x-data="app()" x-init="init()">
+<body x-data="app()" x-init="init()" :data-theme="themeMode === 'dark' ? 'dark' : themeMode === 'light' ? 'light' : (sysDark ? 'dark' : 'light')">
 
 <!-- Toast Container -->
 <div class="fixed top-4 right-4 z-50 flex flex-col gap-2" style="min-width:320px">
   <template x-for="t in toasts" :key="t.id">
-    <div class="toast-in rounded-lg px-4 py-3 shadow-xl flex items-start gap-3"
-         :class="t.type==='success' ? 'bg-emerald-600/90' : t.type==='error' ? 'bg-red-600/90' : 'bg-indigo-600/90'">
+    <div class="toast-in rounded-lg px-4 py-3 shadow-xl flex items-start gap-3 text-white"
+         :style="t.type==='success' ? 'background:rgba(16,185,129,0.92)' : t.type==='error' ? 'background:rgba(239,68,68,0.92)' : 'background:rgba(99,102,241,0.92)'">
       <span class="mt-0.5" x-text="t.type==='success' ? '&#10003;' : t.type==='error' ? '&#10007;' : '&#9432;'"></span>
       <div class="flex-1">
         <div class="font-semibold text-sm" x-text="t.title"></div>
         <div class="text-xs opacity-90 mt-0.5" x-text="t.message"></div>
       </div>
-      <button @click="removeToast(t.id)" class="opacity-60 hover:opacity-100">&times;</button>
+      <button @click="removeToast(t.id)" class="opacity-60 hover:opacity-100 text-white">&times;</button>
     </div>
   </template>
 </div>
@@ -51,28 +190,32 @@
 <header class="glass sticky top-0 z-40">
   <div class="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
     <div class="flex items-center gap-3">
-      <img src="/assets/icon.ico" alt="ClaudeBeep" class="w-9 h-9 rounded-lg">
+      <img src="/assets/icon.png" alt="ClaudeBeep" class="w-9 h-9 rounded-lg shadow-sm">
       <div>
-        <h1 class="text-lg font-bold text-gray-900">ClaudeBeep</h1>
-        <p class="text-xs text-gray-500">多渠道通知 &middot; Web 管理</p>
+        <h1 class="text-lg font-bold" style="color:var(--text-primary)">ClaudeBeep</h1>
+        <p class="text-xs" style="color:var(--text-muted)">多渠道通知 &middot; Web 管理</p>
       </div>
     </div>
-    <div class="flex items-center gap-2 text-xs">
-      <span class="flex items-center gap-1.5 px-2.5 py-1 rounded-full"
-            :class="status.hooks_installed ? 'bg-emerald-500/15 text-emerald-400' : 'bg-amber-500/15 text-amber-400'">
-        <span class="w-1.5 h-1.5 rounded-full" :class="status.hooks_installed ? 'bg-emerald-400' : 'bg-amber-400'"></span>
+    <div class="flex items-center gap-3">
+      <span class="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs"
+            :style="status.hooks_installed ? 'background:rgba(16,185,129,0.12);color:#10b981' : 'background:rgba(245,158,11,0.12);color:#f59e0b'">
+        <span class="w-1.5 h-1.5 rounded-full" :style="status.hooks_installed ? 'background:#10b981' : 'background:#f59e0b'"></span>
         Hooks <span x-text="status.hooks_installed ? '已安装' : '未安装'"></span>
       </span>
+      <!-- Theme Toggle -->
+      <button @click="cycleTheme()" class="theme-btn" :title="themeLabel">
+        <span x-text="themeMode==='light' ? '&#9788;' : themeMode==='dark' ? '&#9790;' : '&#9681;'"></span>
+      </button>
     </div>
   </div>
 </header>
 
 <!-- Tabs -->
 <nav class="max-w-5xl mx-auto px-6 mt-1">
-  <div class="flex gap-6">
+  <div class="flex gap-6 overflow-x-auto">
     <template x-for="tab in tabs" :key="tab.id">
       <button @click="currentTab = tab.id"
-              class="py-3 text-sm font-medium transition-colors"
+              class="py-3 text-sm font-medium transition-colors whitespace-nowrap"
               :class="currentTab === tab.id ? 'tab-active' : 'tab-inactive'"
               x-text="tab.label"></button>
     </template>
@@ -89,32 +232,32 @@
       <div class="card rounded-xl p-5">
         <div class="flex items-center justify-between mb-4">
           <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-lg bg-blue-500/15 flex items-center justify-center text-blue-400 text-xl">W</div>
+            <div class="w-10 h-10 rounded-lg flex items-center justify-center text-xl" style="background:rgba(59,130,246,0.12);color:#3b82f6">W</div>
             <div>
-              <div class="font-semibold text-gray-900">Windows Toast</div>
-              <div class="text-xs text-gray-500">系统原生通知</div>
+              <div class="font-semibold" style="color:var(--text-primary)">Windows Toast</div>
+              <div class="text-xs" style="color:var(--text-muted)">系统原生通知</div>
             </div>
           </div>
           <button @click="toggleChannel('windows_toast', !config.windows_toast?.enabled)"
                   class="relative w-11 h-6 rounded-full toggle-track"
-                  :class="config.windows_toast?.enabled ? 'bg-indigo-500' : 'bg-gray-300'">
-            <span class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow toggle-thumb"
-                  :class="config.windows_toast?.enabled ? 'translate-x-5' : 'translate-x-0'"></span>
+                  :style="config.windows_toast?.enabled ? 'background:#6366f1' : 'background:var(--border-primary)'">
+            <span class="absolute top-0.5 left-0.5 w-5 h-5 rounded-full shadow toggle-thumb"
+                  :style="config.windows_toast?.enabled ? 'transform:translateX(20px);background:#fff' : 'transform:translateX(0);background:#fff'"></span>
           </button>
         </div>
         <!-- 提示音设置 -->
         <div class="mb-3 flex items-center justify-between">
-          <span class="text-xs text-gray-500">提示音</span>
+          <span class="text-xs" style="color:var(--text-muted)">提示音</span>
           <button @click="toggleSound()"
                   class="relative w-11 h-6 rounded-full toggle-track"
-                  :class="soundEnabled ? 'bg-indigo-500' : 'bg-gray-300'">
-            <span class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow toggle-thumb"
-                  :class="soundEnabled ? 'translate-x-5' : 'translate-x-0'"></span>
+                  :style="soundEnabled ? 'background:#6366f1' : 'background:var(--border-primary)'">
+            <span class="absolute top-0.5 left-0.5 w-5 h-5 rounded-full shadow toggle-thumb"
+                  :style="soundEnabled ? 'transform:translateX(20px);background:#fff' : 'transform:translateX(0);background:#fff'"></span>
           </button>
         </div>
         <div x-show="soundEnabled" class="mb-3">
           <select x-model="soundType" @change="saveSoundConfig()"
-                  class="w-full bg-white border border-gray-300 rounded-lg px-2 py-1.5 text-xs text-gray-200 focus:border-indigo-500 focus:outline-none transition">
+                  class="w-full rounded-lg px-2 py-1.5 text-xs" style="background:var(--input-bg);border:1px solid var(--input-border);color:var(--text-primary)">
             <option value="default">默认 (Default)</option>
             <option value="reminder">提醒 (Reminder) - 推荐</option>
             <option value="alarm">闹钟 (Alarm) - 最响</option>
@@ -126,8 +269,8 @@
         </div>
         <div class="flex items-center gap-2 text-xs">
           <span class="w-2 h-2 rounded-full pulse-dot relative"
-                :class="config.windows_toast?.enabled ? 'bg-emerald-400' : 'bg-gray-500'"></span>
-          <span x-text="config.windows_toast?.enabled ? '已启用' : '已禁用'" class="text-gray-400"></span>
+                :style="config.windows_toast?.enabled ? 'background:#10b981' : 'background:var(--text-muted)'"></span>
+          <span x-text="config.windows_toast?.enabled ? '已启用' : '已禁用'" style="color:var(--text-muted)"></span>
         </div>
       </div>
 
@@ -135,23 +278,23 @@
       <div class="card rounded-xl p-5">
         <div class="flex items-center justify-between mb-4">
           <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-lg bg-green-500/15 flex items-center justify-center text-green-400 text-xl">W</div>
+            <div class="w-10 h-10 rounded-lg flex items-center justify-center text-xl" style="background:rgba(16,185,129,0.12);color:#10b981">W</div>
             <div>
-              <div class="font-semibold text-gray-900">微信 <span class="text-xs font-normal text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">⚠️ 不推荐</span></div>
-              <div class="text-xs text-gray-500">WeChat 通知</div>
+              <div class="font-semibold" style="color:var(--text-primary)">微信 <span class="text-xs font-normal px-1.5 py-0.5 rounded" style="background:rgba(245,158,11,0.12);color:#f59e0b">⚠️ 不推荐</span></div>
+              <div class="text-xs" style="color:var(--text-muted)">WeChat 通知</div>
             </div>
           </div>
           <button @click="toggleChannel('weixin', !config.weixin?.enabled)"
                   class="relative w-11 h-6 rounded-full toggle-track"
-                  :class="config.weixin?.enabled ? 'bg-indigo-500' : 'bg-gray-300'">
-            <span class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow toggle-thumb"
-                  :class="config.weixin?.enabled ? 'translate-x-5' : 'translate-x-0'"></span>
+                  :style="config.weixin?.enabled ? 'background:#6366f1' : 'background:var(--border-primary)'">
+            <span class="absolute top-0.5 left-0.5 w-5 h-5 rounded-full shadow toggle-thumb"
+                  :style="config.weixin?.enabled ? 'transform:translateX(20px);background:#fff' : 'transform:translateX(0);background:#fff'"></span>
           </button>
         </div>
         <div class="flex items-center gap-2 text-xs">
           <span class="w-2 h-2 rounded-full pulse-dot relative"
-                :class="weixinStatus.logged_in ? 'bg-emerald-400' : 'bg-gray-500'"></span>
-          <span x-text="weixinStatus.message || '检查中...'" class="text-gray-400"></span>
+                :style="weixinStatus.logged_in ? 'background:#10b981' : 'background:var(--text-muted)'"></span>
+          <span x-text="weixinStatus.message || '检查中...'" style="color:var(--text-muted)"></span>
         </div>
       </div>
 
@@ -159,23 +302,23 @@
       <div class="card rounded-xl p-5">
         <div class="flex items-center justify-between mb-4">
           <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-lg bg-sky-500/15 flex items-center justify-center text-sky-400 text-xl">Q</div>
+            <div class="w-10 h-10 rounded-lg flex items-center justify-center text-xl" style="background:rgba(14,165,233,0.12);color:#0ea5e9">Q</div>
             <div>
-              <div class="font-semibold text-gray-900">QQ Bot</div>
-              <div class="text-xs text-gray-500">QQ 通知</div>
+              <div class="font-semibold" style="color:var(--text-primary)">QQ Bot</div>
+              <div class="text-xs" style="color:var(--text-muted)">QQ 通知</div>
             </div>
           </div>
           <button @click="toggleChannel('qq', !config.qq?.enabled)"
                   class="relative w-11 h-6 rounded-full toggle-track"
-                  :class="config.qq?.enabled ? 'bg-indigo-500' : 'bg-gray-300'">
-            <span class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow toggle-thumb"
-                  :class="config.qq?.enabled ? 'translate-x-5' : 'translate-x-0'"></span>
+                  :style="config.qq?.enabled ? 'background:#6366f1' : 'background:var(--border-primary)'">
+            <span class="absolute top-0.5 left-0.5 w-5 h-5 rounded-full shadow toggle-thumb"
+                  :style="config.qq?.enabled ? 'transform:translateX(20px);background:#fff' : 'transform:translateX(0);background:#fff'"></span>
           </button>
         </div>
         <div class="flex items-center gap-2 text-xs">
           <span class="w-2 h-2 rounded-full pulse-dot relative"
-                :class="qqStatus.logged_in ? 'bg-emerald-400' : 'bg-gray-500'"></span>
-          <span x-text="qqStatus.message || '检查中...'" class="text-gray-400"></span>
+                :style="qqStatus.logged_in ? 'background:#10b981' : 'background:var(--text-muted)'"></span>
+          <span x-text="qqStatus.message || '检查中...'" style="color:var(--text-muted)"></span>
         </div>
       </div>
 
@@ -183,23 +326,23 @@
       <div class="card rounded-xl p-5">
         <div class="flex items-center justify-between mb-4">
           <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-lg bg-cyan-500/15 flex items-center justify-center text-cyan-400 text-xl">T</div>
+            <div class="w-10 h-10 rounded-lg flex items-center justify-center text-xl" style="background:rgba(6,182,212,0.12);color:#06b6d4">T</div>
             <div>
-              <div class="font-semibold text-gray-900">Telegram</div>
-              <div class="text-xs text-gray-500">Bot API</div>
+              <div class="font-semibold" style="color:var(--text-primary)">Telegram</div>
+              <div class="text-xs" style="color:var(--text-muted)">Bot API</div>
             </div>
           </div>
           <button @click="toggleChannel('telegram', !config.telegram?.enabled)"
                   class="relative w-11 h-6 rounded-full toggle-track"
-                  :class="config.telegram?.enabled ? 'bg-indigo-500' : 'bg-gray-300'">
-            <span class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow toggle-thumb"
-                  :class="config.telegram?.enabled ? 'translate-x-5' : 'translate-x-0'"></span>
+                  :style="config.telegram?.enabled ? 'background:#6366f1' : 'background:var(--border-primary)'">
+            <span class="absolute top-0.5 left-0.5 w-5 h-5 rounded-full shadow toggle-thumb"
+                  :style="config.telegram?.enabled ? 'transform:translateX(20px);background:#fff' : 'transform:translateX(0);background:#fff'"></span>
           </button>
         </div>
         <div class="flex items-center gap-2 text-xs">
           <span class="w-2 h-2 rounded-full pulse-dot relative"
-                :class="tgStatus.logged_in ? 'bg-emerald-400' : 'bg-gray-500'"></span>
-          <span x-text="tgStatus.message || '检查中...'" class="text-gray-400"></span>
+                :style="tgStatus.logged_in ? 'background:#10b981' : 'background:var(--text-muted)'"></span>
+          <span x-text="tgStatus.message || '检查中...'" style="color:var(--text-muted)"></span>
         </div>
       </div>
 
@@ -207,23 +350,23 @@
       <div class="card rounded-xl p-5">
         <div class="flex items-center justify-between mb-4">
           <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-lg bg-blue-500/15 flex items-center justify-center text-blue-400 text-xl">F</div>
+            <div class="w-10 h-10 rounded-lg flex items-center justify-center text-xl" style="background:rgba(59,130,246,0.12);color:#3b82f6">F</div>
             <div>
-              <div class="font-semibold text-gray-900">飞书</div>
-              <div class="text-xs text-gray-500">Open API</div>
+              <div class="font-semibold" style="color:var(--text-primary)">飞书</div>
+              <div class="text-xs" style="color:var(--text-muted)">Open API</div>
             </div>
           </div>
           <button @click="toggleChannel('feishu', !config.feishu?.enabled)"
                   class="relative w-11 h-6 rounded-full toggle-track"
-                  :class="config.feishu?.enabled ? 'bg-indigo-500' : 'bg-gray-300'">
-            <span class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow toggle-thumb"
-                  :class="config.feishu?.enabled ? 'translate-x-5' : 'translate-x-0'"></span>
+                  :style="config.feishu?.enabled ? 'background:#6366f1' : 'background:var(--border-primary)'">
+            <span class="absolute top-0.5 left-0.5 w-5 h-5 rounded-full shadow toggle-thumb"
+                  :style="config.feishu?.enabled ? 'transform:translateX(20px);background:#fff' : 'transform:translateX(0);background:#fff'"></span>
           </button>
         </div>
         <div class="flex items-center gap-2 text-xs">
           <span class="w-2 h-2 rounded-full pulse-dot relative"
-                :class="fsStatus.logged_in ? 'bg-emerald-400' : 'bg-gray-500'"></span>
-          <span x-text="fsStatus.message || '检查中...'" class="text-gray-400"></span>
+                :style="fsStatus.logged_in ? 'background:#10b981' : 'background:var(--text-muted)'"></span>
+          <span x-text="fsStatus.message || '检查中...'" style="color:var(--text-muted)"></span>
         </div>
       </div>
 
@@ -231,69 +374,69 @@
       <div class="card rounded-xl p-5">
         <div class="flex items-center justify-between mb-4">
           <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-lg bg-orange-500/15 flex items-center justify-center text-orange-400 text-xl">D</div>
+            <div class="w-10 h-10 rounded-lg flex items-center justify-center text-xl" style="background:rgba(249,115,22,0.12);color:#f97316">D</div>
             <div>
-              <div class="font-semibold text-gray-900">钉钉</div>
-              <div class="text-xs text-gray-500">Stream API</div>
+              <div class="font-semibold" style="color:var(--text-primary)">钉钉</div>
+              <div class="text-xs" style="color:var(--text-muted)">Stream API</div>
             </div>
           </div>
           <button @click="toggleChannel('dingtalk', !config.dingtalk?.enabled)"
                   class="relative w-11 h-6 rounded-full toggle-track"
-                  :class="config.dingtalk?.enabled ? 'bg-indigo-500' : 'bg-gray-300'">
-            <span class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow toggle-thumb"
-                  :class="config.dingtalk?.enabled ? 'translate-x-5' : 'translate-x-0'"></span>
+                  :style="config.dingtalk?.enabled ? 'background:#6366f1' : 'background:var(--border-primary)'">
+            <span class="absolute top-0.5 left-0.5 w-5 h-5 rounded-full shadow toggle-thumb"
+                  :style="config.dingtalk?.enabled ? 'transform:translateX(20px);background:#fff' : 'transform:translateX(0);background:#fff'"></span>
           </button>
         </div>
         <div class="flex items-center gap-2 text-xs">
           <span class="w-2 h-2 rounded-full pulse-dot relative"
-                :class="dtStatus.logged_in ? 'bg-emerald-400' : 'bg-gray-500'"></span>
-          <span x-text="dtStatus.message || '检查中...'" class="text-gray-400"></span>
+                :style="dtStatus.logged_in ? 'background:#10b981' : 'background:var(--text-muted)'"></span>
+          <span x-text="dtStatus.message || '检查中...'" style="color:var(--text-muted)"></span>
         </div>
       </div>
     </div>
 
     <!-- Permission Mode -->
     <div class="card rounded-xl p-5 mb-6">
-      <h3 class="font-semibold text-gray-900 mb-3">权限模式</h3>
-      <p class="text-xs text-gray-500 mb-4">控制 Claude Code 工具调用的权限确认方式，影响通知过滤行为</p>
+      <h3 class="font-semibold mb-3" style="color:var(--text-primary)">权限模式</h3>
+      <p class="text-xs mb-4" style="color:var(--text-muted)">控制 Claude Code 工具调用的权限确认方式，影响通知过滤行为</p>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
         <button @click="setPermissionMode('default')"
                 class="rounded-lg p-4 text-left transition-all border"
-                :class="permMode === 'default' ? 'bg-indigo-50 border-indigo-300' : 'bg-white border-gray-200 hover:border-gray-400'">
-          <div class="font-medium text-sm" :class="permMode === 'default' ? 'text-indigo-600' : 'text-gray-600'">default</div>
-          <div class="text-xs text-gray-500 mt-1">每次工具调用都弹窗确认</div>
-          <div class="text-xs mt-2" :class="permMode === 'default' ? 'text-indigo-400' : 'text-gray-600'">所有操作都通知</div>
+                :style="permMode === 'default' ? 'background:var(--accent-bg);border-color:var(--accent)' : 'background:var(--bg-tertiary);border-color:var(--border-primary)'">
+          <div class="font-medium text-sm" :style="permMode === 'default' ? 'color:var(--accent)' : 'color:var(--text-secondary)'">default</div>
+          <div class="text-xs mt-1" style="color:var(--text-muted)">每次工具调用都弹窗确认</div>
+          <div class="text-xs mt-2" :style="permMode === 'default' ? 'color:var(--accent-light)' : 'color:var(--text-muted)'">所有操作都通知</div>
         </button>
         <button @click="setPermissionMode('acceptEdits')"
                 class="rounded-lg p-4 text-left transition-all border"
-                :class="permMode === 'acceptEdits' ? 'bg-emerald-50 border-emerald-300' : 'bg-white border-gray-200 hover:border-gray-400'">
-          <div class="font-medium text-sm" :class="permMode === 'acceptEdits' ? 'text-emerald-600' : 'text-gray-600'">acceptEdits</div>
-          <div class="text-xs text-gray-500 mt-1">文件编辑自动放行，Bash 仍需确认</div>
-          <div class="text-xs mt-2" :class="permMode === 'acceptEdits' ? 'text-emerald-400' : 'text-gray-600'">只有 Bash 和完成时通知</div>
+                :style="permMode === 'acceptEdits' ? 'background:rgba(16,185,129,0.1);border-color:#10b981' : 'background:var(--bg-tertiary);border-color:var(--border-primary)'">
+          <div class="font-medium text-sm" :style="permMode === 'acceptEdits' ? 'color:#10b981' : 'color:var(--text-secondary)'">acceptEdits</div>
+          <div class="text-xs mt-1" style="color:var(--text-muted)">文件编辑自动放行，Bash 仍需确认</div>
+          <div class="text-xs mt-2" :style="permMode === 'acceptEdits' ? 'color:#34d399' : 'color:var(--text-muted)'">只有 Bash 和完成时通知</div>
         </button>
         <button @click="setPermissionMode('bypassPermissions')"
                 class="rounded-lg p-4 text-left transition-all border"
-                :class="permMode === 'bypassPermissions' ? 'bg-amber-50 border-amber-300' : 'bg-white border-gray-200 hover:border-gray-400'">
-          <div class="font-medium text-sm" :class="permMode === 'bypassPermissions' ? 'text-amber-600' : 'text-gray-600'">bypassPermissions</div>
-          <div class="text-xs text-gray-500 mt-1">全部自动放行，无弹窗</div>
-          <div class="text-xs mt-2" :class="permMode === 'bypassPermissions' ? 'text-amber-400' : 'text-gray-600'">只在完成时通知一次</div>
+                :style="permMode === 'bypassPermissions' ? 'background:rgba(245,158,11,0.1);border-color:#f59e0b' : 'background:var(--bg-tertiary);border-color:var(--border-primary)'">
+          <div class="font-medium text-sm" :style="permMode === 'bypassPermissions' ? 'color:#f59e0b' : 'color:var(--text-secondary)'">bypassPermissions</div>
+          <div class="text-xs mt-1" style="color:var(--text-muted)">全部自动放行，无弹窗</div>
+          <div class="text-xs mt-2" :style="permMode === 'bypassPermissions' ? 'color:#fbbf24' : 'color:var(--text-muted)'">只在完成时通知一次</div>
         </button>
       </div>
     </div>
 
     <!-- 交互模式卡片 -->
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-6">
+    <div class="card rounded-xl p-6 mb-6">
       <div class="flex items-center justify-between mb-4">
         <div>
-          <h3 class="text-lg font-semibold text-gray-900 dark:text-white">交互模式</h3>
-          <p class="text-sm text-gray-500 dark:text-gray-400">
+          <h3 class="text-lg font-semibold" style="color:var(--text-primary)">交互模式</h3>
+          <p class="text-sm" style="color:var(--text-muted)">
             开启后，审批通知可直接通过终端、微信、QQ、飞书、钉钉、Telegram 回复
           </p>
         </div>
         <button
           @click="toggleInteraction()"
-          :class="interactionEnabled ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'"
           class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors"
+          :style="interactionEnabled ? 'background:#6366f1' : 'background:var(--border-primary)'"
         >
           <span
             :class="interactionEnabled ? 'translate-x-6' : 'translate-x-1'"
@@ -301,23 +444,23 @@
           ></span>
         </button>
       </div>
-      <div x-show="interactionEnabled" x-transition class="space-y-3 mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+      <div x-show="interactionEnabled" x-transition class="space-y-3 mt-4 pt-4" style="border-top:1px solid var(--border-primary)">
         <div class="flex items-center justify-between">
           <div>
-            <label class="text-sm text-gray-600 dark:text-gray-400">超时（秒，0=无限）</label>
-            <p class="text-xs text-gray-500 dark:text-gray-500">等待用户回复的时间，超时后自动取消请求并继续执行。设为 0 则一直等待直到收到回复。</p>
+            <label class="text-sm" style="color:var(--text-secondary)">超时（秒，0=无限）</label>
+            <p class="text-xs" style="color:var(--text-muted)">等待用户回复的时间，超时后自动取消请求并继续执行。设为 0 则一直等待直到收到回复。</p>
           </div>
           <input type="number" x-model.number="interactionTimeout" @change="saveInteraction()" min="0"
-            class="w-24 px-2 py-1 text-sm border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+            class="w-24 px-2 py-1 text-sm rounded" style="background:var(--input-bg);border:1px solid var(--input-border);color:var(--text-primary)">
         </div>
         <div class="flex items-center justify-between">
           <div>
-            <label class="text-sm text-gray-600 dark:text-gray-400">终端显示选项</label>
-            <p class="text-xs text-gray-500 dark:text-gray-500">开启后，Claude Code 终端会显示可选选项供直接输入回复；关闭则仅通过手机端渠道回复。</p>
+            <label class="text-sm" style="color:var(--text-secondary)">终端显示选项</label>
+            <p class="text-xs" style="color:var(--text-muted)">开启后，Claude Code 终端会显示可选选项供直接输入回复；关闭则仅通过手机端渠道回复。</p>
           </div>
           <button @click="interactionShowTerminal = !interactionShowTerminal; saveInteraction()"
-            :class="interactionShowTerminal ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'"
-            class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors">
+            class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors"
+            :style="interactionShowTerminal ? 'background:#6366f1' : 'background:var(--border-primary)'">
             <span :class="interactionShowTerminal ? 'translate-x-5' : 'translate-x-0.5'"
               class="inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform"></span>
           </button>
@@ -327,7 +470,7 @@
 
     <!-- Quick Actions -->
     <div class="card rounded-xl p-5 mb-6">
-      <h3 class="font-semibold text-gray-900 mb-4">快捷操作</h3>
+      <h3 class="font-semibold mb-4" style="color:var(--text-primary)">快捷操作</h3>
       <div class="flex flex-wrap gap-3">
         <button @click="testNotifications()" class="btn-primary px-4 py-2 rounded-lg text-sm text-white font-medium">
           测试所有已启用渠道
@@ -338,7 +481,7 @@
         <button @click="uninstallHooks()" class="btn-danger px-4 py-2 rounded-lg text-sm text-white font-medium">
           卸载 Hooks
         </button>
-        <button @click="refreshAll()" class="px-4 py-2 rounded-lg text-sm text-gray-300 bg-gray-700/50 hover:bg-gray-700 transition font-medium">
+        <button @click="refreshAll()" class="px-4 py-2 rounded-lg text-sm font-medium transition" style="background:var(--bg-tertiary);color:var(--text-secondary);border:1px solid var(--border-primary)">
           刷新状态
         </button>
       </div>
@@ -346,19 +489,19 @@
 
     <!-- System Info -->
     <div class="card rounded-xl p-5">
-      <h3 class="font-semibold text-gray-900 mb-3">系统信息</h3>
+      <h3 class="font-semibold mb-3" style="color:var(--text-primary)">系统信息</h3>
       <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
         <div>
-          <div class="text-gray-500 text-xs">Python</div>
-          <div class="text-gray-300" x-text="status.python_version?.split(' ')[0] || '-'"></div>
+          <div class="text-xs" style="color:var(--text-muted)">Python</div>
+          <div style="color:var(--text-primary)" x-text="status.python_version?.split(' ')[0] || '-'"></div>
         </div>
         <div>
-          <div class="text-gray-500 text-xs">Hooks</div>
-          <div class="text-gray-300" x-text="status.hooks_installed ? '已安装' : '未安装'"></div>
+          <div class="text-xs" style="color:var(--text-muted)">Hooks</div>
+          <div style="color:var(--text-primary)" x-text="status.hooks_installed ? '已安装' : '未安装'"></div>
         </div>
         <div>
-          <div class="text-gray-500 text-xs">已启用渠道</div>
-          <div class="text-gray-300" x-text="enabledChannelCount"></div>
+          <div class="text-xs" style="color:var(--text-muted)">已启用渠道</div>
+          <div style="color:var(--text-primary)" x-text="enabledChannelCount"></div>
         </div>
       </div>
     </div>
@@ -367,42 +510,42 @@
   <!-- ==================== WeChat Tab ==================== -->
   <div x-show="currentTab === 'weixin'" x-cloak>
     <div class="card rounded-xl p-6 mb-6">
-      <h3 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-        <span class="w-8 h-8 rounded-lg bg-green-500/15 flex items-center justify-center text-green-400 text-sm">W</span>
+      <h3 class="font-semibold mb-4 flex items-center gap-2" style="color:var(--text-primary)">
+        <span class="w-8 h-8 rounded-lg flex items-center justify-center text-sm" style="background:rgba(16,185,129,0.12);color:#10b981">W</span>
         微信通知配置
-        <span class="text-xs font-normal text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">⚠️ 不推荐</span>
+        <span class="text-xs font-normal px-2 py-0.5 rounded-full" style="background:rgba(245,158,11,0.12);color:#f59e0b;border:1px solid rgba(245,158,11,0.2)">⚠️ 不推荐</span>
       </h3>
 
-      <div class="mb-6 p-4 rounded-lg bg-blue-500/5 border border-blue-500/15">
-        <p class="text-xs text-gray-500">
+      <div class="mb-6 p-4 rounded-lg" style="background:var(--accent-bg);border:1px solid var(--border-primary)">
+        <p class="text-xs" style="color:var(--text-muted)">
           微信通知通过 ilink Bot API 直接发送，无需安装 OpenClaw。扫码登录后即可使用。
         </p>
       </div>
 
       <!-- Login Status -->
-      <div class="mb-6 p-4 rounded-lg" :class="weixinStatus.logged_in ? 'bg-emerald-500/10 border border-emerald-500/20' : 'bg-gray-700/30 border border-gray-600/30'">
+      <div class="mb-6 p-4 rounded-lg" :style="weixinStatus.logged_in ? 'background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2)' : 'background:var(--bg-tertiary);border:1px solid var(--border-primary)'">
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-3">
-            <span class="w-3 h-3 rounded-full" :class="weixinStatus.logged_in ? 'bg-emerald-400' : 'bg-gray-500'"></span>
+            <span class="w-3 h-3 rounded-full" :style="weixinStatus.logged_in ? 'background:#10b981' : 'background:var(--text-muted)'"></span>
             <div>
-              <div class="text-sm font-medium text-white" x-text="weixinStatus.logged_in ? '已登录' : '未登录'"></div>
-              <div class="text-xs text-gray-400 mt-0.5" x-text="weixinStatus.message || ''"></div>
-              <div x-show="weixinStatus.ilink_user_id" class="text-xs text-gray-400 mt-0.5">用户 ID: <span x-text="weixinStatus.ilink_user_id"></span></div>
+              <div class="text-sm font-medium" style="color:var(--text-primary)" x-text="weixinStatus.logged_in ? '已登录' : '未登录'"></div>
+              <div class="text-xs mt-0.5" style="color:var(--text-muted)" x-text="weixinStatus.message || ''"></div>
+              <div x-show="weixinStatus.ilink_user_id" class="text-xs mt-0.5" style="color:var(--text-muted)">用户 ID: <span x-text="weixinStatus.ilink_user_id"></span></div>
             </div>
           </div>
           <div class="flex gap-2">
-            <button @click="refreshWeixinStatus()" class="px-3 py-1.5 text-xs rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition">刷新</button>
+            <button @click="refreshWeixinStatus()" class="px-3 py-1.5 text-xs rounded-lg transition" style="background:var(--bg-tertiary);color:var(--text-secondary);border:1px solid var(--border-primary)">刷新</button>
             <button x-show="weixinStatus.logged_in" @click="weixinLogout()"
-                    class="px-3 py-1.5 text-xs rounded-lg bg-red-500/15 hover:bg-red-500/25 text-red-400 transition">清除登录</button>
+                    class="px-3 py-1.5 text-xs rounded-lg transition" style="background:rgba(239,68,68,0.1);color:#ef4444;border:1px solid rgba(239,68,68,0.2)">清除登录</button>
           </div>
         </div>
       </div>
 
       <!-- 微信 Session 说明 -->
-      <div class="mb-6 p-4 rounded-lg bg-amber-500/10 border border-amber-500/20">
+      <div class="mb-6 p-4 rounded-lg" style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2)">
         <div class="flex items-start gap-2">
-          <span class="text-amber-400 mt-0.5">⚠</span>
-          <div class="text-xs text-amber-200/90">
+          <span style="color:#f59e0b" class="mt-0.5">⚠</span>
+          <div class="text-xs" style="color:var(--text-secondary)">
             <div class="font-medium mb-1">微信 Session 说明</div>
             <div>扫码登录成功后，Session 不会自动续期。如果长时间未使用（通常数天），Session 过期后发送消息会失败，需要在此页面重新扫码登录。</div>
             <div class="mt-1">首次使用须先在微信中给 Bot 发送一条消息以建立会话。</div>
@@ -412,8 +555,8 @@
 
       <!-- QR Login -->
       <div class="mb-6">
-        <h4 class="text-sm font-medium text-gray-700 mb-3">扫码登录</h4>
-        <p class="text-xs text-gray-500 mb-3">点击按钮获取微信二维码，使用微信扫码授权后自动完成登录。</p>
+        <h4 class="text-sm font-medium mb-3" style="color:var(--text-secondary)">扫码登录</h4>
+        <p class="text-xs mb-3" style="color:var(--text-muted)">点击按钮获取微信二维码，使用微信扫码授权后自动完成登录。</p>
         <button @click="startWeixinQR()" :disabled="qrLogin.in_progress"
                 class="btn-primary px-5 py-2.5 rounded-lg text-sm text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed">
           <span x-show="!qrLogin.in_progress">获取二维码</span>
@@ -426,45 +569,45 @@
 
       <!-- QR Code Display -->
       <div x-show="qrLogin.qr_url" class="mb-6">
-        <h4 class="text-sm font-medium text-gray-700 mb-3">请使用微信扫描二维码</h4>
-        <div class="bg-white rounded-xl p-4 inline-block shadow-lg">
+        <h4 class="text-sm font-medium mb-3" style="color:var(--text-secondary)">请使用微信扫描二维码</h4>
+        <div class="rounded-xl p-4 inline-block shadow-lg" style="background:var(--bg-secondary)">
           <div id="qrcode-canvas" class="w-56 h-56 flex items-center justify-center"></div>
         </div>
-        <p class="text-xs text-gray-500 mt-2">二维码有效期 5 分钟，过期后自动刷新</p>
-        <div x-show="qrLogin.error" class="mt-3 text-sm text-red-400" x-text="qrLogin.error"></div>
-        <div x-show="qrLogin.status === 'confirmed'" class="mt-3 text-sm text-emerald-400">登录成功！Token 已自动保存。</div>
+        <p class="text-xs mt-2" style="color:var(--text-muted)">二维码有效期 5 分钟，过期后自动刷新</p>
+        <div x-show="qrLogin.error" class="mt-3 text-sm" style="color:#ef4444" x-text="qrLogin.error"></div>
+        <div x-show="qrLogin.status === 'confirmed'" class="mt-3 text-sm" style="color:#10b981">登录成功！Token 已自动保存。</div>
       </div>
 
       <!-- 等待获取 to_user_id 提醒 -->
-      <div x-show="wxWaitingUserId" class="mb-6 p-4 rounded-lg bg-amber-500/10 border border-amber-500/20">
+      <div x-show="wxWaitingUserId" class="mb-6 p-4 rounded-lg" style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2)">
         <div class="flex items-start gap-2">
-          <svg class="animate-spin w-4 h-4 text-amber-400 mt-0.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" opacity="0.3"/><path fill="currentColor" d="M4 12a8 8 0 018-8v3a5 5 0 00-5 5H4z"/></svg>
-          <div class="text-xs text-amber-200/90">
+          <svg class="animate-spin w-4 h-4 mt-0.5" style="color:#f59e0b" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" opacity="0.3"/><path fill="currentColor" d="M4 12a8 8 0 018-8v3a5 5 0 00-5 5H4z"/></svg>
+          <div class="text-xs" style="color:var(--text-secondary)">
             <div class="font-medium mb-1">正在等待获取接收用户 ID...</div>
             <div>请在微信中找到你的 Bot 并发送一条消息（如"你好"），系统会自动捕获用户 ID。</div>
-            <div class="mt-1 text-amber-300/60">超时时间 2 分钟。</div>
+            <div class="mt-1" style="color:var(--text-muted)">超时时间 2 分钟。</div>
           </div>
         </div>
       </div>
 
       <!-- Manual Config -->
-      <div class="mt-6 pt-6 border-t border-gray-700/50">
-        <h4 class="text-sm font-medium text-gray-700 mb-3">手动配置（可选）</h4>
+      <div class="mt-6 pt-6" style="border-top:1px solid var(--border-primary)">
+        <h4 class="text-sm font-medium mb-3" style="color:var(--text-secondary)">手动配置（可选）</h4>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label class="block text-xs text-gray-500 mb-1">Bot Token</label>
+            <label class="block text-xs mb-1" style="color:var(--text-muted)">Bot Token</label>
             <input type="password" x-model="wxForm.bot_token" placeholder="ilink bot token"
-                   class="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:border-indigo-500 focus:outline-none transition">
+                   class="w-full rounded-lg px-3 py-2 text-sm" style="background:var(--input-bg);border:1px solid var(--input-border);color:var(--text-primary)">
           </div>
           <div>
-            <label class="block text-xs text-gray-500 mb-1">Base URL</label>
+            <label class="block text-xs mb-1" style="color:var(--text-muted)">Base URL</label>
             <input type="text" x-model="wxForm.baseurl" placeholder="https://ilinkai.weixin.qq.com"
-                   class="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:border-indigo-500 focus:outline-none transition">
+                   class="w-full rounded-lg px-3 py-2 text-sm" style="background:var(--input-bg);border:1px solid var(--input-border);color:var(--text-primary)">
           </div>
           <div>
-            <label class="block text-xs text-gray-500 mb-1">接收用户 ID (to_user_id)</label>
+            <label class="block text-xs mb-1" style="color:var(--text-muted)">接收用户 ID (to_user_id)</label>
             <input type="text" x-model="wxForm.to_user_id" placeholder="ilink_user_id，扫码登录后自动填入"
-                   class="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:border-indigo-500 focus:outline-none transition">
+                   class="w-full rounded-lg px-3 py-2 text-sm" style="background:var(--input-bg);border:1px solid var(--input-border);color:var(--text-primary)">
           </div>
         </div>
         <button @click="saveWeixinConfig()" class="btn-primary px-5 py-2 rounded-lg text-sm text-white font-medium mt-4">
@@ -477,52 +620,52 @@
   <!-- ==================== QQ Tab ==================== -->
   <div x-show="currentTab === 'qq'" x-cloak>
     <div class="card rounded-xl p-6 mb-6">
-      <h3 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-        <span class="w-8 h-8 rounded-lg bg-sky-500/15 flex items-center justify-center text-sky-400 text-sm">Q</span>
+      <h3 class="font-semibold mb-4 flex items-center gap-2" style="color:var(--text-primary)">
+        <span class="w-8 h-8 rounded-lg flex items-center justify-center text-sm" style="background:rgba(14,165,233,0.12);color:#0ea5e9">Q</span>
         QQ Bot 通知配置
       </h3>
 
-      <div class="mb-6 p-4 rounded-lg bg-blue-500/5 border border-blue-500/15">
-        <p class="text-xs text-gray-500">
-          QQ Bot 需要在 <a href="https://q.qq.com/" target="_blank" class="text-indigo-400 hover:underline">QQ 开放平台</a> 创建机器人获取 AppID 和 AppSecret。
+      <div class="mb-6 p-4 rounded-lg" style="background:var(--accent-bg);border:1px solid var(--border-primary)">
+        <p class="text-xs" style="color:var(--text-muted)">
+          QQ Bot 需要在 <a href="https://q.qq.com/" target="_blank" style="color:var(--accent)" class="hover:underline">QQ 开放平台</a> 创建机器人获取 AppID 和 AppSecret。
         </p>
-        <p class="text-xs text-gray-500 mt-2">
+        <p class="text-xs mt-2" style="color:var(--text-muted)">
           验证凭据后，系统会自动通过 WebSocket 监听 QQ 消息事件。在 QQ 中给 bot 发送一条消息，系统将自动获取你的 OpenID 并完成配置。
         </p>
       </div>
 
       <!-- Login Status -->
-      <div class="mb-6 p-4 rounded-lg" :class="qqStatus.logged_in ? 'bg-emerald-500/10 border border-emerald-500/20' : 'bg-gray-700/30 border border-gray-600/30'">
+      <div class="mb-6 p-4 rounded-lg" :style="qqStatus.logged_in ? 'background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2)' : 'background:var(--bg-tertiary);border:1px solid var(--border-primary)'">
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-3">
-            <span class="w-3 h-3 rounded-full" :class="qqStatus.logged_in ? 'bg-emerald-400' : 'bg-gray-500'"></span>
+            <span class="w-3 h-3 rounded-full" :style="qqStatus.logged_in ? 'background:#10b981' : 'background:var(--text-muted)'"></span>
             <div>
-              <div class="text-sm font-medium text-white" x-text="qqStatus.logged_in ? '已配置' : '未配置'"></div>
-              <div class="text-xs text-gray-400 mt-0.5" x-text="qqStatus.message || ''"></div>
-              <div x-show="qqStatus.app_id" class="text-xs text-gray-400 mt-0.5">AppID: <span x-text="qqStatus.app_id"></span></div>
+              <div class="text-sm font-medium" style="color:var(--text-primary)" x-text="qqStatus.logged_in ? '已配置' : '未配置'"></div>
+              <div class="text-xs mt-0.5" style="color:var(--text-muted)" x-text="qqStatus.message || ''"></div>
+              <div x-show="qqStatus.app_id" class="text-xs mt-0.5" style="color:var(--text-muted)">AppID: <span x-text="qqStatus.app_id"></span></div>
             </div>
           </div>
           <div class="flex gap-2">
-            <button @click="refreshQQStatus()" class="px-3 py-1.5 text-xs rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition">刷新</button>
+            <button @click="refreshQQStatus()" class="px-3 py-1.5 text-xs rounded-lg transition" style="background:var(--bg-tertiary);color:var(--text-secondary);border:1px solid var(--border-primary)">刷新</button>
             <button x-show="qqStatus.logged_in" @click="qqLogout()"
-                    class="px-3 py-1.5 text-xs rounded-lg bg-red-500/15 hover:bg-red-500/25 text-red-400 transition">清除登录</button>
+                    class="px-3 py-1.5 text-xs rounded-lg transition" style="background:rgba(239,68,68,0.1);color:#ef4444;border:1px solid rgba(239,68,68,0.2)">清除登录</button>
           </div>
         </div>
       </div>
 
       <!-- QQ Config Form -->
       <div>
-        <h4 class="text-sm font-medium text-gray-700 mb-3">Bot 凭据</h4>
+        <h4 class="text-sm font-medium mb-3" style="color:var(--text-secondary)">Bot 凭据</h4>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <div>
-            <label class="block text-xs text-gray-500 mb-1">AppID</label>
+            <label class="block text-xs mb-1" style="color:var(--text-muted)">AppID</label>
             <input type="text" x-model="qqForm.app_id" placeholder="QQ Bot AppID"
-                   class="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:border-indigo-500 focus:outline-none transition">
+                   class="w-full rounded-lg px-3 py-2 text-sm" style="background:var(--input-bg);border:1px solid var(--input-border);color:var(--text-primary)">
           </div>
           <div>
-            <label class="block text-xs text-gray-500 mb-1">AppSecret</label>
+            <label class="block text-xs mb-1" style="color:var(--text-muted)">AppSecret</label>
             <input type="password" x-model="qqForm.app_secret" placeholder="QQ Bot AppSecret"
-                   class="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:border-indigo-500 focus:outline-none transition">
+                   class="w-full rounded-lg px-3 py-2 text-sm" style="background:var(--input-bg);border:1px solid var(--input-border);color:var(--text-primary)">
           </div>
         </div>
         <div class="flex gap-3">
@@ -532,17 +675,16 @@
             <span x-show="qqValidating">验证中...</span>
             <span x-show="qqWaitingOpenId">等待获取 OpenID...</span>
           </button>
-          </button>
         </div>
 
         <!-- 等待 OpenID 提示 -->
-        <div x-show="qqWaitingOpenId" class="mt-4 p-4 rounded-lg bg-amber-500/10 border border-amber-500/20">
+        <div x-show="qqWaitingOpenId" class="mt-4 p-4 rounded-lg" style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2)">
           <div class="flex items-start gap-2">
-            <svg class="animate-spin w-4 h-4 text-amber-400 mt-0.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" opacity="0.3"/><path fill="currentColor" d="M4 12a8 8 0 018-8v3a5 5 0 00-5 5H4z"/></svg>
-            <div class="text-xs text-amber-200/90">
+            <svg class="animate-spin w-4 h-4 mt-0.5" style="color:#f59e0b" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" opacity="0.3"/><path fill="currentColor" d="M4 12a8 8 0 018-8v3a5 5 0 00-5 5H4z"/></svg>
+            <div class="text-xs" style="color:var(--text-secondary)">
               <div class="font-medium mb-1">正在等待获取 OpenID...</div>
               <div>请在 QQ 中找到你的 bot 并发送一条消息（如"你好"），系统会自动捕获你的 OpenID。</div>
-              <div class="mt-1 text-amber-300/60">超时时间 2 分钟，也可手动填入 Target ID。</div>
+              <div class="mt-1" style="color:var(--text-muted)">超时时间 2 分钟，也可手动填入 Target ID。</div>
             </div>
           </div>
         </div>
@@ -553,42 +695,42 @@
   <!-- ==================== Telegram Tab ==================== -->
   <div x-show="currentTab === 'telegram'" x-cloak>
     <div class="card rounded-xl p-6 mb-6">
-      <h3 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-        <span class="w-8 h-8 rounded-lg bg-cyan-500/15 flex items-center justify-center text-cyan-400 text-sm">T</span>
+      <h3 class="font-semibold mb-4 flex items-center gap-2" style="color:var(--text-primary)">
+        <span class="w-8 h-8 rounded-lg flex items-center justify-center text-sm" style="background:rgba(6,182,212,0.12);color:#06b6d4">T</span>
         Telegram Bot 配置
       </h3>
 
-      <div class="mb-6 p-4 rounded-lg bg-blue-500/5 border border-blue-500/15">
-        <p class="text-xs text-gray-500 font-medium mb-2">配置步骤：</p>
-        <ol class="text-xs text-gray-500 space-y-1 list-decimal list-inside">
-          <li>在 Telegram 中找 <a href="https://t.me/BotFather" target="_blank" class="text-indigo-400 hover:underline">@BotFather</a>，发送 <code class="bg-gray-700/50 px-1 rounded">/newbot</code> 创建 Bot</li>
+      <div class="mb-6 p-4 rounded-lg" style="background:var(--accent-bg);border:1px solid var(--border-primary)">
+        <p class="text-xs font-medium mb-2" style="color:var(--text-muted)">配置步骤：</p>
+        <ol class="text-xs space-y-1 list-decimal list-inside" style="color:var(--text-muted)">
+          <li>在 Telegram 中找 <a href="https://t.me/BotFather" target="_blank" style="color:var(--accent)" class="hover:underline">@BotFather</a>，发送 <code class="px-1 rounded" style="background:var(--bg-tertiary)">/newbot</code> 创建 Bot</li>
           <li>获取 Bot Token，填入下方验证</li>
           <li>验证成功后，给 Bot 发送一条消息，系统自动获取 Chat ID</li>
         </ol>
       </div>
 
-      <div class="mb-6 p-4 rounded-lg" :class="tgStatus.logged_in ? 'bg-emerald-500/10 border border-emerald-500/20' : 'bg-gray-700/30 border border-gray-600/30'">
+      <div class="mb-6 p-4 rounded-lg" :style="tgStatus.logged_in ? 'background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2)' : 'background:var(--bg-tertiary);border:1px solid var(--border-primary)'">
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-3">
-            <span class="w-3 h-3 rounded-full" :class="tgStatus.logged_in ? 'bg-emerald-400' : 'bg-gray-500'"></span>
+            <span class="w-3 h-3 rounded-full" :style="tgStatus.logged_in ? 'background:#10b981' : 'background:var(--text-muted)'"></span>
             <div>
-              <div class="text-sm font-medium text-white" x-text="tgStatus.logged_in ? '已配置' : '未配置'"></div>
-              <div class="text-xs text-gray-400 mt-0.5" x-text="tgStatus.message || ''"></div>
+              <div class="text-sm font-medium" style="color:var(--text-primary)" x-text="tgStatus.logged_in ? '已配置' : '未配置'"></div>
+              <div class="text-xs mt-0.5" style="color:var(--text-muted)" x-text="tgStatus.message || ''"></div>
             </div>
           </div>
           <div class="flex gap-2">
-            <button @click="refreshTgStatus()" class="px-3 py-1.5 text-xs rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition">刷新</button>
+            <button @click="refreshTgStatus()" class="px-3 py-1.5 text-xs rounded-lg transition" style="background:var(--bg-tertiary);color:var(--text-secondary);border:1px solid var(--border-primary)">刷新</button>
             <button x-show="tgStatus.logged_in" @click="tgLogout()"
-                    class="px-3 py-1.5 text-xs rounded-lg bg-red-500/15 hover:bg-red-500/25 text-red-400 transition">清除</button>
+                    class="px-3 py-1.5 text-xs rounded-lg transition" style="background:rgba(239,68,68,0.1);color:#ef4444;border:1px solid rgba(239,68,68,0.2)">清除</button>
           </div>
         </div>
       </div>
 
       <div>
-        <h4 class="text-sm font-medium text-gray-700 mb-3">Bot Token</h4>
+        <h4 class="text-sm font-medium mb-3" style="color:var(--text-secondary)">Bot Token</h4>
         <div class="mb-4">
           <input type="password" x-model="tgForm.bot_token" placeholder="从 @BotFather 获取"
-                 class="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:border-indigo-500 focus:outline-none transition">
+                 class="w-full rounded-lg px-3 py-2 text-sm" style="background:var(--input-bg);border:1px solid var(--input-border);color:var(--text-primary)">
         </div>
         <button @click="validateTg()" :disabled="tgWaitingChatId"
                 class="btn-primary px-5 py-2 rounded-lg text-sm text-white font-medium disabled:opacity-50">
@@ -596,13 +738,13 @@
           <span x-show="tgWaitingChatId">等待获取 Chat ID...</span>
         </button>
 
-        <div x-show="tgWaitingChatId" class="mt-4 p-4 rounded-lg bg-amber-500/10 border border-amber-500/20">
+        <div x-show="tgWaitingChatId" class="mt-4 p-4 rounded-lg" style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2)">
           <div class="flex items-start gap-2">
-            <svg class="animate-spin w-4 h-4 text-amber-400 mt-0.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" opacity="0.3"/><path fill="currentColor" d="M4 12a8 8 0 018-8v3a5 5 0 00-5 5H4z"/></svg>
-            <div class="text-xs text-amber-200/90">
+            <svg class="animate-spin w-4 h-4 mt-0.5" style="color:#f59e0b" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" opacity="0.3"/><path fill="currentColor" d="M4 12a8 8 0 018-8v3a5 5 0 00-5 5H4z"/></svg>
+            <div class="text-xs" style="color:var(--text-secondary)">
               <div class="font-medium mb-1">正在等待获取 Chat ID...</div>
               <div>请在 Telegram 中找到你的 Bot 并发送一条消息（如"你好"），系统会自动捕获 Chat ID。</div>
-              <div class="mt-1 text-amber-300/60">超时时间 2 分钟，也可手动填入 Chat ID。</div>
+              <div class="mt-1" style="color:var(--text-muted)">超时时间 2 分钟，也可手动填入 Chat ID。</div>
             </div>
           </div>
         </div>
@@ -613,58 +755,58 @@
   <!-- ==================== 飞书 Tab ==================== -->
   <div x-show="currentTab === 'feishu'" x-cloak>
     <div class="card rounded-xl p-6 mb-6">
-      <h3 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-        <span class="w-8 h-8 rounded-lg bg-blue-500/15 flex items-center justify-center text-blue-400 text-sm">F</span>
+      <h3 class="font-semibold mb-4 flex items-center gap-2" style="color:var(--text-primary)">
+        <span class="w-8 h-8 rounded-lg flex items-center justify-center text-sm" style="background:rgba(59,130,246,0.12);color:#3b82f6">F</span>
         飞书 Bot 配置
       </h3>
 
-      <div class="mb-6 p-4 rounded-lg bg-blue-500/5 border border-blue-500/15">
-        <p class="text-xs text-gray-500 font-medium mb-2">配置步骤：</p>
-        <ol class="text-xs text-gray-500 space-y-1 list-decimal list-inside">
-          <li>在 <a href="https://open.feishu.cn/" target="_blank" class="text-indigo-400 hover:underline">飞书开放平台</a> 创建企业自建应用</li>
+      <div class="mb-6 p-4 rounded-lg" style="background:var(--accent-bg);border:1px solid var(--border-primary)">
+        <p class="text-xs font-medium mb-2" style="color:var(--text-muted)">配置步骤：</p>
+        <ol class="text-xs space-y-1 list-decimal list-inside" style="color:var(--text-muted)">
+          <li>在 <a href="https://open.feishu.cn/" target="_blank" style="color:var(--accent)" class="hover:underline">飞书开放平台</a> 创建企业自建应用</li>
           <li>开启<b>机器人</b>能力</li>
           <li><b>权限管理</b> → 搜索并开启以下权限：
             <ul class="ml-6 mt-1 space-y-0.5 list-disc">
-              <li><code class="bg-gray-700/50 px-1 rounded">im:message</code> — 获取与发送消息</li>
-              <li><code class="bg-gray-700/50 px-1 rounded">im:message.receive_v1</code> — 接收消息事件</li>
-              <li><code class="bg-gray-700/50 px-1 rounded">auth:user_access_token:read</code> — 用户信息</li>
+              <li><code class="px-1 rounded" style="background:var(--bg-tertiary)">im:message</code> — 获取与发送消息</li>
+              <li><code class="px-1 rounded" style="background:var(--bg-tertiary)">im:message.receive_v1</code> — 接收消息事件</li>
+              <li><code class="px-1 rounded" style="background:var(--bg-tertiary)">auth:user_access_token:read</code> — 用户信息</li>
             </ul>
           </li>
-          <li><b>事件订阅</b> → 连接方式选择 <b>WebSocket</b> → 添加事件 <code class="bg-gray-700/50 px-1 rounded">im.message.receive_v1</code></li>
+          <li><b>事件订阅</b> → 连接方式选择 <b>WebSocket</b> → 添加事件 <code class="px-1 rounded" style="background:var(--bg-tertiary)">im.message.receive_v1</code></li>
           <li>发布应用（至少发布到企业内部），权限变更后需重新发布版本才生效</li>
           <li>验证凭据后，在飞书中找到 Bot 发送一条消息，系统自动获取 Open ID</li>
         </ol>
       </div>
 
-      <div class="mb-6 p-4 rounded-lg" :class="fsStatus.logged_in ? 'bg-emerald-500/10 border border-emerald-500/20' : 'bg-gray-700/30 border border-gray-600/30'">
+      <div class="mb-6 p-4 rounded-lg" :style="fsStatus.logged_in ? 'background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2)' : 'background:var(--bg-tertiary);border:1px solid var(--border-primary)'">
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-3">
-            <span class="w-3 h-3 rounded-full" :class="fsStatus.logged_in ? 'bg-emerald-400' : 'bg-gray-500'"></span>
+            <span class="w-3 h-3 rounded-full" :style="fsStatus.logged_in ? 'background:#10b981' : 'background:var(--text-muted)'"></span>
             <div>
-              <div class="text-sm font-medium text-white" x-text="fsStatus.logged_in ? '已配置' : '未配置'"></div>
-              <div class="text-xs text-gray-400 mt-0.5" x-text="fsStatus.message || ''"></div>
+              <div class="text-sm font-medium" style="color:var(--text-primary)" x-text="fsStatus.logged_in ? '已配置' : '未配置'"></div>
+              <div class="text-xs mt-0.5" style="color:var(--text-muted)" x-text="fsStatus.message || ''"></div>
             </div>
           </div>
           <div class="flex gap-2">
-            <button @click="refreshFsStatus()" class="px-3 py-1.5 text-xs rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition">刷新</button>
+            <button @click="refreshFsStatus()" class="px-3 py-1.5 text-xs rounded-lg transition" style="background:var(--bg-tertiary);color:var(--text-secondary);border:1px solid var(--border-primary)">刷新</button>
             <button x-show="fsStatus.logged_in" @click="fsLogout()"
-                    class="px-3 py-1.5 text-xs rounded-lg bg-red-500/15 hover:bg-red-500/25 text-red-400 transition">清除</button>
+                    class="px-3 py-1.5 text-xs rounded-lg transition" style="background:rgba(239,68,68,0.1);color:#ef4444;border:1px solid rgba(239,68,68,0.2)">清除</button>
           </div>
         </div>
       </div>
 
       <div>
-        <h4 class="text-sm font-medium text-gray-700 mb-3">应用凭据</h4>
+        <h4 class="text-sm font-medium mb-3" style="color:var(--text-secondary)">应用凭据</h4>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <div>
-            <label class="block text-xs text-gray-500 mb-1">App ID</label>
+            <label class="block text-xs mb-1" style="color:var(--text-muted)">App ID</label>
             <input type="text" x-model="fsForm.app_id" placeholder="飞书 App ID"
-                   class="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:border-indigo-500 focus:outline-none transition">
+                   class="w-full rounded-lg px-3 py-2 text-sm" style="background:var(--input-bg);border:1px solid var(--input-border);color:var(--text-primary)">
           </div>
           <div>
-            <label class="block text-xs text-gray-500 mb-1">Client Secret</label>
+            <label class="block text-xs mb-1" style="color:var(--text-muted)">Client Secret</label>
             <input type="password" x-model="fsForm.app_secret" placeholder="飞书 App Secret"
-                   class="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:border-indigo-500 focus:outline-none transition">
+                   class="w-full rounded-lg px-3 py-2 text-sm" style="background:var(--input-bg);border:1px solid var(--input-border);color:var(--text-primary)">
           </div>
         </div>
         <button @click="validateFs()" :disabled="fsWaitingOpenId"
@@ -673,13 +815,13 @@
           <span x-show="fsWaitingOpenId">等待获取 Open ID...</span>
         </button>
 
-        <div x-show="fsWaitingOpenId" class="mt-4 p-4 rounded-lg bg-amber-500/10 border border-amber-500/20">
+        <div x-show="fsWaitingOpenId" class="mt-4 p-4 rounded-lg" style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2)">
           <div class="flex items-start gap-2">
-            <svg class="animate-spin w-4 h-4 text-amber-400 mt-0.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" opacity="0.3"/><path fill="currentColor" d="M4 12a8 8 0 018-8v3a5 5 0 00-5 5H4z"/></svg>
-            <div class="text-xs text-amber-200/90">
+            <svg class="animate-spin w-4 h-4 mt-0.5" style="color:#f59e0b" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" opacity="0.3"/><path fill="currentColor" d="M4 12a8 8 0 018-8v3a5 5 0 00-5 5H4z"/></svg>
+            <div class="text-xs" style="color:var(--text-secondary)">
               <div class="font-medium mb-1">正在等待获取 Open ID...</div>
               <div>请在飞书中找到你的 Bot 并发送一条消息（如"你好"），系统会自动捕获 Open ID。</div>
-              <div class="mt-1 text-amber-300/60">超时时间 2 分钟。</div>
+              <div class="mt-1" style="color:var(--text-muted)">超时时间 2 分钟。</div>
             </div>
           </div>
         </div>
@@ -690,58 +832,58 @@
   <!-- ==================== 钉钉 Tab ==================== -->
   <div x-show="currentTab === 'dingtalk'" x-cloak>
     <div class="card rounded-xl p-6 mb-6">
-      <h3 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-        <span class="w-8 h-8 rounded-lg bg-orange-500/15 flex items-center justify-center text-orange-400 text-sm">D</span>
+      <h3 class="font-semibold mb-4 flex items-center gap-2" style="color:var(--text-primary)">
+        <span class="w-8 h-8 rounded-lg flex items-center justify-center text-sm" style="background:rgba(249,115,22,0.12);color:#f97316">D</span>
         钉钉 Bot 配置
       </h3>
 
-      <div class="mb-6 p-4 rounded-lg bg-blue-500/5 border border-blue-500/15">
-        <p class="text-xs text-gray-500 font-medium mb-2">配置步骤：</p>
-        <ol class="text-xs text-gray-500 space-y-1 list-decimal list-inside">
-          <li>在 <a href="https://open.dingtalk.com/" target="_blank" class="text-indigo-400 hover:underline">钉钉开放平台</a> 创建应用</li>
+      <div class="mb-6 p-4 rounded-lg" style="background:var(--accent-bg);border:1px solid var(--border-primary)">
+        <p class="text-xs font-medium mb-2" style="color:var(--text-muted)">配置步骤：</p>
+        <ol class="text-xs space-y-1 list-decimal list-inside" style="color:var(--text-muted)">
+          <li>在 <a href="https://open.dingtalk.com/" target="_blank" style="color:var(--accent)" class="hover:underline">钉钉开放平台</a> 创建应用</li>
           <li>添加<b>机器人</b>能力，在「消息接收模式」中选择 <b>Stream 模式</b></li>
           <li><b>权限管理</b> → 搜索并开启以下权限：
             <ul class="ml-6 mt-1 space-y-0.5 list-disc">
-              <li><code class="bg-gray-700/50 px-1 rounded">qyapi_robot_sendmsg</code> — 发送消息</li>
-              <li><code class="bg-gray-700/50 px-1 rounded">Robot.SingleChat.ReadWrite</code> — 读写单聊消息（<b class="text-amber-400">必须开启，否则收不到用户回复</b>）</li>
+              <li><code class="px-1 rounded" style="background:var(--bg-tertiary)">qyapi_robot_sendmsg</code> — 发送消息</li>
+              <li><code class="px-1 rounded" style="background:var(--bg-tertiary)">Robot.SingleChat.ReadWrite</code> — 读写单聊消息（<b style="color:#f59e0b">必须开启，否则收不到用户回复</b>）</li>
             </ul>
           </li>
           <li>获取 Client ID 和 Client Secret（在应用凭证页面）</li>
           <li>发布应用</li>
           <li>验证凭据后，在钉钉中找到 Bot 发送一条消息，系统自动获取 User ID</li>
         </ol>
-        <p class="text-xs text-gray-500 mt-2">💡 机器人接收消息的能力内置于「机器人」能力中，无需在「事件订阅」中单独添加事件。</p>
+        <p class="text-xs mt-2" style="color:var(--text-muted)">💡 机器人接收消息的能力内置于「机器人」能力中，无需在「事件订阅」中单独添加事件。</p>
       </div>
 
-      <div class="mb-6 p-4 rounded-lg" :class="dtStatus.logged_in ? 'bg-emerald-500/10 border border-emerald-500/20' : 'bg-gray-700/30 border border-gray-600/30'">
+      <div class="mb-6 p-4 rounded-lg" :style="dtStatus.logged_in ? 'background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2)' : 'background:var(--bg-tertiary);border:1px solid var(--border-primary)'">
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-3">
-            <span class="w-3 h-3 rounded-full" :class="dtStatus.logged_in ? 'bg-emerald-400' : 'bg-gray-500'"></span>
+            <span class="w-3 h-3 rounded-full" :style="dtStatus.logged_in ? 'background:#10b981' : 'background:var(--text-muted)'"></span>
             <div>
-              <div class="text-sm font-medium text-white" x-text="dtStatus.logged_in ? '已配置' : '未配置'"></div>
-              <div class="text-xs text-gray-400 mt-0.5" x-text="dtStatus.message || ''"></div>
+              <div class="text-sm font-medium" style="color:var(--text-primary)" x-text="dtStatus.logged_in ? '已配置' : '未配置'"></div>
+              <div class="text-xs mt-0.5" style="color:var(--text-muted)" x-text="dtStatus.message || ''"></div>
             </div>
           </div>
           <div class="flex gap-2">
-            <button @click="refreshDtStatus()" class="px-3 py-1.5 text-xs rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition">刷新</button>
+            <button @click="refreshDtStatus()" class="px-3 py-1.5 text-xs rounded-lg transition" style="background:var(--bg-tertiary);color:var(--text-secondary);border:1px solid var(--border-primary)">刷新</button>
             <button x-show="dtStatus.logged_in" @click="dtLogout()"
-                    class="px-3 py-1.5 text-xs rounded-lg bg-red-500/15 hover:bg-red-500/25 text-red-400 transition">清除</button>
+                    class="px-3 py-1.5 text-xs rounded-lg transition" style="background:rgba(239,68,68,0.1);color:#ef4444;border:1px solid rgba(239,68,68,0.2)">清除</button>
           </div>
         </div>
       </div>
 
       <div>
-        <h4 class="text-sm font-medium text-gray-700 mb-3">应用凭据</h4>
+        <h4 class="text-sm font-medium mb-3" style="color:var(--text-secondary)">应用凭据</h4>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <div>
-            <label class="block text-xs text-gray-500 mb-1">Client ID</label>
+            <label class="block text-xs mb-1" style="color:var(--text-muted)">Client ID</label>
             <input type="text" x-model="dtForm.client_id" placeholder="钉钉 Client ID"
-                   class="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:border-indigo-500 focus:outline-none transition">
+                   class="w-full rounded-lg px-3 py-2 text-sm" style="background:var(--input-bg);border:1px solid var(--input-border);color:var(--text-primary)">
           </div>
           <div>
-            <label class="block text-xs text-gray-500 mb-1">Client Secret</label>
+            <label class="block text-xs mb-1" style="color:var(--text-muted)">Client Secret</label>
             <input type="password" x-model="dtForm.client_secret" placeholder="钉钉 Client Secret"
-                   class="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:border-indigo-500 focus:outline-none transition">
+                   class="w-full rounded-lg px-3 py-2 text-sm" style="background:var(--input-bg);border:1px solid var(--input-border);color:var(--text-primary)">
           </div>
         </div>
         <button @click="validateDt()" :disabled="dtWaitingUserId"
@@ -750,13 +892,13 @@
           <span x-show="dtWaitingUserId">等待获取 User ID...</span>
         </button>
 
-        <div x-show="dtWaitingUserId" class="mt-4 p-4 rounded-lg bg-amber-500/10 border border-amber-500/20">
+        <div x-show="dtWaitingUserId" class="mt-4 p-4 rounded-lg" style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2)">
           <div class="flex items-start gap-2">
-            <svg class="animate-spin w-4 h-4 text-amber-400 mt-0.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" opacity="0.3"/><path fill="currentColor" d="M4 12a8 8 0 018-8v3a5 5 0 00-5 5H4z"/></svg>
-            <div class="text-xs text-amber-200/90">
+            <svg class="animate-spin w-4 h-4 mt-0.5" style="color:#f59e0b" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" opacity="0.3"/><path fill="currentColor" d="M4 12a8 8 0 018-8v3a5 5 0 00-5 5H4z"/></svg>
+            <div class="text-xs" style="color:var(--text-secondary)">
               <div class="font-medium mb-1">正在等待获取 User ID...</div>
               <div>请在钉钉中找到你的 Bot 并发送一条消息（如"你好"），系统会自动捕获 User ID。</div>
-              <div class="mt-1 text-amber-300/60">超时时间 2 分钟。</div>
+              <div class="mt-1" style="color:var(--text-muted)">超时时间 2 分钟。</div>
             </div>
           </div>
         </div>
@@ -767,24 +909,24 @@
   <!-- ==================== Hooks Tab ==================== -->
   <div x-show="currentTab === 'hooks'" x-cloak>
     <div class="card rounded-xl p-6 mb-6">
-      <h3 class="font-semibold text-gray-900 mb-4">Hook 管理</h3>
-      <p class="text-xs text-gray-500 mb-4">
+      <h3 class="font-semibold mb-4" style="color:var(--text-primary)">Hook 管理</h3>
+      <p class="text-xs mb-4" style="color:var(--text-muted)">
         Claude Code 通过 hooks 机制在特定事件触发时调用通知脚本。安装后，Claude 的各种操作（完成、询问、编辑文件、执行命令等）都会自动发送通知。
       </p>
 
       <!-- Hook Status -->
       <div class="space-y-3 mb-6">
         <template x-for="(installed, event) in hooksInfo.events" :key="event">
-          <div class="flex items-center justify-between p-3 rounded-lg bg-gray-50">
+          <div class="flex items-center justify-between p-3 rounded-lg" style="background:var(--bg-tertiary)">
             <div class="flex items-center gap-3">
-              <span class="w-2 h-2 rounded-full" :class="installed ? 'bg-emerald-400' : 'bg-gray-500'"></span>
+              <span class="w-2 h-2 rounded-full" :style="installed ? 'background:#10b981' : 'background:var(--text-muted)'"></span>
               <div>
-                <div class="text-sm font-medium text-gray-800" x-text="event"></div>
-                <div class="text-xs text-gray-500" x-text="hookDescriptions[event] || ''"></div>
+                <div class="text-sm font-medium" style="color:var(--text-primary)" x-text="event"></div>
+                <div class="text-xs" style="color:var(--text-muted)" x-text="hookDescriptions[event] || ''"></div>
               </div>
             </div>
             <span class="text-xs px-2 py-0.5 rounded-full"
-                  :class="installed ? 'bg-emerald-500/15 text-emerald-400' : 'bg-gray-600/30 text-gray-400'"
+                  :style="installed ? 'background:rgba(16,185,129,0.12);color:#10b981' : 'background:var(--bg-secondary);color:var(--text-muted)'"
                   x-text="installed ? '已安装' : '未安装'"></span>
           </div>
         </template>
@@ -792,10 +934,10 @@
 
       <!-- PreToolUse Matchers -->
       <div x-show="hooksInfo.tool_matchers?.length" class="mb-6">
-        <h4 class="text-sm font-medium text-gray-700 mb-2">PreToolUse 监控的工具类型</h4>
+        <h4 class="text-sm font-medium mb-2" style="color:var(--text-secondary)">PreToolUse 监控的工具类型</h4>
         <div class="flex flex-wrap gap-2">
           <template x-for="m in hooksInfo.tool_matchers" :key="m">
-            <span class="px-2 py-1 text-xs rounded-md bg-indigo-500/10 text-indigo-300 border border-indigo-500/20" x-text="m"></span>
+            <span class="px-2 py-1 text-xs rounded-md" style="background:var(--accent-bg);color:var(--accent);border:1px solid var(--border-primary)" x-text="m"></span>
           </template>
         </div>
       </div>
@@ -811,8 +953,8 @@
     </div>
 
     <div class="card rounded-xl p-6">
-      <h3 class="font-semibold text-gray-900 mb-3">settings.json 路径</h3>
-      <code class="text-xs text-indigo-300 bg-indigo-500/10 px-3 py-1.5 rounded-lg inline-block">~/.claude/settings.json</code>
+      <h3 class="font-semibold mb-3" style="color:var(--text-primary)">settings.json 路径</h3>
+      <code class="text-xs px-3 py-1.5 rounded-lg inline-block" style="background:var(--accent-bg);color:var(--accent)">~/.claude/settings.json</code>
     </div>
   </div>
 
@@ -820,32 +962,34 @@
   <div x-show="currentTab === 'logs'" x-cloak>
     <div class="card rounded-xl p-6">
       <div class="flex items-center justify-between mb-4">
-        <h3 class="font-semibold text-gray-900">运行日志</h3>
+        <h3 class="font-semibold" style="color:var(--text-primary)">运行日志</h3>
         <div class="flex gap-2">
-          <button @click="loadLogs()" class="px-3 py-1.5 text-xs rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition">刷新</button>
-          <button @click="clearLogs()" class="px-3 py-1.5 text-xs rounded-lg bg-red-500/15 hover:bg-red-500/25 text-red-400 transition">清除日志</button>
+          <button @click="loadLogs()" class="px-3 py-1.5 text-xs rounded-lg transition" style="background:var(--bg-tertiary);color:var(--text-secondary);border:1px solid var(--border-primary)">刷新</button>
+          <button @click="clearLogs()" class="px-3 py-1.5 text-xs rounded-lg transition" style="background:rgba(239,68,68,0.1);color:#ef4444;border:1px solid rgba(239,68,68,0.2)">清除日志</button>
         </div>
       </div>
-      <div class="bg-gray-900 rounded-lg p-4 max-h-96 overflow-y-auto font-mono">
+      <div class="rounded-lg p-4 max-h-96 overflow-y-auto font-mono" style="background:#0f172a">
         <template x-if="logLines.length === 0">
-          <div class="text-gray-500 text-sm">暂无日志</div>
+          <div class="text-sm" style="color:#64748b">暂无日志</div>
         </template>
         <template x-for="(line, i) in logLines" :key="i">
-          <div class="log-line text-gray-300 py-0.5 hover:text-white transition" x-text="line"></div>
+          <div class="log-line py-0.5 transition" style="color:#cbd5e1" x-text="line"></div>
         </template>
       </div>
     </div>
   </div>
 </main>
 
-<footer class="text-center text-xs text-gray-400 py-6">
-  ClaudeBeep &middot; ilink Bot API &middot; <a href="https://github.com/Tencent/openclaw-weixin" class="hover:text-gray-400" target="_blank">openclaw-weixin</a> &middot; <a href="https://github.com/tencent-connect/openclaw-qqbot" class="hover:text-gray-400" target="_blank">openclaw-qqbot</a>
+<footer class="text-center text-xs py-6" style="color:var(--text-muted)">
+  ClaudeBeep &middot; ilink Bot API &middot; <a href="https://github.com/Tencent/openclaw-weixin" class="hover:opacity-80" style="color:var(--accent)" target="_blank">openclaw-weixin</a> &middot; <a href="https://github.com/tencent-connect/openclaw-qqbot" class="hover:opacity-80" style="color:var(--accent)" target="_blank">openclaw-qqbot</a>
 </footer>
 
 <script>
 function app() {
   return {
     currentTab: 'dashboard',
+    themeMode: localStorage.getItem('claudebeep-theme') || 'system',
+    sysDark: window.matchMedia('(prefers-color-scheme: dark)').matches,
     tabs: [
       { id: 'dashboard', label: '仪表盘' },
       { id: 'weixin', label: '微信' },
@@ -864,6 +1008,17 @@ function app() {
     logLines: [],
     toasts: [],
     toastId: 0,
+
+    // Theme management
+    get themeLabel() {
+      return this.themeMode === 'light' ? '明亮模式' : this.themeMode === 'dark' ? '暗夜模式' : '跟随系统';
+    },
+    cycleTheme() {
+      const modes = ['system', 'light', 'dark'];
+      const idx = modes.indexOf(this.themeMode);
+      this.themeMode = modes[(idx + 1) % 3];
+      localStorage.setItem('claudebeep-theme', this.themeMode);
+    },
 
     hookDescriptions: {
       'Stop': 'Claude 完成输出时通知',
@@ -902,6 +1057,10 @@ function app() {
     _sseSource: null,
 
     async init() {
+      // Listen for system theme changes
+      window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+        this.sysDark = e.matches;
+      });
       await this.refreshAll();
       await this.loadInteraction();
       // SSE 持久连接：连接断开 = 标签页关闭，服务端自动退出

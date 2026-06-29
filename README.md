@@ -1,7 +1,7 @@
 # ClaudeBeep v1.0.4
 
 <p align="center">
-  <img src="assets/icon.ico" width="128" alt="ClaudeBeep Logo">
+  <img src="assets/icon.png" width="128" alt="ClaudeBeep Logo">
 </p>
 
 <p align="center">
@@ -32,14 +32,16 @@ ClaudeBeep is a Windows system tray application that brings multi-channel notifi
 - **Install / Uninstall All Hooks** — registers or removes Claude Code hook entries in `~/.claude/settings.json`.
 - **Start with Windows** — toggles per-user auto-start via the Windows registry (`HKCU\Software\Microsoft\Windows\CurrentVersion\Run`).
 - **Check for Updates** — queries GitHub Releases for the latest version; if newer, downloads and replaces the exe in-place via a batch script with retry logic (no uninstall required). Falls back to opening the download page if auto-update fails.
-- **System Dark Mode** — automatically detects the Windows system theme and applies dark mode styling to the tray menu and popup menus.
+- **System Dark Mode** — automatically detects the Windows system theme and applies dark mode styling to the tray menu.
+- **Web UI Themes** — supports Light / Dark / Follow System theme modes, with Follow System as default. Theme preference is persisted automatically.
+- **High-Res Tray Icon** — 256×256 high-resolution icon for crisp display on high-DPI screens.
 - **Quit** — stops all background services and exits.
 
 ### Notification Channels
 
 | Channel | Protocol | Keepalive | Reply Listening |
 |---------|----------|-----------|-----------------|
-| Windows Toast | WinRT / `winotify` | None (fire-and-forget) | N/A |
+| Windows Toast | WinRT / `winotify` (with app icon) | None (fire-and-forget) | N/A |
 | WeChat ⚠️ Not Recommended | iLink Bot API | Tray-managed `getupdates` long-poll | Direct dispatch in keepalive loop |
 | QQ Bot | QQ Open API (OAuth2 + c2c/group) | None (token cached) | WebSocket via `listener.py` |
 | Telegram | Telegram Bot API | None | Long-polling via `listener.py` |

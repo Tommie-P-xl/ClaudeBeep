@@ -1,7 +1,7 @@
 # ClaudeBeep v1.0.4
 
 <p align="center">
-  <img src="assets/icon.ico" width="128" alt="ClaudeBeep Logo">
+  <img src="assets/icon.png" width="128" alt="ClaudeBeep Logo">
 </p>
 
 <p align="center">
@@ -32,14 +32,16 @@ ClaudeBeep 是一个 Windows 系统托盘应用，为 [Claude Code](https://clau
 - **安装/卸载所有 Hooks** — 在 `~/.claude/settings.json` 中注册或移除 Claude Code hook 条目。
 - **开机自启动** — 通过 Windows 注册表（`HKCU\Software\Microsoft\Windows\CurrentVersion\Run`）切换开机自启。
 - **检查更新** — 查询 GitHub Releases 最新版本；如有新版，通过批处理脚本自动下载并替换 exe（带重试机制，无需卸载）。若自动更新失败，回退到打开下载页面。
-- **系统深色模式** — 自动检测 Windows 系统主题，为托盘菜单和弹出菜单应用深色模式样式。
+- **系统深色模式** — 自动检测 Windows 系统主题，为托盘菜单应用深色模式样式。
+- **Web UI 主题** — 支持明亮 / 暗夜 / 跟随系统三种主题模式，默认跟随系统。主题偏好自动保存。
+- **高清托盘图标** — 256×256 高分辨率图标，在高 DPI 屏幕上清晰显示。
 - **退出** — 停止所有后台服务并退出。
 
 ### 通知渠道
 
 | 渠道 | 协议 | 保活机制 | 回复监听 |
 |------|------|----------|----------|
-| Windows Toast | WinRT / `winotify` | 无（发后即忘） | 不适用 |
+| Windows Toast | WinRT / `winotify`（带应用图标） | 无（发后即忘） | 不适用 |
 | 微信 ⚠️ 不推荐 | iLink Bot API | 托盘进程管理的 `getupdates` 长轮询 | keepalive 循环中直接分发 |
 | QQ Bot | QQ 开放平台（OAuth2 + c2c/群） | 无（token 缓存） | `listener.py` WebSocket |
 | Telegram | Telegram Bot API | 无 | `listener.py` 长轮询 |

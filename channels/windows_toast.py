@@ -1,8 +1,17 @@
 """Windows 原生 Toast 通知渠道。优先使用 winotify（快），回退到 PowerShell + WinRT（慢）。"""
 
 import subprocess
+import sys
+from pathlib import Path
 from typing import Dict, Any
 from .base import NotificationChannel
+
+# 图标路径：优先使用 PNG（winotify 支持），ICO 作为回退
+_SCRIPT_DIR = Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent.parent
+_RESOURCE_DIR = Path(getattr(sys, "_MEIPASS", _SCRIPT_DIR))
+_ICON_PNG = _RESOURCE_DIR / "assets" / "icon.png"
+_ICON_ICO = _RESOURCE_DIR / "assets" / "icon.ico"
+_ICON_PATH = str(_ICON_PNG if _ICON_PNG.exists() else _ICON_ICO)
 
 # 尝试导入 winotify（快速方案）
 try:
@@ -53,6 +62,7 @@ class WindowsToastChannel(NotificationChannel):
                 title=title,
                 msg=message,
                 duration="short",
+                icon=_ICON_PATH,
             )
             # 设置提示音（默认使用 Reminder，比 Default 更明显）
             sound_name = self._toast_config.get("sound", "reminder").lower()
@@ -73,7 +83,8 @@ class WindowsToastChannel(NotificationChannel):
         audio_src = f"ms-winsoundevent:Notification.{sound_attr}"
         toast_xml = f"""<toast duration="short">
   <visual>
-    <binding template="ToastText02">
+    <binding template="ToastImageAndText02">
+      <image id="1" src="{_ICON_PATH}" placement="appLogoOverride" hint-crop="circle"/>
       <text id="1">{self._escape_xml(title)}</text>
       <text id="2">{self._escape_xml(message)}</text>
     </binding>

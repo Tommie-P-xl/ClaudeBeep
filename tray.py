@@ -208,7 +208,6 @@ def _enable_dark_mode():
     """Enable dark mode for the app — must be called before UI creation."""
     try:
         _SetPreferredAppMode(DARK_MODE)
-        _FlushMenuThemes()
     except Exception:
         pass
 
@@ -243,8 +242,8 @@ _wnd_proc_ref = None  # prevent GC of callback
 def _load_icon() -> int:
     """Load the application icon at high resolution for crisp rendering."""
     if ICON_FILE.exists():
-        # Load at 64x64 for high-DPI tray icons (system will scale down as needed)
-        h = user32.LoadImageW(None, str(ICON_FILE), IMAGE_ICON, 64, 64, LR_LOADFROMFILE)
+        # Load at 256x256 for high-DPI tray icons (system will scale down as needed)
+        h = user32.LoadImageW(None, str(ICON_FILE), IMAGE_ICON, 256, 256, LR_LOADFROMFILE)
         if h:
             return h
     return user32.LoadIconW(None, IDI_APPLICATION)
@@ -335,8 +334,6 @@ def _build_channel_submenu() -> int:
 
 def _show_context_menu(hwnd: int) -> None:
     """Show the native right-click context menu."""
-    _enable_dark_mode()
-
     hMenu = user32.CreatePopupMenu()
 
     # 打开主界面
@@ -365,10 +362,6 @@ def _show_context_menu(hwnd: int) -> None:
 
     # 退出
     user32.AppendMenuW(hMenu, MF_STRING, CMD_QUIT, f"退出 (v{APP_VERSION})")
-
-    # Apply dark mode to menu window
-    if _is_system_dark_mode():
-        _apply_dark_mode_to_hwnd(hwnd)
 
     # Get cursor position and show menu
     pt = POINT()
