@@ -307,6 +307,7 @@ def perform_update(download_url: str, new_version: str) -> bool:
     backup_exe = current_exe.with_suffix(".exe.bak")
     temp_dir = Path(tempfile.mkdtemp(prefix="claudebeep_update_"))
     new_exe = temp_dir / "ClaudeBeep_new.exe"
+    log_file = current_exe.parent / "updater.log"
 
     # Create progress window
     progress_window = UpdateProgressWindow(new_version)
@@ -345,7 +346,6 @@ def perform_update(download_url: str, new_version: str) -> bool:
 
     if progress_window.cancelled:
         _log("Update cancelled by user")
-        # Clean up
         try:
             new_exe.unlink(missing_ok=True)
             temp_dir.rmdir()
@@ -365,17 +365,25 @@ def perform_update(download_url: str, new_version: str) -> bool:
             pass
 
     pid = os.getpid()
+    config_path = current_exe.parent / "config.json"
 
-    # Update config.json version before restart
-    _update_config_version(new_version)
+    # PowerShell helper: show a MessageBox (works in detached bat)
+    ps_msgbox = (
+        "Add-Type -AssemblyName PresentationFramework;"
+        "$nl = [char]10;"
+    )
 
     bat_content = f"""@echo off
 chcp 65001 >nul
+echo [%date% %time%] Update started >> "{log_file}"
 echo ============================================
-echo   ClaudeBeep - Auto Update
+echo   ClaudeBeep - Auto Update v{new_version}
 echo ============================================
 echo.
+
+REM --- Wait for app to exit ---
 echo Waiting for application to close (PID: {pid})...
+echo [%date% %time%] Waiting for PID {pid} >> "{log_file}"
 
 set /a "count=0"
 :wait_loop
@@ -394,9 +402,7 @@ if %errorlevel% equ 0 (
 
 echo.
 echo Replacing application files...
-echo   Source: {new_exe}
-echo   Target: {current_exe}
-echo.
+echo [%date% %time%] Replacing exe... >> "{log_file}"
 
 set /a "retry=0"
 :replace_loop
@@ -404,14 +410,11 @@ copy /Y "{new_exe}" "{current_exe}" >nul 2>&1
 if %errorlevel% neq 0 (
     set /a "retry+=1"
     if %retry% geq 5 (
-        echo ERROR: Failed to replace application after 5 attempts.
-        echo Trying PowerShell method...
+        echo [%date% %time%] copy failed after 5 retries, trying PowerShell >> "{log_file}"
         powershell -Command "Copy-Item -Path '{new_exe}' -Destination '{current_exe}' -Force"
         if %errorlevel% neq 0 (
-            echo ERROR: All replacement methods failed.
-            echo Please manually replace: {new_exe}
-            echo          -> {current_exe}
-            pause
+            echo [%date% %time%] ALL replacement methods FAILED >> "{log_file}"
+            powershell -Command "{ps_msgbox} $msg = 'ClaudeBeep update failed!' + $nl + $nl + 'Could not replace the application file.' + $nl + 'Please manually copy:' + $nl + '{new_exe}' + $nl + '->' + $nl + '{current_exe}'; [System.Windows.MessageBox]::Show($msg, 'Update Failed', 'OK', 'Error')"
             goto cleanup
         )
     )
@@ -420,23 +423,29 @@ if %errorlevel% neq 0 (
     goto replace_loop
 )
 
-echo Update successful!
+echo [%date% %time%] Exe replaced successfully >> "{log_file}"
+
+REM --- Update config.json version ---
+echo Updating config version...
+powershell -Command "$cfg = Get-Content '{config_path}' -Raw | ConvertFrom-Json; if (-not $cfg.app) {{ $cfg | Add-Member -NotePropertyName app -NotePropertyValue @{{}} -Force }}; $cfg.app.version = '{new_version.lstrip("v")}'; $cfg | ConvertTo-Json -Depth 10 | Set-Content '{config_path}' -Encoding UTF8"
+echo [%date% %time%] Config updated to {new_version} >> "{log_file}"
 
 echo.
 echo Cleaning up...
 if exist "{backup_exe}" del /F "{backup_exe}" >nul 2>&1
 rd /S /Q "{temp_dir}" >nul 2>&1
 
+echo [%date% %time%] Update complete >> "{log_file}"
 echo.
 echo ============================================
-echo   Update Complete!
+echo   Update Complete! v{new_version}
 echo ============================================
 echo.
 
-REM Show completion dialog and ask to launch
-powershell -Command "Add-Type -AssemblyName PresentationFramework; $nl = [char]10; $msg = 'ClaudeBeep has been updated to {new_version} successfully!' + $nl + $nl + 'Launch ClaudeBeep now?'; $result = [System.Windows.MessageBox]::Show($msg, 'Update Complete', 'YesNo', 'Information'); if ($result -eq 'Yes') {{ Start-Process '{current_exe}' }}"
+REM --- Show completion dialog, ask to launch ---
+powershell -Command "{ps_msgbox} $msg = 'ClaudeBeep has been updated to v{new_version}!' + $nl + $nl + 'Launch ClaudeBeep now?'; $result = [System.Windows.MessageBox]::Show($msg, 'Update Complete', 'YesNo', 'Information'); if ($result -eq 'Yes') {{ Start-Process '{current_exe}' }}"
 
-REM Self-delete this bat script
+REM --- Self-delete ---
 del /F "%~f0" >nul 2>&1
 """
     bat_path = temp_dir / "update.bat"
