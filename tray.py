@@ -405,7 +405,7 @@ def _check_updates() -> None:
         if _message_box(f"检测到新版本 {info['version']}，是否现在安装？", APP_NAME, 0x24) != 6:
             return
         if info.get("url"):
-            success = updater.perform_update(info["url"])
+            success = updater.perform_update(info["url"], info["version"])
             if success:
                 _quit_tray()
             else:

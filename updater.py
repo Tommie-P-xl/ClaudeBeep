@@ -1,17 +1,21 @@
-"""Auto-update via GitHub Releases.
+"""Auto-update via GitHub Releases with visual progress.
 
-Update flow (from Hermes-UI-Control):
-1. Try fetching latest.json from release assets for structured metadata
-2. Fall back to GitHub API for version info
-3. Download the new exe with proper redirect handling
-4. Apply update via a batch script that retries on locked files
+Update flow:
+1. Check for updates via latest.json or GitHub API
+2. Show progress window during download
+3. Replace exe via batch script
+4. Update config.json version (preserve user settings)
+5. Clean up temporary files
 """
 import json
 import os
 import subprocess
 import sys
 import tempfile
+import threading
 import time
+import tkinter as tk
+from tkinter import ttk
 import urllib.request
 from pathlib import Path
 
@@ -112,24 +116,186 @@ def check_for_update(current_version: str) -> dict | None:
     return None
 
 
-def _download_file(url: str, dest: Path, timeout: int = 300) -> bool:
+def _download_file_with_progress(url: str, dest: Path, progress_callback=None, timeout: int = 300) -> bool:
+    """Download file with progress updates."""
     try:
         req = urllib.request.Request(url, headers={"User-Agent": APP_NAME})
         with urllib.request.urlopen(req, timeout=timeout) as resp:
+            total_size = int(resp.headers.get('Content-Length', 0))
+            downloaded = 0
             with open(dest, "wb") as f:
                 while True:
                     chunk = resp.read(8192)
                     if not chunk:
                         break
                     f.write(chunk)
+                    downloaded += len(chunk)
+                    if progress_callback and total_size > 0:
+                        progress_callback(downloaded, total_size)
         return dest.exists() and dest.stat().st_size > 0
     except Exception as e:
         _log(f"Download failed: {e}")
         return False
 
 
-def perform_update(download_url: str) -> bool:
-    """Download new version and replace current exe via a batch script."""
+def _update_config_version(new_version: str) -> None:
+    """Update version in config.json while preserving all user settings."""
+    try:
+        # Determine config path
+        if getattr(sys, "frozen", False):
+            config_path = Path(sys.executable).resolve().parent / "config.json"
+        else:
+            config_path = Path(__file__).resolve().parent / "config.json"
+
+        if not config_path.exists():
+            _log("Config file not found, skipping version update")
+            return
+
+        # Read existing config
+        with open(config_path, "r", encoding="utf-8") as f:
+            config = json.load(f)
+
+        # Update only the version field
+        if "app" not in config:
+            config["app"] = {}
+        config["app"]["version"] = new_version.lstrip("v")
+
+        # Write back preserving formatting
+        with open(config_path, "w", encoding="utf-8") as f:
+            json.dump(config, f, indent=2, ensure_ascii=False)
+
+        _log(f"Updated config.json version to {new_version}")
+
+    except Exception as e:
+        _log(f"Failed to update config version: {e}")
+
+
+class UpdateProgressWindow:
+    """Visual progress window for update download."""
+
+    def __init__(self, version: str):
+        self.version = version
+        self.root = tk.Tk()
+        self.root.title(f"{APP_NAME} - 更新")
+        self.root.geometry("400x180")
+        self.root.resizable(False, False)
+
+        # Center window
+        self.root.update_idletasks()
+        x = (self.root.winfo_screenwidth() - 400) // 2
+        y = (self.root.winfo_screenheight() - 180) // 2
+        self.root.geometry(f"+{x}+{y}")
+
+        # Make window stay on top
+        self.root.attributes('-topmost', True)
+
+        self._create_widgets()
+        self.cancelled = False
+        self.download_complete = False
+        self.download_success = False
+
+    def _create_widgets(self):
+        # Title
+        title_label = tk.Label(
+            self.root,
+            text=f"正在更新到 {self.version}",
+            font=("Microsoft YaHei UI", 12, "bold")
+        )
+        title_label.pack(pady=(15, 5))
+
+        # Status label
+        self.status_label = tk.Label(
+            self.root,
+            text="准备下载...",
+            font=("Microsoft YaHei UI", 9)
+        )
+        self.status_label.pack(pady=(0, 10))
+
+        # Progress bar
+        self.progress_var = tk.DoubleVar()
+        self.progress_bar = ttk.Progressbar(
+            self.root,
+            variable=self.progress_var,
+            maximum=100,
+            length=350,
+            mode='determinate'
+        )
+        self.progress_bar.pack(pady=(0, 5))
+
+        # Percentage label
+        self.percent_label = tk.Label(
+            self.root,
+            text="0%",
+            font=("Microsoft YaHei UI", 9)
+        )
+        self.percent_label.pack(pady=(0, 10))
+
+        # Cancel button
+        self.cancel_button = tk.Button(
+            self.root,
+            text="取消",
+            command=self._on_cancel,
+            width=10
+        )
+        self.cancel_button.pack()
+
+    def _on_cancel(self):
+        self.cancelled = True
+        self.root.quit()
+
+    def update_progress(self, downloaded: int, total: int):
+        """Update progress bar (called from download thread)."""
+        if self.cancelled:
+            return
+        percent = (downloaded / total) * 100
+        downloaded_mb = downloaded / (1024 * 1024)
+        total_mb = total / (1024 * 1024)
+
+        self.root.after(0, self._update_ui, percent, downloaded_mb, total_mb)
+
+    def _update_ui(self, percent, downloaded_mb, total_mb):
+        """Update UI elements (must be called from main thread)."""
+        self.progress_var.set(percent)
+        self.percent_label.config(text=f"{percent:.1f}%")
+        self.status_label.config(text=f"已下载 {downloaded_mb:.1f} MB / {total_mb:.1f} MB")
+
+    def set_status(self, text: str):
+        """Update status text."""
+        self.root.after(0, lambda: self.status_label.config(text=text))
+
+    def set_complete(self, success: bool):
+        """Mark download as complete."""
+        self.download_complete = True
+        self.download_success = success
+        if success:
+            self.root.after(0, self._show_complete)
+        else:
+            self.root.after(0, self._show_error)
+
+    def _show_complete(self):
+        self.status_label.config(text="下载完成！正在安装...")
+        self.cancel_button.config(state='disabled')
+        # Auto close after 1 second
+        self.root.after(1000, self.root.quit)
+
+    def _show_error(self):
+        self.status_label.config(text="下载失败，请重试")
+        self.cancel_button.config(text="关闭")
+
+    def run(self):
+        """Start the progress window main loop."""
+        self.root.mainloop()
+
+    def destroy(self):
+        """Destroy the window."""
+        try:
+            self.root.destroy()
+        except Exception:
+            pass
+
+
+def perform_update(download_url: str, new_version: str) -> bool:
+    """Download new version with visual progress and replace current exe."""
     if not download_url:
         _log("No download URL provided")
         return False
@@ -142,23 +308,68 @@ def perform_update(download_url: str) -> bool:
     temp_dir = Path(tempfile.mkdtemp(prefix="claudebeep_update_"))
     new_exe = temp_dir / "ClaudeBeep_new.exe"
 
-    try:
-        _log(f"Downloading update from: {download_url}")
-        if not _download_file(download_url, new_exe):
-            _log("Download failed or file is empty")
-            return False
+    # Create progress window
+    progress_window = UpdateProgressWindow(new_version)
 
-        _log(f"Downloaded {new_exe.stat().st_size} bytes")
+    def download_thread():
+        """Download in background thread."""
+        try:
+            _log(f"Downloading update from: {download_url}")
+            progress_window.set_status("正在下载...")
 
-        if backup_exe.exists():
-            try:
-                backup_exe.unlink()
-            except Exception:
-                pass
+            success = _download_file_with_progress(
+                download_url,
+                new_exe,
+                progress_callback=progress_window.update_progress
+            )
 
-        pid = os.getpid()
+            if not success or not new_exe.exists():
+                _log("Download failed or file is empty")
+                progress_window.set_complete(False)
+                return
 
-        bat_content = f"""@echo off
+            _log(f"Downloaded {new_exe.stat().st_size} bytes")
+            progress_window.set_complete(True)
+
+        except Exception as e:
+            _log(f"Download error: {e}")
+            progress_window.set_complete(False)
+
+    # Start download thread
+    download_task = threading.Thread(target=download_thread, daemon=True)
+    download_task.start()
+
+    # Show progress window (blocks until closed)
+    progress_window.run()
+    progress_window.destroy()
+
+    if progress_window.cancelled:
+        _log("Update cancelled by user")
+        # Clean up
+        try:
+            new_exe.unlink(missing_ok=True)
+            temp_dir.rmdir()
+        except Exception:
+            pass
+        return False
+
+    if not progress_window.download_success or not new_exe.exists():
+        _log("Download was not successful")
+        return False
+
+    # Remove backup if exists
+    if backup_exe.exists():
+        try:
+            backup_exe.unlink()
+        except Exception:
+            pass
+
+    pid = os.getpid()
+
+    # Update config.json version before restart
+    _update_config_version(new_version)
+
+    bat_content = f"""@echo off
 chcp 65001 >nul
 echo ============================================
 echo   ClaudeBeep - Auto Update
@@ -208,26 +419,13 @@ if exist "{backup_exe}" del /F "{backup_exe}" >nul 2>&1
 rd /S /Q "{temp_dir}" >nul 2>&1
 del /F "%~f0" >nul 2>&1
 """
-        bat_path = temp_dir / "update.bat"
-        with open(bat_path, "w", encoding="utf-8") as f:
-            f.write(bat_content)
+    bat_path = temp_dir / "update.bat"
+    with open(bat_path, "w", encoding="utf-8") as f:
+        f.write(bat_content)
 
-        _log("Launching update script...")
-        subprocess.Popen(
-            ["cmd", "/c", str(bat_path)],
-            creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NO_WINDOW,
-        )
-        return True
-
-    except Exception as e:
-        _log(f"Update failed: {type(e).__name__}: {e}")
-        for p in [new_exe, backup_exe]:
-            try:
-                p.unlink(missing_ok=True)
-            except Exception:
-                pass
-        try:
-            temp_dir.rmdir()
-        except Exception:
-            pass
-        return False
+    _log("Launching update script...")
+    subprocess.Popen(
+        ["cmd", "/c", str(bat_path)],
+        creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NO_WINDOW,
+    )
+    return True
