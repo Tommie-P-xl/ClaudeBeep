@@ -49,9 +49,11 @@ class WindowsToastChannel(NotificationChannel):
         return self._toast_config.get("enabled", True)
 
     def send(self, title: str, message: str) -> bool:
-        """发送 Windows Toast 通知"""
-        if HAS_WINOTIFY:
-            return self._send_winotify(title, message)
+        """发送 Windows Toast 通知
+
+        优先使用 PowerShell + WinRT（支持 placement="appLogoOverride" 显示自定义图标），
+        winotify 作为备选（不支持自定义图标位置属性）。
+        """
         return self._send_powershell(title, message)
 
     def _send_winotify(self, title: str, message: str) -> bool:
@@ -62,7 +64,7 @@ class WindowsToastChannel(NotificationChannel):
                 title=title,
                 msg=message,
                 duration="short",
-                icon_path=_ICON_PATH,
+                icon=_ICON_PATH,
             )
             # 设置提示音（默认使用 Reminder，比 Default 更明显）
             sound_name = self._toast_config.get("sound", "reminder").lower()
