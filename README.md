@@ -1,4 +1,4 @@
-# ClaudeBeep v1.0.3
+# ClaudeBeep v1.0.4
 
 <p align="center">
   <img src="assets/icon.ico" width="128" alt="ClaudeBeep Logo">
@@ -13,7 +13,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-v1.0.3-blue" alt="Version">
+  <img src="https://img.shields.io/badge/version-v1.0.4-blue" alt="Version">
   <img src="https://img.shields.io/badge/python-3.10+-green" alt="Python">
   <img src="https://img.shields.io/badge/platform-Windows-lightgrey" alt="Platform">
   <img src="https://img.shields.io/badge/license-MIT-brightgreen" alt="License">
@@ -40,7 +40,7 @@ ClaudeBeep is a Windows system tray application that brings multi-channel notifi
 | Channel | Protocol | Keepalive | Reply Listening |
 |---------|----------|-----------|-----------------|
 | Windows Toast | WinRT / `winotify` | None (fire-and-forget) | N/A |
-| WeChat | iLink Bot API | Tray-managed `getupdates` long-poll | Direct dispatch in keepalive loop |
+| WeChat ⚠️ Not Recommended | iLink Bot API | Tray-managed `getupdates` long-poll | Direct dispatch in keepalive loop |
 | QQ Bot | QQ Open API (OAuth2 + c2c/group) | None (token cached) | WebSocket via `listener.py` |
 | Telegram | Telegram Bot API | None | Long-polling via `listener.py` |
 | Feishu/Lark | Feishu Open API (OAuth2) | None (token cached) | WebSocket via `lark_oapi` |
@@ -166,8 +166,8 @@ This creates `dist/ClaudeBeep.exe` (single-file, windowed, UPX-compressed).
 Pushing a version tag triggers the GitHub Actions workflow:
 
 ```
-git tag v1.0.3
-git push origin v1.0.3
+git tag v1.0.4
+git push origin v1.0.4
 ```
 
 The workflow:

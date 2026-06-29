@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""ClaudeBeep Windows tray application."""
+"""ClaudeBeep Windows tray application — native Win32 menus for crisp DPI rendering."""
 
 from __future__ import annotations
 
@@ -20,7 +20,7 @@ from pathlib import Path
 from typing import Any
 
 APP_NAME = "ClaudeBeep"
-APP_VERSION = "1.0.3"
+APP_VERSION = "1.0.4"
 SCRIPT_DIR = Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent
 RESOURCE_DIR = Path(getattr(sys, "_MEIPASS", SCRIPT_DIR))
 CONFIG_FILE = SCRIPT_DIR / "config.json"
@@ -29,7 +29,7 @@ ICON_FILE = RESOURCE_DIR / "assets" / "icon.ico"
 
 CHANNEL_LABELS = {
     "windows_toast": "Windows 通知",
-    "weixin": "WeChat",
+    "weixin": "WeChat ⚠️",
     "qq": "QQ Bot",
     "telegram": "Telegram",
     "feishu": "Feishu",
@@ -40,7 +40,90 @@ _mutex_handle = None
 _ui_process: subprocess.Popen | None = None
 _stop_event = threading.Event()
 
-# uxtheme dark mode APIs (Windows 10 1903+)
+# ─── Win32 constants ─────────────────────────────────────────────────────────
+WM_USER = 0x0400
+WM_TRAYICON = WM_USER + 1
+WM_COMMAND = 0x0111
+WM_RBUTTONUP = 0x0205
+WM_LBUTTONUP = 0x0202
+WM_DESTROY = 0x0002
+WM_CLOSE = 0x0010
+MF_STRING = 0x0000
+MF_SEPARATOR = 0x0800
+MF_CHECKED = 0x0008
+MF_GRAYED = 0x0001
+MF_POPUP = 0x0010
+TPM_RIGHTBUTTON = 0x0002
+TPM_BOTTOMALIGN = 0x0020
+IMAGE_ICON = 1
+LR_LOADFROMFILE = 0x0010
+LR_DEFAULTSIZE = 0x0040
+NIF_MESSAGE = 0x00000001
+NIF_ICON = 0x00000002
+NIF_TIP = 0x00000004
+NIM_ADD = 0x00000000
+NIM_MODIFY = 0x00000001
+NIM_DELETE = 0x00000002
+GCLP_HICON = -14
+IDI_APPLICATION = ctypes.cast(32512, ctypes.c_wchar_p)
+
+# Menu command IDs (must be > 0)
+CMD_OPEN_UI = 1001
+CMD_INSTALL_HOOKS = 1002
+CMD_UNINSTALL_HOOKS = 1003
+CMD_STARTUP = 1004
+CMD_CHECK_UPDATE = 1005
+CMD_QUIT = 1006
+CMD_CHANNEL_BASE = 2000  # 2000+channel_index for toggles
+
+# ─── Win32 structures ────────────────────────────────────────────────────────
+user32 = ctypes.windll.user32
+kernel32 = ctypes.windll.kernel32
+shell32 = ctypes.windll.shell32
+
+
+class NOTIFYICONDATAW(ctypes.Structure):
+    _fields_ = [
+        ("cbSize", ctypes.wintypes.DWORD),
+        ("hWnd", ctypes.wintypes.HWND),
+        ("uID", ctypes.wintypes.UINT),
+        ("uFlags", ctypes.wintypes.UINT),
+        ("uCallbackMessage", ctypes.wintypes.UINT),
+        ("hIcon", ctypes.wintypes.HICON),
+        ("szTip", ctypes.c_wchar * 128),
+        ("dwState", ctypes.wintypes.DWORD),
+        ("dwStateMask", ctypes.wintypes.WND),
+        ("szInfo", ctypes.c_wchar * 256),
+        ("uVersion", ctypes.wintypes.UINT),
+        ("szInfoTitle", ctypes.c_wchar * 64),
+        ("dwInfoFlags", ctypes.wintypes.DWORD),
+        ("guidItem", ctypes.c_byte * 16),
+        ("hBalloonIcon", ctypes.wintypes.HWND),
+    ]
+
+
+class POINT(ctypes.Structure):
+    _fields_ = [("x", ctypes.c_long), ("y", ctypes.c_long)]
+
+
+class WNDCLASSEXW(ctypes.Structure):
+    _fields_ = [
+        ("cbSize", ctypes.wintypes.UINT),
+        ("style", ctypes.wintypes.UINT),
+        ("lpfnWndProc", ctypes.c_void_p),
+        ("cbClsExtra", ctypes.c_int),
+        ("cbWndExtra", ctypes.c_int),
+        ("hInstance", ctypes.wintypes.HINSTANCE),
+        ("hIcon", ctypes.wintypes.HICON),
+        ("hCursor", ctypes.wintypes.HANDLE),
+        ("hbrBackground", ctypes.wintypes.HBRUSH),
+        ("lpszMenuName", ctypes.c_wchar_p),
+        ("lpszClassName", ctypes.c_wchar_p),
+        ("hIconSm", ctypes.wintypes.HICON),
+    ]
+
+
+# ─── uxtheme dark mode APIs (Windows 10 1903+) ──────────────────────────────
 _uxtheme = ctypes.windll.uxtheme
 _SetPreferredAppMode = _uxtheme[135]
 _FlushMenuThemes = _uxtheme[136]
@@ -84,33 +167,6 @@ def _enable_dark_mode():
         pass
 
 
-def _patch_menu_for_dark_mode(icon):
-    """Apply dark mode to popup menus."""
-    if not _is_system_dark_mode():
-        return
-    try:
-        impl = icon._impl
-        if hasattr(impl, '_hwnd') and impl._hwnd:
-            _apply_dark_mode_to_hwnd(impl._hwnd)
-        if hasattr(impl, '_menu_hwnd') and impl._menu_hwnd:
-            _apply_dark_mode_to_hwnd(impl._menu_hwnd)
-
-        if hasattr(impl, '_on_notify'):
-            original_on_notify = impl._on_notify
-            WM_RBUTTONUP = 0x0205
-
-            def _dark_on_notify(wparam, lparam):
-                if lparam == WM_RBUTTONUP:
-                    _enable_dark_mode()
-                    if impl._menu_hwnd:
-                        _apply_dark_mode_to_hwnd(impl._menu_hwnd)
-                return original_on_notify(wparam, lparam)
-
-            impl._on_notify = _dark_on_notify
-    except Exception:
-        pass
-
-
 def _set_dpi_awareness() -> None:
     """Set process DPI awareness to fix blurry menus on high-DPI displays."""
     try:
@@ -129,130 +185,223 @@ def _set_dpi_awareness() -> None:
                 pass
 
 
-def main() -> None:
-    _set_dpi_awareness()
+# ─── Native Win32 Tray Icon ──────────────────────────────────────────────────
 
-    if _should_delegate_to_notify():
-        import notify
-        notify.main()
-        return
-
-    if not _acquire_single_instance():
-        _message_box("ClaudeBeep 已在运行。", APP_NAME, 0x40)
-        return
-
-    _ensure_runtime_dirs()
-    _start_background_services()
-    _run_tray()
+_hwnd_tray = None
+_hicon_tray = None
+_nid = None
+_channel_names = list(CHANNEL_LABELS.keys())
+_wnd_proc_ref = None  # prevent GC of callback
 
 
-def _should_delegate_to_notify() -> bool:
-    args = set(sys.argv[1:])
-    return bool(args & {"--type", "--install", "--uninstall", "--test", "--ui", "--from-stdin"})
+def _load_icon() -> int:
+    """Load the application icon, falling back to default."""
+    if ICON_FILE.exists():
+        h = user32.LoadImageW(None, str(ICON_FILE), IMAGE_ICON, 0, 0, LR_LOADFROMFILE)
+        if h:
+            return h
+    return user32.LoadIconW(None, IDI_APPLICATION)
 
 
-def _ensure_runtime_dirs() -> None:
-    (SCRIPT_DIR / "pending").mkdir(exist_ok=True)
-    (SCRIPT_DIR / "responses").mkdir(exist_ok=True)
-    (SCRIPT_DIR / "send_queue").mkdir(exist_ok=True)
+def _create_tray_window() -> int:
+    """Create a hidden message-only window for tray icon callbacks."""
+    global _wnd_proc_ref
+
+    hInstance = kernel32.GetModuleHandleW(None)
+    className = "ClaudeBeepTrayWnd"
+
+    # Define window procedure
+    WNDPROC = ctypes.WINFUNCTYPE(ctypes.c_long, ctypes.wintypes.HWND, ctypes.wintypes.UINT,
+                                  ctypes.wintypes.WPARAM, ctypes.wintypes.LPARAM)
+
+    def wnd_proc(hwnd, msg, wparam, lparam):
+        if msg == WM_TRAYICON:
+            if lparam == WM_RBUTTONUP:
+                _show_context_menu(hwnd)
+            elif lparam == WM_LBUTTONUP:
+                _open_ui()
+            return 0
+        elif msg == WM_COMMAND:
+            _handle_command(hwnd, wparam)
+            return 0
+        elif msg == WM_DESTROY:
+            _remove_tray_icon()
+            user32.PostQuitMessage(0)
+            return 0
+        return user32.DefWindowProcW(hwnd, msg, wparam, lparam)
+
+    _wnd_proc_ref = wnd_proc  # prevent GC
+
+    wc = WNDCLASSEXW()
+    wc.cbSize = ctypes.sizeof(WNDCLASSEXW)
+    wc.lpfnWndProc = ctypes.cast(_wnd_proc_ref, ctypes.c_void_p)
+    wc.hInstance = hInstance
+    wc.lpszClassName = className
+    wc.hIcon = _load_icon()
+    user32.RegisterClassExW(ctypes.byref(wc))
+
+    hwnd = user32.CreateWindowExW(
+        0, className, "ClaudeBeepTray", 0,
+        0, 0, 0, 0,
+        None, None, hInstance, None
+    )
+    return hwnd
 
 
-def _acquire_single_instance() -> bool:
-    global _mutex_handle
-    if sys.platform != "win32":
-        return True
-    kernel32 = ctypes.windll.kernel32
-    _mutex_handle = kernel32.CreateMutexW(None, False, "Global\\ClaudeBeepTray")
-    return kernel32.GetLastError() != 183
+def _add_tray_icon(hwnd: int) -> None:
+    """Add the tray icon to the system notification area."""
+    global _nid
+    _nid = NOTIFYICONDATAW()
+    _nid.cbSize = ctypes.sizeof(NOTIFYICONDATAW)
+    _nid.hWnd = hwnd
+    _nid.uID = 1
+    _nid.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP
+    _nid.uCallbackMessage = WM_TRAYICON
+    _nid.hIcon = _load_icon()
+    _nid.szTip = f"{APP_NAME} v{APP_VERSION}"
+    shell32.Shell_NotifyIconW(NIM_ADD, ctypes.byref(_nid))
 
 
-def _start_background_services() -> None:
-    threading.Thread(target=_heartbeat_loop, name="tray-heartbeat", daemon=True).start()
-    threading.Thread(target=_cleanup_loop, name="cleanup", daemon=True).start()
-    try:
-        from channels.weixin import start_keepalive
-        cfg = _load_config()
-        if cfg.get("weixin", {}).get("enabled") and cfg.get("weixin", {}).get("bot_token"):
-            start_keepalive()
-    except Exception:
-        pass
+def _remove_tray_icon() -> None:
+    """Remove the tray icon."""
+    if _nid:
+        shell32.Shell_NotifyIconW(NIM_DELETE, ctypes.byref(_nid))
+
+
+def _update_tray_tooltip(text: str) -> None:
+    """Update the tray icon tooltip."""
+    if _nid:
+        _nid.szTip = text[:127]
+        shell32.Shell_NotifyIconW(NIM_MODIFY, ctypes.byref(_nid))
+
+
+def _build_channel_submenu() -> int:
+    """Build the notification source submenu with checkmarks."""
+    hMenu = user32.CreatePopupMenu()
+    cfg = _load_config()
+    for i, (name, label) in enumerate(CHANNEL_LABELS.items()):
+        flags = MF_STRING
+        if cfg.get(name, {}).get("enabled"):
+            flags |= MF_CHECKED
+        if not _is_channel_configured(name):
+            flags |= MF_GRAYED
+        user32.AppendMenuW(hMenu, flags, CMD_CHANNEL_BASE + i, label)
+    return hMenu
+
+
+def _show_context_menu(hwnd: int) -> None:
+    """Show the native right-click context menu."""
+    _enable_dark_mode()
+
+    hMenu = user32.CreatePopupMenu()
+
+    # 打开主界面
+    user32.AppendMenuW(hMenu, MF_STRING, CMD_OPEN_UI, "打开主界面")
+
+    # 通知源管理 (submenu)
+    hSubMenu = _build_channel_submenu()
+    user32.AppendMenuW(hMenu, MF_STRING | MF_POPUP, hSubMenu, "通知源管理")
+
+    user32.AppendMenuW(hMenu, MF_SEPARATOR, 0, None)
+
+    # 安装/卸载所有 Hook
+    user32.AppendMenuW(hMenu, MF_STRING, CMD_INSTALL_HOOKS, "安装所有 Hook")
+    user32.AppendMenuW(hMenu, MF_STRING, CMD_UNINSTALL_HOOKS, "卸载所有 Hook")
+
+    # 开机自启动 (checkbox)
+    flags_startup = MF_STRING
+    if _is_startup_enabled():
+        flags_startup |= MF_CHECKED
+    user32.AppendMenuW(hMenu, flags_startup, CMD_STARTUP, "开机自启动")
+
+    # 检查更新
+    user32.AppendMenuW(hMenu, MF_STRING, CMD_CHECK_UPDATE, "检查更新")
+
+    user32.AppendMenuW(hMenu, MF_SEPARATOR, 0, None)
+
+    # 退出
+    user32.AppendMenuW(hMenu, MF_STRING, CMD_QUIT, f"退出 (v{APP_VERSION})")
+
+    # Apply dark mode to menu window
+    if _is_system_dark_mode():
+        _apply_dark_mode_to_hwnd(hwnd)
+
+    # Get cursor position and show menu
+    pt = POINT()
+    user32.GetCursorPos(ctypes.byref(pt))
+    user32.TrackPopupMenu(
+        hMenu,
+        TPM_RIGHTBUTTON | TPM_BOTTOMALIGN,
+        pt.x, pt.y, 0, hwnd, None
+    )
+    user32.DestroyMenu(hMenu)
+
+
+def _handle_command(hwnd: int, wparam: int) -> None:
+    """Handle menu command selection."""
+    cmd = wparam & 0xFFFF
+
+    if cmd == CMD_OPEN_UI:
+        _open_ui()
+    elif cmd == CMD_INSTALL_HOOKS:
+        threading.Thread(target=_install_hooks, daemon=True).start()
+    elif cmd == CMD_UNINSTALL_HOOKS:
+        threading.Thread(target=_uninstall_hooks, daemon=True).start()
+    elif cmd == CMD_STARTUP:
+        _toggle_startup()
+    elif cmd == CMD_CHECK_UPDATE:
+        threading.Thread(target=_check_updates, daemon=True).start()
+    elif cmd == CMD_QUIT:
+        _quit_tray()
+    elif CMD_CHANNEL_BASE <= cmd < CMD_CHANNEL_BASE + len(_channel_names):
+        idx = cmd - CMD_CHANNEL_BASE
+        name = _channel_names[idx]
+        _toggle_channel(name)
+
+
+def _run_message_loop() -> None:
+    """Run the Win32 message pump."""
+    msg = ctypes.wintypes.MSG()
+    while user32.GetMessageW(ctypes.byref(msg), None, 0, 0) > 0:
+        user32.TranslateMessage(ctypes.byref(msg))
+        user32.DispatchMessageW(ctypes.byref(msg))
 
 
 def _run_tray() -> None:
-    try:
-        import pystray
-        from PIL import Image
-    except Exception as exc:
-        _message_box(f"托盘依赖缺失：{exc}", APP_NAME, 0x10)
-        return
+    """Main tray icon loop using native Win32 APIs for crisp DPI rendering."""
+    global _hwnd_tray, _hicon_tray
 
     _enable_dark_mode()
+    _hicon_tray = _load_icon()
+    _hwnd_tray = _create_tray_window()
 
-    image = Image.open(ICON_FILE if ICON_FILE.exists() else RESOURCE_DIR / "assets" / "icon.png")
-    source_items = []
-    for name, label in CHANNEL_LABELS.items():
-        source_items.append(pystray.MenuItem(
-            label,
-            _make_toggle_action(name),
-            checked=_make_checked_action(name),
-            enabled=_make_enabled_action(name),
-        ))
+    if not _hwnd_tray:
+        _message_box("无法创建托盘窗口。", APP_NAME, 0x10)
+        return
 
-    menu = pystray.Menu(
-        pystray.MenuItem("打开主界面", lambda icon, item: _open_ui()),
-        pystray.MenuItem("通知源管理", pystray.Menu(*source_items)),
-        pystray.Menu.SEPARATOR,
-        pystray.MenuItem("安装所有 Hook", lambda icon, item: threading.Thread(target=_install_hooks, daemon=True).start()),
-        pystray.MenuItem("卸载所有 Hook", lambda icon, item: threading.Thread(target=_uninstall_hooks, daemon=True).start()),
-        pystray.MenuItem(
-            "开机自启动",
-            lambda icon, item: _toggle_startup(icon),
-            checked=lambda item: _is_startup_enabled(),
-        ),
-        pystray.MenuItem("检查更新", lambda icon, item: threading.Thread(target=_check_updates, daemon=True).start()),
-        pystray.Menu.SEPARATOR,
-        pystray.MenuItem(f"退出 (v{APP_VERSION})", lambda icon, item: _quit(icon)),
-    )
+    _add_tray_icon(_hwnd_tray)
 
-    icon = pystray.Icon(APP_NAME, image, f"{APP_NAME} v{APP_VERSION}", menu)
-    _patch_menu_for_dark_mode(icon)
-    threading.Thread(target=_menu_refresh_loop, args=(icon,), name="menu-refresh", daemon=True).start()
-    icon.run()
+    # Start menu refresh thread
+    threading.Thread(target=_menu_refresh_loop, args=(_hwnd_tray,), name="menu-refresh", daemon=True).start()
+
+    # Run message pump (blocks until WM_QUIT)
+    _run_message_loop()
 
 
-def _make_toggle_action(name: str):
-    def _action(icon, item):
-        _toggle_channel(name, icon)
-    return _action
-
-
-def _make_checked_action(name: str):
-    def _checked(item):
-        return _is_channel_enabled(name)
-    return _checked
-
-
-def _make_enabled_action(name: str):
-    def _enabled(item):
-        return _is_channel_configured(name)
-    return _enabled
-
-
-def _menu_refresh_loop(icon: Any) -> None:
+def _menu_refresh_loop(hwnd: int) -> None:
+    """Periodically update tooltip to reflect state changes."""
     last_config_mtime = _mtime(CONFIG_FILE)
-    last_startup_state = _is_startup_enabled()
     while not _stop_event.is_set():
-        _stop_event.wait(2)
+        _stop_event.wait(5)
         config_mtime = _mtime(CONFIG_FILE)
-        startup_state = _is_startup_enabled()
-        if config_mtime != last_config_mtime or startup_state != last_startup_state:
+        if config_mtime != last_config_mtime:
             last_config_mtime = config_mtime
-            last_startup_state = startup_state
-            try:
-                icon.update_menu()
-            except Exception:
-                pass
+            cfg = _load_config()
+            enabled = sum(1 for ch in CHANNEL_LABELS if cfg.get(ch, {}).get("enabled"))
+            _update_tray_tooltip(f"{APP_NAME} v{APP_VERSION} ({enabled} 渠道)")
 
+
+# ─── Utility & business logic (unchanged) ────────────────────────────────────
 
 def _mtime(path: Path) -> float:
     try:
@@ -306,8 +455,55 @@ def _toggle_channel(name: str, icon: Any = None) -> None:
                 stop_keepalive()
         except Exception:
             pass
-    if icon:
-        icon.update_menu()
+
+
+def main() -> None:
+    _set_dpi_awareness()
+
+    if _should_delegate_to_notify():
+        import notify
+        notify.main()
+        return
+
+    if not _acquire_single_instance():
+        _message_box("ClaudeBeep 已在运行。", APP_NAME, 0x40)
+        return
+
+    _ensure_runtime_dirs()
+    _start_background_services()
+    _run_tray()
+
+
+def _should_delegate_to_notify() -> bool:
+    args = set(sys.argv[1:])
+    return bool(args & {"--type", "--install", "--uninstall", "--test", "--ui", "--from-stdin"})
+
+
+def _ensure_runtime_dirs() -> None:
+    (SCRIPT_DIR / "pending").mkdir(exist_ok=True)
+    (SCRIPT_DIR / "responses").mkdir(exist_ok=True)
+    (SCRIPT_DIR / "send_queue").mkdir(exist_ok=True)
+
+
+def _acquire_single_instance() -> bool:
+    global _mutex_handle
+    if sys.platform != "win32":
+        return True
+    kernel32 = ctypes.windll.kernel32
+    _mutex_handle = kernel32.CreateMutexW(None, False, "Global\\ClaudeBeepTray")
+    return kernel32.GetLastError() != 183
+
+
+def _start_background_services() -> None:
+    threading.Thread(target=_heartbeat_loop, name="tray-heartbeat", daemon=True).start()
+    threading.Thread(target=_cleanup_loop, name="cleanup", daemon=True).start()
+    try:
+        from channels.weixin import start_keepalive
+        cfg = _load_config()
+        if cfg.get("weixin", {}).get("enabled") and cfg.get("weixin", {}).get("bot_token"):
+            start_keepalive()
+    except Exception:
+        pass
 
 
 def _install_hooks() -> None:
@@ -353,7 +549,6 @@ def _is_startup_enabled() -> bool:
     if not cfg.get("app", {}).get("auto_start", False):
         return False
     try:
-        import winreg
         with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Run") as key:
             winreg.QueryValueEx(key, APP_NAME)
         return True
@@ -364,7 +559,6 @@ def _is_startup_enabled() -> bool:
 def _toggle_startup(icon: Any = None) -> None:
     if sys.platform != "win32":
         return
-    import winreg
     cfg = _load_config()
     app_cfg = cfg.setdefault("app", {})
     new_state = not _is_startup_enabled()
@@ -382,7 +576,6 @@ def _toggle_startup(icon: Any = None) -> None:
             raw = sys.executable if getattr(sys, "frozen", False) else str(SCRIPT_DIR / "ClaudeBeep.exe")
             target = os.path.normpath(raw)
             winreg.SetValueEx(key, APP_NAME, 0, winreg.REG_SZ, f'"{target}"')
-    # 同步 Windows 启动管理器状态，使其在 设置 → 应用 → 启动 中显示为已启用
     try:
         with winreg.OpenKey(winreg.HKEY_CURRENT_USER, approved_path, 0, winreg.KEY_SET_VALUE) as key:
             if new_state:
@@ -391,8 +584,6 @@ def _toggle_startup(icon: Any = None) -> None:
                 winreg.SetValueEx(key, APP_NAME, 0, winreg.REG_BINARY, b'\x01' + b'\x00' * 11)
     except OSError:
         pass
-    if icon:
-        icon.update_menu()
 
 
 def _check_updates() -> None:
@@ -419,7 +610,10 @@ def _check_updates() -> None:
 
 def _quit_tray() -> None:
     _stop_event.set()
-    os._exit(0)
+    if _hwnd_tray:
+        user32.PostMessageW(_hwnd_tray, WM_DESTROY, 0, 0)
+    else:
+        os._exit(0)
 
 
 def _heartbeat_loop() -> None:
@@ -460,7 +654,6 @@ def _cleanup_runtime_files() -> None:
         if folder.name == "responses":
             for path in folder.glob("*.json"):
                 _safe_unlink(path, now, max_age)
-    # 清理微信发送队列中的过期文件
     send_queue = SCRIPT_DIR / "send_queue"
     if send_queue.exists():
         for path in send_queue.glob("*"):
@@ -494,20 +687,6 @@ def _trim_log(path: Path, max_lines: int) -> None:
         path.write_text("\n".join(lines[-max_lines:]) + "\n", encoding="utf-8")
     except Exception:
         pass
-
-
-def _quit(icon: Any) -> None:
-    _stop_event.set()
-    try:
-        from channels.weixin import stop_keepalive
-        stop_keepalive()
-    except Exception:
-        pass
-    try:
-        HEARTBEAT_FILE.unlink(missing_ok=True)
-    except Exception:
-        pass
-    icon.stop()
 
 
 def _message_box(text: str, title: str, flags: int) -> int:

@@ -1,4 +1,4 @@
-# ClaudeBeep v1.0.3
+# ClaudeBeep v1.0.4
 
 <p align="center">
   <img src="assets/icon.ico" width="128" alt="ClaudeBeep Logo">
@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-v1.0.3-blue" alt="Version">
+  <img src="https://img.shields.io/badge/version-v1.0.4-blue" alt="Version">
   <img src="https://img.shields.io/badge/python-3.10+-green" alt="Python">
   <img src="https://img.shields.io/badge/platform-Windows-lightgrey" alt="Platform">
   <img src="https://img.shields.io/badge/license-MIT-brightgreen" alt="License">
@@ -40,7 +40,7 @@ ClaudeBeep 是一个 Windows 系统托盘应用，为 [Claude Code](https://clau
 | 渠道 | 协议 | 保活机制 | 回复监听 |
 |------|------|----------|----------|
 | Windows Toast | WinRT / `winotify` | 无（发后即忘） | 不适用 |
-| 微信 | iLink Bot API | 托盘进程管理的 `getupdates` 长轮询 | keepalive 循环中直接分发 |
+| 微信 ⚠️ 不推荐 | iLink Bot API | 托盘进程管理的 `getupdates` 长轮询 | keepalive 循环中直接分发 |
 | QQ Bot | QQ 开放平台（OAuth2 + c2c/群） | 无（token 缓存） | `listener.py` WebSocket |
 | Telegram | Telegram Bot API | 无 | `listener.py` 长轮询 |
 | 飞书/Lark | 飞书开放平台（OAuth2） | 无（token 缓存） | `lark_oapi` WebSocket |
@@ -166,8 +166,8 @@ python notify.py --test        # 测试所有已启用渠道
 推送版本标签触发 GitHub Actions 工作流：
 
 ```
-git tag v1.0.3
-git push origin v1.0.3
+git tag v1.0.4
+git push origin v1.0.4
 ```
 
 工作流步骤：
