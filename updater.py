@@ -185,7 +185,7 @@ echo Replacing application...
 
 set /a "retry=0"
 :replace_loop
-move /Y "{new_exe}" "{current_exe}" >nul 2>&1
+powershell -Command "Copy-Item -Path '{new_exe}' -Destination '{current_exe}' -Force" >nul 2>&1
 if %errorlevel% neq 0 (
     set /a "retry+=1"
     if %retry% geq 5 (
