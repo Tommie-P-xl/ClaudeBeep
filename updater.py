@@ -385,17 +385,21 @@ REM --- Wait for app to exit ---
 echo Waiting for application to close (PID: {pid})...
 echo [%date% %time%] Waiting for PID {pid} >> "{log_file}"
 
+REM --- Initial delay to let app exit gracefully ---
+timeout /t 3 /nobreak >nul
+
 set /a "count=0"
 :wait_loop
-tasklist /FI "PID eq {pid}" 2>nul | find "{pid}" >nul
+tasklist /FI "PID eq {pid}" 2>nul | findstr /C:"{pid}" >nul 2>&1
 if %errorlevel% equ 0 (
-    if %count% geq 15 (
-        echo Force killing process...
+    if %count% geq 10 (
+        echo [%date% %time%] Force killing process after 10 retries >> "{log_file}"
         taskkill /F /PID {pid} >nul 2>&1
         timeout /t 2 /nobreak >nul
     ) else (
-        timeout /t 1 /nobreak >nul
         set /a "count+=1"
+        echo Waiting... attempt %count%/10
+        timeout /t 2 /nobreak >nul
         goto wait_loop
     )
 )
@@ -455,6 +459,8 @@ del /F "%~f0" >nul 2>&1
     _log("Launching update script...")
     subprocess.Popen(
         ["cmd", "/c", str(bat_path)],
-        creationflags=subprocess.DETACHED_PROCESS,
+        creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NO_WINDOW,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
     )
     return True

@@ -52,7 +52,7 @@ class WindowsToastChannel(NotificationChannel):
         """发送 Windows Toast 通知
 
         优先使用 PowerShell + WinRT（支持 placement="appLogoOverride" 显示自定义图标），
-        winotify 作为备选（不支持自定义图标位置属性）。
+        使用 CREATE_NO_WINDOW 隐藏 PowerShell 窗口。
         """
         return self._send_powershell(title, message)
 
@@ -106,6 +106,7 @@ $toast.ExpirationTime = [DateTimeOffset]::Now.AddMilliseconds({duration_ms})
             result = subprocess.run(
                 ["powershell", "-NoProfile", "-NonInteractive", "-Command", ps_script],
                 capture_output=True, text=True, timeout=15,
+                creationflags=subprocess.CREATE_NO_WINDOW,
             )
             if result.returncode != 0:
                 print(f"[WARN] Windows toast PowerShell error: {result.stderr.strip()}")

@@ -655,8 +655,9 @@ def _quit_tray() -> None:
     _stop_event.set()
     if _hwnd_tray:
         user32.PostMessageW(_hwnd_tray, WM_DESTROY, 0, 0)
-    else:
-        os._exit(0)
+        # 给消息循环一点时间处理 WM_DESTROY，然后强制退出兜底
+        time.sleep(0.5)
+    os._exit(0)
 
 
 def _heartbeat_loop() -> None:
