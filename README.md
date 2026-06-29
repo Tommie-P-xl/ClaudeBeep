@@ -5,7 +5,11 @@
 </p>
 
 <p align="center">
-  <strong>Windows 系统托盘应用，为 Claude Code 提供多渠道通知和交互式审批回复</strong>
+  <strong>Windows system tray app for Claude Code multi-channel notifications and interactive approval replies</strong>
+</p>
+
+<p align="center">
+  <a href="README_CN.md">中文</a> | English
 </p>
 
 <p align="center">

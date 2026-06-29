@@ -1,8 +1,27 @@
-# ClaudeBeep
+# ClaudeBeep v1.0.3
+
+<p align="center">
+  <img src="assets/icon.ico" width="128" alt="ClaudeBeep Logo">
+</p>
+
+<p align="center">
+  <strong>Windows 系统托盘应用，为 Claude Code 提供多渠道通知和交互式审批回复</strong>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/version-v1.0.3-blue" alt="Version">
+  <img src="https://img.shields.io/badge/python-3.10+-green" alt="Python">
+  <img src="https://img.shields.io/badge/platform-Windows-lightgrey" alt="Platform">
+  <img src="https://img.shields.io/badge/license-MIT-brightgreen" alt="License">
+</p>
+
+<p align="center">
+  中文 | <a href="README.md">English</a>
+</p>
+
+---
 
 ClaudeBeep 是一个 Windows 系统托盘应用，为 [Claude Code](https://claude.ai/code) 提供多渠道通知和交互式审批回复。它将原有的 Python hook 工作流打包为单个可安装桌面应用 —— 一次安装，所有操作从系统托盘管理，仅在需要详细配置时打开 Web UI。
-
-**版本：** `1.0.3`
 
 ## 功能
 
