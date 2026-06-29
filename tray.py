@@ -230,11 +230,11 @@ def _create_tray_window() -> int:
             return 0
         return user32.DefWindowProcW(hwnd, msg, wparam, lparam)
 
-    _wnd_proc_ref = wnd_proc  # prevent GC
+    _wnd_proc_ref = WNDPROC(wnd_proc)  # prevent GC
 
     wc = WNDCLASSEXW()
     wc.cbSize = ctypes.sizeof(WNDCLASSEXW)
-    wc.lpfnWndProc = ctypes.cast(_wnd_proc_ref, ctypes.c_void_p)
+    wc.lpfnWndProc = _wnd_proc_ref
     wc.hInstance = hInstance
     wc.lpszClassName = className
     wc.hIcon = _load_icon()
