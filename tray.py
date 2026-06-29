@@ -106,11 +106,15 @@ class POINT(ctypes.Structure):
     _fields_ = [("x", ctypes.c_long), ("y", ctypes.c_long)]
 
 
+WNDPROC = ctypes.WINFUNCTYPE(ctypes.c_long, ctypes.wintypes.HWND, ctypes.wintypes.UINT,
+                            ctypes.wintypes.WPARAM, ctypes.wintypes.LPARAM)
+
+
 class WNDCLASSEXW(ctypes.Structure):
     _fields_ = [
         ("cbSize", ctypes.wintypes.UINT),
         ("style", ctypes.wintypes.UINT),
-        ("lpfnWndProc", ctypes.c_void_p),
+        ("lpfnWndProc", WNDPROC),
         ("cbClsExtra", ctypes.c_int),
         ("cbWndExtra", ctypes.c_int),
         ("hInstance", ctypes.wintypes.HINSTANCE),
@@ -211,9 +215,6 @@ def _create_tray_window() -> int:
     className = "ClaudeBeepTrayWnd"
 
     # Define window procedure
-    WNDPROC = ctypes.WINFUNCTYPE(ctypes.c_long, ctypes.wintypes.HWND, ctypes.wintypes.UINT,
-                                  ctypes.wintypes.WPARAM, ctypes.wintypes.LPARAM)
-
     def wnd_proc(hwnd, msg, wparam, lparam):
         if msg == WM_TRAYICON:
             if lparam == WM_RBUTTONUP:
