@@ -62,7 +62,7 @@ class WindowsToastChannel(NotificationChannel):
                 title=title,
                 msg=message,
                 duration="short",
-                icon=_ICON_PATH,
+                icon_path=_ICON_PATH,
             )
             # 设置提示音（默认使用 Reminder，比 Default 更明显）
             sound_name = self._toast_config.get("sound", "reminder").lower()
