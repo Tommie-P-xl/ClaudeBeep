@@ -2,7 +2,7 @@
 
 ClaudeBeep 是一个 Windows 系统托盘应用，为 [Claude Code](https://claude.ai/code) 提供多渠道通知和交互式审批回复。它将原有的 Python hook 工作流打包为单个可安装桌面应用 —— 一次安装，所有操作从系统托盘管理，仅在需要详细配置时打开 Web UI。
 
-**版本：** `1.0.2`
+**版本：** `1.0.3`
 
 ## 功能
 
@@ -147,8 +147,8 @@ python notify.py --test        # 测试所有已启用渠道
 推送版本标签触发 GitHub Actions 工作流：
 
 ```
-git tag v1.0.2
-git push origin v1.0.2
+git tag v1.0.3
+git push origin v1.0.3
 ```
 
 工作流步骤：
@@ -164,7 +164,7 @@ git push origin v1.0.2
 ```json
 {
   "app": {
-    "version": "1.0.2",
+    "version": "1.0.3",
     "auto_cleanup": true,
     "cleanup_interval_hours": 12,
     "update_repo": "Tommie-P-xl/ClaudeBeep"

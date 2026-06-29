@@ -1,8 +1,23 @@
-# ClaudeBeep
+# ClaudeBeep v1.0.3
+
+<p align="center">
+  <img src="assets/icon.ico" width="128" alt="ClaudeBeep Logo">
+</p>
+
+<p align="center">
+  <strong>Windows 系统托盘应用，为 Claude Code 提供多渠道通知和交互式审批回复</strong>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/version-v1.0.3-blue" alt="Version">
+  <img src="https://img.shields.io/badge/python-3.10+-green" alt="Python">
+  <img src="https://img.shields.io/badge/platform-Windows-lightgrey" alt="Platform">
+  <img src="https://img.shields.io/badge/license-MIT-brightgreen" alt="License">
+</p>
+
+---
 
 ClaudeBeep is a Windows system tray application that brings multi-channel notifications and interactive approval replies to [Claude Code](https://claude.ai/code). It packages the original Python hook workflow as a single installable desktop application — install once, manage everything from the system tray, and open the full Web UI only when detailed configuration is needed.
-
-**Version:** `1.0.2`
 
 ## Features
 
@@ -147,8 +162,8 @@ This creates `dist/ClaudeBeep.exe` (single-file, windowed, UPX-compressed).
 Pushing a version tag triggers the GitHub Actions workflow:
 
 ```
-git tag v1.0.2
-git push origin v1.0.2
+git tag v1.0.3
+git push origin v1.0.3
 ```
 
 The workflow:
@@ -164,7 +179,7 @@ The workflow:
 ```json
 {
   "app": {
-    "version": "1.0.2",
+    "version": "1.0.3",
     "auto_cleanup": true,
     "cleanup_interval_hours": 12,
     "update_repo": "Tommie-P-xl/ClaudeBeep"

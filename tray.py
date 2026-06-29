@@ -20,7 +20,7 @@ from pathlib import Path
 from typing import Any
 
 APP_NAME = "ClaudeBeep"
-APP_VERSION = "1.0.2"
+APP_VERSION = "1.0.3"
 SCRIPT_DIR = Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent
 RESOURCE_DIR = Path(getattr(sys, "_MEIPASS", SCRIPT_DIR))
 CONFIG_FILE = SCRIPT_DIR / "config.json"
@@ -111,7 +111,27 @@ def _patch_menu_for_dark_mode(icon):
         pass
 
 
+def _set_dpi_awareness() -> None:
+    """Set process DPI awareness to fix blurry menus on high-DPI displays."""
+    try:
+        # Windows 10 1607+: Per-Monitor V2 DPI awareness (best for mixed-DPI setups)
+        DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 = -4
+        ctypes.windll.user32.SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2)
+    except Exception:
+        try:
+            # Windows 8.1+: Per-Monitor DPI awareness
+            ctypes.windll.shcore.SetProcessDpiAwareness(2)
+        except Exception:
+            try:
+                # Windows Vista+: System DPI awareness (fallback)
+                ctypes.windll.user32.SetProcessDPIAware()
+            except Exception:
+                pass
+
+
 def main() -> None:
+    _set_dpi_awareness()
+
     if _should_delegate_to_notify():
         import notify
         notify.main()
