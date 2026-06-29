@@ -92,13 +92,13 @@ class NOTIFYICONDATAW(ctypes.Structure):
         ("hIcon", ctypes.wintypes.HICON),
         ("szTip", ctypes.c_wchar * 128),
         ("dwState", ctypes.wintypes.DWORD),
-        ("dwStateMask", ctypes.wintypes.WND),
+        ("dwStateMask", ctypes.wintypes.DWORD),
         ("szInfo", ctypes.c_wchar * 256),
         ("uVersion", ctypes.wintypes.UINT),
         ("szInfoTitle", ctypes.c_wchar * 64),
         ("dwInfoFlags", ctypes.wintypes.DWORD),
         ("guidItem", ctypes.c_byte * 16),
-        ("hBalloonIcon", ctypes.wintypes.HWND),
+        ("hBalloonIcon", ctypes.wintypes.HICON),
     ]
 
 

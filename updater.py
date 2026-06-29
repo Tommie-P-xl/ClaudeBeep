@@ -375,15 +375,16 @@ echo ============================================
 echo   ClaudeBeep - Auto Update
 echo ============================================
 echo.
-echo Waiting for application to close...
+echo Waiting for application to close (PID: {pid})...
 
 set /a "count=0"
 :wait_loop
 tasklist /FI "PID eq {pid}" 2>nul | find "{pid}" >nul
 if %errorlevel% equ 0 (
-    if %count% geq 10 (
+    if %count% geq 15 (
         echo Force killing process...
         taskkill /F /PID {pid} >nul 2>&1
+        timeout /t 2 /nobreak >nul
     ) else (
         timeout /t 1 /nobreak >nul
         set /a "count+=1"
@@ -392,31 +393,50 @@ if %errorlevel% equ 0 (
 )
 
 echo.
-echo Replacing application...
+echo Replacing application files...
+echo   Source: {new_exe}
+echo   Target: {current_exe}
+echo.
 
 set /a "retry=0"
 :replace_loop
-powershell -Command "Copy-Item -Path '{new_exe}' -Destination '{current_exe}' -Force" >nul 2>&1
+copy /Y "{new_exe}" "{current_exe}" >nul 2>&1
 if %errorlevel% neq 0 (
     set /a "retry+=1"
     if %retry% geq 5 (
         echo ERROR: Failed to replace application after 5 attempts.
-        echo The file may be locked by another process.
-        pause
-        goto cleanup
+        echo Trying PowerShell method...
+        powershell -Command "Copy-Item -Path '{new_exe}' -Destination '{current_exe}' -Force"
+        if %errorlevel% neq 0 (
+            echo ERROR: All replacement methods failed.
+            echo Please manually replace: {new_exe}
+            echo          -> {current_exe}
+            pause
+            goto cleanup
+        )
     )
     echo Retry %retry%/5...
-    timeout /t 1 /nobreak >nul
+    timeout /t 2 /nobreak >nul
     goto replace_loop
 )
 
 echo Update successful!
-echo Starting application...
-start "" "{current_exe}"
 
-:cleanup
+echo.
+echo Cleaning up...
 if exist "{backup_exe}" del /F "{backup_exe}" >nul 2>&1
 rd /S /Q "{temp_dir}" >nul 2>&1
+
+echo.
+echo ============================================
+echo   Update Complete!
+echo ============================================
+echo.
+
+REM Show completion dialog and ask to launch
+powershell -Command "Add-Type -AssemblyName PresentationFramework; $nl = [char]10; $msg = 'ClaudeBeep has been updated to {new_version} successfully!' + $nl + $nl + 'Launch ClaudeBeep now?'; $result = [System.Windows.MessageBox]::Show($msg, 'Update Complete', 'YesNo', 'Information'); if ($result -eq 'Yes') {{ Start-Process '{current_exe}' }}"
+
+REM Self-delete this bat script
 del /F "%~f0" >nul 2>&1
 """
     bat_path = temp_dir / "update.bat"
@@ -426,6 +446,6 @@ del /F "%~f0" >nul 2>&1
     _log("Launching update script...")
     subprocess.Popen(
         ["cmd", "/c", str(bat_path)],
-        creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NO_WINDOW,
+        creationflags=subprocess.DETACHED_PROCESS,
     )
     return True
