@@ -13,6 +13,7 @@ python -m PyInstaller `
   --windowed `
   --name ClaudeBeep `
   --icon assets/icon.ico `
+  --manifest ClaudeBeep.manifest `
   --add-data "static;static" `
   --add-data "assets;assets" `
   --hidden-import websockets `

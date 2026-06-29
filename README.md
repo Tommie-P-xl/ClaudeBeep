@@ -1,4 +1,4 @@
-# ClaudeBeep v1.0.4
+# ClaudeBeep v1.0.5
 
 <p align="center">
   <img src="assets/icon.png" width="128" alt="ClaudeBeep Logo">
@@ -13,7 +13,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-v1.0.4-blue" alt="Version">
+  <img src="https://img.shields.io/badge/version-v1.0.5-blue" alt="Version">
   <img src="https://img.shields.io/badge/python-3.10+-green" alt="Python">
   <img src="https://img.shields.io/badge/platform-Windows-lightgrey" alt="Platform">
   <img src="https://img.shields.io/badge/license-MIT-brightgreen" alt="License">
@@ -35,6 +35,8 @@ ClaudeBeep is a Windows system tray application that brings multi-channel notifi
 - **System Dark Mode** — automatically detects the Windows system theme and applies dark mode styling to the tray menu.
 - **Web UI Themes** — supports Light / Dark / Follow System theme modes, with Follow System as default. Theme preference is persisted automatically.
 - **High-Res Tray Icon** — 256×256 high-resolution icon for crisp display on high-DPI screens.
+- **High-DPI Awareness** — Application manifest declares Per-Monitor V2 DPI awareness, fixing blurry tray menu text on high-DPI screens.
+- **SVG Icons** — Dashboard and configuration pages use inline SVG vector icons for crisp rendering at any scale.
 - **Quit** — stops all background services and exits.
 
 ### Notification Channels
@@ -168,8 +170,8 @@ This creates `dist/ClaudeBeep.exe` (single-file, windowed, UPX-compressed).
 Pushing a version tag triggers the GitHub Actions workflow:
 
 ```
-git tag v1.0.4
-git push origin v1.0.4
+git tag v1.0.5
+git push origin v1.0.5
 ```
 
 The workflow:

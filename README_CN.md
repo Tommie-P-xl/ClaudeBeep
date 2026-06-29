@@ -1,4 +1,4 @@
-# ClaudeBeep v1.0.4
+# ClaudeBeep v1.0.5
 
 <p align="center">
   <img src="assets/icon.png" width="128" alt="ClaudeBeep Logo">
@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-v1.0.4-blue" alt="Version">
+  <img src="https://img.shields.io/badge/version-v1.0.5-blue" alt="Version">
   <img src="https://img.shields.io/badge/python-3.10+-green" alt="Python">
   <img src="https://img.shields.io/badge/platform-Windows-lightgrey" alt="Platform">
   <img src="https://img.shields.io/badge/license-MIT-brightgreen" alt="License">
@@ -35,6 +35,8 @@ ClaudeBeep 是一个 Windows 系统托盘应用，为 [Claude Code](https://clau
 - **系统深色模式** — 自动检测 Windows 系统主题，为托盘菜单应用深色模式样式。
 - **Web UI 主题** — 支持明亮 / 暗夜 / 跟随系统三种主题模式，默认跟随系统。主题偏好自动保存。
 - **高清托盘图标** — 256×256 高分辨率图标，在高 DPI 屏幕上清晰显示。
+- **高 DPI 感知** — 通过应用清单（manifest）声明 Per-Monitor V2 DPI 感知，解决高分屏下托盘菜单文字模糊问题。
+- **SVG 图标** — 仪表盘和各配置页面使用内联 SVG 矢量图标，清晰不失真。
 - **退出** — 停止所有后台服务并退出。
 
 ### 通知渠道
@@ -168,8 +170,8 @@ python notify.py --test        # 测试所有已启用渠道
 推送版本标签触发 GitHub Actions 工作流：
 
 ```
-git tag v1.0.4
-git push origin v1.0.4
+git tag v1.0.5
+git push origin v1.0.5
 ```
 
 工作流步骤：
