@@ -129,7 +129,8 @@ class WNDCLASSEXW(ctypes.Structure):
 
 
 # ─── Win32 function signatures (required for string args) ───────────────────
-user32.AppendMenuW.argtypes = [ctypes.wintypes.HMENU, ctypes.wintypes.UINT, ctypes.wintypes.UINT_PTR, ctypes.wintypes.LPCWSTR]
+UINT_PTR = ctypes.c_size_t  # platform-sized unsigned int, not in ctypes.wintypes
+user32.AppendMenuW.argtypes = [ctypes.wintypes.HMENU, ctypes.wintypes.UINT, UINT_PTR, ctypes.wintypes.LPCWSTR]
 user32.AppendMenuW.restype = ctypes.wintypes.BOOL
 
 user32.InsertMenuItemW.argtypes = [ctypes.wintypes.HMENU, ctypes.wintypes.UINT, ctypes.wintypes.BOOL, ctypes.c_void_p]
