@@ -256,6 +256,23 @@ def create_app() -> Flask:
         save_config(cfg)
         return jsonify({"ok": True, "message": "QQ Bot 信息已清除"})
 
+    @app.route("/api/qq/capture_openid", methods=["POST"])
+    def qq_capture_openid():
+        from notify import load_config
+        from listener import start_qq_openid_capture
+        cfg = load_config()
+        app_id = cfg.get("qq", {}).get("app_id", "")
+        app_secret = cfg.get("qq", {}).get("app_secret", "")
+        if not app_id or not app_secret:
+            return jsonify({"ok": False, "error": "请先配置并验证 AppID 和 AppSecret"}), 400
+        start_qq_openid_capture(app_id, app_secret)
+        return jsonify({"ok": True, "message": "正在监听，发送消息给 QQ Bot 即可自动捕获 OpenID"})
+
+    @app.route("/api/qq/capture_status", methods=["GET"])
+    def qq_capture_status():
+        from listener import get_qq_capture_status
+        return jsonify(get_qq_capture_status())
+
     # --- Telegram 配置 ---
     @app.route("/api/telegram/validate", methods=["POST"])
     def telegram_validate():

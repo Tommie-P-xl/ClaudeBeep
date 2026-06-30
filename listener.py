@@ -479,6 +479,110 @@ def _qq_listener(config: dict, request_id: str, pending: dict, stop_event: threa
     _log("[qq] 临时监听退出")
 
 
+# ── QQ OpenID 捕获（Web UI 设置用） ──────────────────────────
+
+_qq_capture_result = {"status": "idle", "open_id": None, "error": None}
+_qq_capture_lock = threading.Lock()
+
+
+def start_qq_openid_capture(app_id: str, app_secret: str):
+    """启动后台 WebSocket 监听，捕获第一条消息的 OpenID。"""
+    global _qq_capture_result
+    with _qq_capture_lock:
+        _qq_capture_result = {"status": "waiting", "open_id": None, "error": None}
+
+    def _capture_thread():
+        import asyncio
+        global _qq_capture_result
+        try:
+            import websockets
+        except ImportError:
+            with _qq_capture_lock:
+                _qq_capture_result = {"status": "error", "open_id": None, "error": "websockets 未安装"}
+            return
+
+        async def _async_capture():
+            token = _qq_get_access_token(app_id, app_secret)
+            if not token:
+                with _qq_capture_lock:
+                    _qq_capture_result = {"status": "error", "open_id": None, "error": "获取 access_token 失败"}
+                return
+
+            gateway = _qq_get_gateway(token)
+            if not gateway:
+                with _qq_capture_lock:
+                    _qq_capture_result = {"status": "error", "open_id": None, "error": "获取 gateway 失败"}
+                return
+
+            _log("[qq-capture] WebSocket 连接中...")
+            try:
+                async with websockets.connect(gateway, ping_interval=None) as ws:
+                    hello = json.loads(await asyncio.wait_for(ws.recv(), timeout=10))
+                    heartbeat_interval = hello.get("d", {}).get("heartbeat_interval", 40000) / 1000
+
+                    await ws.send(json.dumps({
+                        "op": 2,
+                        "d": {
+                            "token": f"QQBot {token}",
+                            "intents": (1 << 25) | (1 << 12),
+                            "shard": [0, 1],
+                            "properties": {"$os": "windows", "$browser": "claudebeep", "$device": "claudebeep"},
+                        }
+                    }))
+
+                    ready = json.loads(await asyncio.wait_for(ws.recv(), timeout=10))
+                    if ready.get("t") != "READY":
+                        with _qq_capture_lock:
+                            _qq_capture_result = {"status": "error", "open_id": None, "error": f"WebSocket 握手失败: {ready}"}
+                        return
+
+                    _log("[qq-capture] 已连接，等待用户发消息...")
+                    last_heartbeat = time.time()
+                    deadline = time.time() + 150  # 2.5 分钟超时
+
+                    while time.time() < deadline:
+                        try:
+                            raw = await asyncio.wait_for(ws.recv(), timeout=2)
+                            msg = json.loads(raw)
+
+                            if msg.get("op") == 0 and msg.get("t") == "C2C_MESSAGE_CREATE":
+                                user_openid = msg.get("d", {}).get("author", {}).get("user_openid", "")
+                                if user_openid:
+                                    target_id = f"qqbot:c2c:{user_openid}"
+                                    _update_config("qq", "target_id", target_id)
+                                    _log(f"[qq-capture] 捕获 OpenID: {user_openid}")
+                                    with _qq_capture_lock:
+                                        _qq_capture_result = {"status": "done", "open_id": target_id, "error": None}
+                                    return
+
+                        except asyncio.TimeoutError:
+                            if time.time() - last_heartbeat >= heartbeat_interval:
+                                await ws.send(json.dumps({"op": 1, "d": None}))
+                                last_heartbeat = time.time()
+
+                    with _qq_capture_lock:
+                        _qq_capture_result = {"status": "timeout", "open_id": None, "error": "等待超时"}
+
+            except Exception as e:
+                _log(f"[qq-capture] WebSocket 异常: {e}")
+                with _qq_capture_lock:
+                    _qq_capture_result = {"status": "error", "open_id": None, "error": str(e)}
+
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            loop.run_until_complete(_async_capture())
+        finally:
+            loop.close()
+
+    threading.Thread(target=_capture_thread, daemon=True).start()
+
+
+def get_qq_capture_status() -> dict:
+    with _qq_capture_lock:
+        return dict(_qq_capture_result)
+
+
 # ── 飞书临时 WebSocket ─────────────────────────────────────
 
 def _feishu_listener(config: dict, request_id: str, pending: dict, stop_event: threading.Event):

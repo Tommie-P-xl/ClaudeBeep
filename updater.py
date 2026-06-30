@@ -376,8 +376,6 @@ $logFile = '{log_file}'
 $pid = {pid}
 $currentExe = '{current_exe}'
 $newExe = '{new_exe}'
-$tempDir = '{temp_dir}'
-$backupExe = '{backup_exe}'
 $configPath = '{config_path}'
 $newVersion = '{new_ver_clean}'
 
@@ -386,14 +384,13 @@ function Log($msg) {{
     Add-Content -Path $logFile -Value "[$ts] $msg" -Encoding UTF8
 }}
 
-Add-Type -AssemblyName PresentationFramework
-$nl = [char]10
+Log 'PowerShell update script started'
+Log "PID=$pid Current=$currentExe New=$newExe"
 
-Log 'Update started'
 # Initial delay for graceful exit
 Start-Sleep -Seconds 3
 
-# Wait for old process to exit
+# Wait for old process to exit (max 30s)
 $deadline = (Get-Date).AddSeconds(30)
 while ((Get-Process -Id $pid -ErrorAction SilentlyContinue) -and (Get-Date) -lt $deadline) {{
     Start-Sleep -Seconds 1
@@ -407,13 +404,14 @@ if ($proc) {{
     Start-Sleep -Seconds 2
 }}
 
-# Replace exe
+# Replace exe (retry up to 5 times)
 Log 'Replacing exe'
 $copied = $false
 for ($i = 1; $i -le 5; $i++) {{
     try {{
         Copy-Item -Path $newExe -Destination $currentExe -Force -ErrorAction Stop
         $copied = $true
+        Log "Copy succeeded on attempt $i"
         break
     }} catch {{
         Log "Copy attempt $i failed: $_"
@@ -423,14 +421,13 @@ for ($i = 1; $i -le 5; $i++) {{
 
 if (-not $copied) {{
     Log 'ALL copy attempts FAILED'
+    Add-Type -AssemblyName PresentationFramework
+    $nl = [char]10
     $msg = "ClaudeBeep update failed!`n`nCould not replace the application file.`nPlease manually copy:`n$newExe`n->`n$currentExe"
     [System.Windows.MessageBox]::Show($msg, 'Update Failed', 'OK', 'Error')
-    Remove-Item -Path $tempDir -Recurse -Force -ErrorAction SilentlyContinue
-    Remove-Item -Path $MyInvocation.MyCommand.Path -Force -ErrorAction SilentlyContinue
+    Remove-Item -Path $newExe -Force -ErrorAction SilentlyContinue
     exit 1
 }}
-
-Log 'Exe replaced successfully'
 
 # Update config version
 try {{
@@ -443,19 +440,15 @@ try {{
     Log "Config update failed: $_"
 }}
 
-# Cleanup
-Remove-Item -Path $backupExe -Force -ErrorAction SilentlyContinue
-Remove-Item -Path $tempDir -Recurse -Force -ErrorAction SilentlyContinue
-Log 'Update complete'
+# Cleanup downloaded file
+Remove-Item -Path $newExe -Force -ErrorAction SilentlyContinue
+Log 'Update complete, restarting app'
 
-# Ask to launch
-$msg = "ClaudeBeep has been updated to v$newVersion!" + $nl + $nl + "Launch ClaudeBeep now?"
-$result = [System.Windows.MessageBox]::Show($msg, 'Update Complete', 'YesNo', 'Information')
-if ($result -eq 'Yes') {{
-    Start-Process $currentExe
-}}
+# Auto-restart the app
+Start-Process $currentExe
+Log 'App restart initiated'
 
-# Self-delete
+# Self-delete (this file is in temp dir, safe to delete)
 Remove-Item -Path $MyInvocation.MyCommand.Path -Force -ErrorAction SilentlyContinue
 '''
 

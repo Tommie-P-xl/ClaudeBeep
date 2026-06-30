@@ -1516,12 +1516,11 @@ function app() {
       try {
         const r = await this.api('POST', '/api/qq/validate', this.qqForm);
         if (r.ok) {
-          this.toast('success', '验证成功', '正在自动获取 OpenID...');
-          if (!this.qqForm.target_id) {
-            this.qqWaitingOpenId = true;
-            this._startQQOpenIdPoll();
-          }
+          this.toast('success', '验证成功', '正在启动 OpenID 监听...');
           await this.refreshAll();
+          if (!this.qqForm.target_id) {
+            await this._startQQCapture();
+          }
         } else {
           this.toast('error', '验证失败', r.error);
         }
@@ -1529,23 +1528,36 @@ function app() {
       finally { this.qqValidating = false; }
     },
 
-    _startQQOpenIdPoll() {
+    async _startQQCapture() {
+      try {
+        await this.api('POST', '/api/qq/capture_openid');
+      } catch (e) {
+        this.toast('error', '启动监听失败', e.message);
+        return;
+      }
+      this.qqWaitingOpenId = true;
       if (this._qqPollTimer) clearInterval(this._qqPollTimer);
       let attempts = 0;
       this._qqPollTimer = setInterval(async () => {
         attempts++;
         try {
-          const cfg = await this.api('GET', '/api/config');
-          if (cfg.qq && cfg.qq.target_id) {
-            this.qqForm.target_id = cfg.qq.target_id;
+          const st = await this.api('GET', '/api/qq/capture_status');
+          if (st.status === 'done' && st.open_id) {
+            this.qqForm.target_id = st.open_id;
             this.qqWaitingOpenId = false;
             clearInterval(this._qqPollTimer);
-            this.toast('success', '已自动获取 OpenID', cfg.qq.target_id);
+            this.toast('success', '已自动获取 OpenID', st.open_id);
             await this.refreshAll();
             return;
           }
+          if (st.status === 'error' || st.status === 'timeout') {
+            this.qqWaitingOpenId = false;
+            clearInterval(this._qqPollTimer);
+            this.toast('error', '获取失败', st.error || '请手动填入 Target ID');
+            return;
+          }
         } catch (e) {}
-        if (attempts >= 60) {
+        if (attempts >= 90) {
           this.qqWaitingOpenId = false;
           clearInterval(this._qqPollTimer);
           this.toast('info', '获取超时', '请在 QQ 中给 bot 发送消息后手动填入 Target ID');
