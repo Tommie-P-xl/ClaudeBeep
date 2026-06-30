@@ -368,101 +368,89 @@ def perform_update(download_url: str, new_version: str) -> bool:
     config_path = current_exe.parent / "config.json"
     new_ver_clean = new_version.lstrip("v")
 
-    # Use PowerShell for the entire update script — avoids batch pipe/findstr issues
-    # with DETACHED_PROCESS. PowerShell handles process checks, file ops, and UI natively.
-    ps_script = f'''
-$ErrorActionPreference = 'SilentlyContinue'
-$logFile = '{log_file}'
-$pid = {pid}
-$currentExe = '{current_exe}'
-$newExe = '{new_exe}'
-$configPath = '{config_path}'
-$newVersion = '{new_ver_clean}'
+    # .ps1 核心逻辑 — 由 .bat 包装启动（.bat 能自删除，.ps1 不行）
+    ps_script = f'''try {{
+    $logFile = '{log_file}'
+    function Log($msg) {{
+        $ts = Get-Date -Format 'HH:mm:ss'
+        Add-Content -Path $logFile -Value "[$ts] $msg" -Encoding UTF8
+    }}
+    Log 'PS1 update script started'
+    Log "PID={pid} Current={current_exe} New={new_exe}"
 
-function Log($msg) {{
-    $ts = Get-Date -Format 'HH:mm:ss'
-    Add-Content -Path $logFile -Value "[$ts] $msg" -Encoding UTF8
-}}
+    Start-Sleep -Seconds 3
 
-Log 'PowerShell update script started'
-Log "PID=$pid Current=$currentExe New=$newExe"
-
-# Initial delay for graceful exit
-Start-Sleep -Seconds 3
-
-# Wait for old process to exit (max 30s)
-$deadline = (Get-Date).AddSeconds(30)
-while ((Get-Process -Id $pid -ErrorAction SilentlyContinue) -and (Get-Date) -lt $deadline) {{
-    Start-Sleep -Seconds 1
-}}
-
-# Force kill if still alive
-$proc = Get-Process -Id $pid -ErrorAction SilentlyContinue
-if ($proc) {{
-    Log "Force killing PID $pid"
-    Stop-Process -Id $pid -Force -ErrorAction SilentlyContinue
-    Start-Sleep -Seconds 2
-}}
-
-# Replace exe (retry up to 5 times)
-Log 'Replacing exe'
-$copied = $false
-for ($i = 1; $i -le 5; $i++) {{
-    try {{
-        Copy-Item -Path $newExe -Destination $currentExe -Force -ErrorAction Stop
-        $copied = $true
-        Log "Copy succeeded on attempt $i"
-        break
-    }} catch {{
-        Log "Copy attempt $i failed: $_"
+    $deadline = (Get-Date).AddSeconds(30)
+    while ((Get-Process -Id {pid} -ErrorAction SilentlyContinue) -and (Get-Date) -lt $deadline) {{
+        Start-Sleep -Seconds 1
+    }}
+    $proc = Get-Process -Id {pid} -ErrorAction SilentlyContinue
+    if ($proc) {{
+        Log "Force killing PID {pid}"
+        Stop-Process -Id {pid} -Force -ErrorAction SilentlyContinue
         Start-Sleep -Seconds 2
     }}
-}}
 
-if (-not $copied) {{
-    Log 'ALL copy attempts FAILED'
-    Add-Type -AssemblyName PresentationFramework
-    $nl = [char]10
-    $msg = "ClaudeBeep update failed!`n`nCould not replace the application file.`nPlease manually copy:`n$newExe`n->`n$currentExe"
-    [System.Windows.MessageBox]::Show($msg, 'Update Failed', 'OK', 'Error')
-    Remove-Item -Path $newExe -Force -ErrorAction SilentlyContinue
-    exit 1
-}}
+    Log 'Replacing exe'
+    $copied = $false
+    for ($i = 1; $i -le 5; $i++) {{
+        try {{
+            Copy-Item -Path '{new_exe}' -Destination '{current_exe}' -Force -ErrorAction Stop
+            $copied = $true
+            Log "Copy succeeded on attempt $i"
+            break
+        }} catch {{
+            Log "Copy attempt $i failed: $_"
+            Start-Sleep -Seconds 2
+        }}
+    }}
 
-# Update config version
-try {{
-    $cfg = Get-Content $configPath -Raw -Encoding UTF8 | ConvertFrom-Json
-    if (-not $cfg.app) {{ $cfg | Add-Member -NotePropertyName app -NotePropertyValue (@{{}}) -Force }}
-    $cfg.app.version = $newVersion
-    $cfg | ConvertTo-Json -Depth 10 | Set-Content $configPath -Encoding UTF8
-    Log "Config updated to $newVersion"
+    if (-not $copied) {{
+        Log 'ALL copy attempts FAILED'
+        Add-Type -AssemblyName PresentationFramework
+        [System.Windows.MessageBox]::Show('Update failed! Could not replace exe.', 'ClaudeBeep Update', 'OK', 'Error')
+        exit 1
+    }}
+
+    try {{
+        $cfg = Get-Content '{config_path}' -Raw -Encoding UTF8 | ConvertFrom-Json
+        if (-not $cfg.app) {{ $cfg | Add-Member -NotePropertyName app -NotePropertyValue (@{{}}) -Force }}
+        $cfg.app.version = '{new_ver_clean}'
+        $cfg | ConvertTo-Json -Depth 10 | Set-Content '{config_path}' -Encoding UTF8
+        Log 'Config updated'
+    }} catch {{
+        Log "Config update failed: $_"
+    }}
+
+    Remove-Item -Path '{new_exe}' -Force -ErrorAction SilentlyContinue
+    Log 'Update complete, restarting'
+    Start-Process '{current_exe}'
+    Log 'Restart initiated'
 }} catch {{
-    Log "Config update failed: $_"
+    $errLogFile = '{log_file}'
+    $ts = Get-Date -Format 'HH:mm:ss'
+    Add-Content -Path $errLogFile -Value "[$ts] FATAL: $_" -Encoding UTF8
 }}
-
-# Cleanup downloaded file
-Remove-Item -Path $newExe -Force -ErrorAction SilentlyContinue
-Log 'Update complete, restarting app'
-
-# Auto-restart the app
-Start-Process $currentExe
-Log 'App restart initiated'
-
-# Self-delete (this file is in temp dir, safe to delete)
-Remove-Item -Path $MyInvocation.MyCommand.Path -Force -ErrorAction SilentlyContinue
 '''
 
-    # Write as .ps1 file instead of .bat — PowerShell handles process checks natively
     ps_path = temp_dir / "update.ps1"
     with open(ps_path, "w", encoding="utf-8-sig") as f:
         f.write(ps_script)
 
+    # .bat 包装器 — 能自删除，解决 .ps1 被锁问题
+    bat_content = f"""@echo off
+powershell -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "{ps_path}"
+ping -n 2 127.0.0.1 >nul
+del /F "{ps_path}" >nul 2>&1
+del /F "%~f0" >nul 2>&1
+"""
+    bat_path = temp_dir / "update.bat"
+    with open(bat_path, "w", encoding="utf-8") as f:
+        f.write(bat_content)
+
     _log("Launching update script...")
     subprocess.Popen(
-        [
-            "powershell", "-NoProfile", "-ExecutionPolicy", "Bypass",
-            "-WindowStyle", "Hidden", "-File", str(ps_path),
-        ],
+        ["cmd", "/c", str(bat_path)],
         creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NO_WINDOW,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
