@@ -366,99 +366,110 @@ def perform_update(download_url: str, new_version: str) -> bool:
 
     pid = os.getpid()
     config_path = current_exe.parent / "config.json"
+    new_ver_clean = new_version.lstrip("v")
 
-    # PowerShell helper: show a MessageBox (works in detached bat)
-    ps_msgbox = (
-        "Add-Type -AssemblyName PresentationFramework;"
-        "$nl = [char]10;"
-    )
+    # Use PowerShell for the entire update script — avoids batch pipe/findstr issues
+    # with DETACHED_PROCESS. PowerShell handles process checks, file ops, and UI natively.
+    ps_script = f'''
+$ErrorActionPreference = 'SilentlyContinue'
+$logFile = '{log_file}'
+$pid = {pid}
+$currentExe = '{current_exe}'
+$newExe = '{new_exe}'
+$tempDir = '{temp_dir}'
+$backupExe = '{backup_exe}'
+$configPath = '{config_path}'
+$newVersion = '{new_ver_clean}'
 
-    bat_content = f"""@echo off
-chcp 65001 >nul
-echo [%date% %time%] Update started >> "{log_file}"
-echo ============================================
-echo   ClaudeBeep - Auto Update v{new_version}
-echo ============================================
-echo.
+function Log($msg) {{
+    $ts = Get-Date -Format 'HH:mm:ss'
+    Add-Content -Path $logFile -Value "[$ts] $msg" -Encoding UTF8
+}}
 
-REM --- Wait for app to exit ---
-echo Waiting for application to close (PID: {pid})...
-echo [%date% %time%] Waiting for PID {pid} >> "{log_file}"
+Add-Type -AssemblyName PresentationFramework
+$nl = [char]10
 
-REM --- Initial delay to let app exit gracefully ---
-timeout /t 3 /nobreak >nul
+Log 'Update started'
+# Initial delay for graceful exit
+Start-Sleep -Seconds 3
 
-set /a "count=0"
-:wait_loop
-tasklist /FI "PID eq {pid}" 2>nul | findstr /C:"{pid}" >nul 2>&1
-if %errorlevel% equ 0 (
-    if %count% geq 10 (
-        echo [%date% %time%] Force killing process after 10 retries >> "{log_file}"
-        taskkill /F /PID {pid} >nul 2>&1
-        timeout /t 2 /nobreak >nul
-    ) else (
-        set /a "count+=1"
-        echo Waiting... attempt %count%/10
-        timeout /t 2 /nobreak >nul
-        goto wait_loop
-    )
-)
+# Wait for old process to exit
+$deadline = (Get-Date).AddSeconds(30)
+while ((Get-Process -Id $pid -ErrorAction SilentlyContinue) -and (Get-Date) -lt $deadline) {{
+    Start-Sleep -Seconds 1
+}}
 
-echo.
-echo Replacing application files...
-echo [%date% %time%] Replacing exe... >> "{log_file}"
+# Force kill if still alive
+$proc = Get-Process -Id $pid -ErrorAction SilentlyContinue
+if ($proc) {{
+    Log "Force killing PID $pid"
+    Stop-Process -Id $pid -Force -ErrorAction SilentlyContinue
+    Start-Sleep -Seconds 2
+}}
 
-set /a "retry=0"
-:replace_loop
-copy /Y "{new_exe}" "{current_exe}" >nul 2>&1
-if %errorlevel% neq 0 (
-    set /a "retry+=1"
-    if %retry% geq 5 (
-        echo [%date% %time%] copy failed after 5 retries, trying PowerShell >> "{log_file}"
-        powershell -Command "Copy-Item -Path '{new_exe}' -Destination '{current_exe}' -Force"
-        if %errorlevel% neq 0 (
-            echo [%date% %time%] ALL replacement methods FAILED >> "{log_file}"
-            powershell -Command "{ps_msgbox} $msg = 'ClaudeBeep update failed!' + $nl + $nl + 'Could not replace the application file.' + $nl + 'Please manually copy:' + $nl + '{new_exe}' + $nl + '->' + $nl + '{current_exe}'; [System.Windows.MessageBox]::Show($msg, 'Update Failed', 'OK', 'Error')"
-            goto cleanup
-        )
-    )
-    echo Retry %retry%/5...
-    timeout /t 2 /nobreak >nul
-    goto replace_loop
-)
+# Replace exe
+Log 'Replacing exe'
+$copied = $false
+for ($i = 1; $i -le 5; $i++) {{
+    try {{
+        Copy-Item -Path $newExe -Destination $currentExe -Force -ErrorAction Stop
+        $copied = $true
+        break
+    }} catch {{
+        Log "Copy attempt $i failed: $_"
+        Start-Sleep -Seconds 2
+    }}
+}}
 
-echo [%date% %time%] Exe replaced successfully >> "{log_file}"
+if (-not $copied) {{
+    Log 'ALL copy attempts FAILED'
+    $msg = "ClaudeBeep update failed!`n`nCould not replace the application file.`nPlease manually copy:`n$newExe`n->`n$currentExe"
+    [System.Windows.MessageBox]::Show($msg, 'Update Failed', 'OK', 'Error')
+    Remove-Item -Path $tempDir -Recurse -Force -ErrorAction SilentlyContinue
+    Remove-Item -Path $MyInvocation.MyCommand.Path -Force -ErrorAction SilentlyContinue
+    exit 1
+}}
 
-REM --- Update config.json version ---
-echo Updating config version...
-powershell -Command "$cfg = Get-Content '{config_path}' -Raw | ConvertFrom-Json; if (-not $cfg.app) {{ $cfg | Add-Member -NotePropertyName app -NotePropertyValue @{{}} -Force }}; $cfg.app.version = '{new_version.lstrip("v")}'; $cfg | ConvertTo-Json -Depth 10 | Set-Content '{config_path}' -Encoding UTF8"
-echo [%date% %time%] Config updated to {new_version} >> "{log_file}"
+Log 'Exe replaced successfully'
 
-echo.
-echo Cleaning up...
-if exist "{backup_exe}" del /F "{backup_exe}" >nul 2>&1
-rd /S /Q "{temp_dir}" >nul 2>&1
+# Update config version
+try {{
+    $cfg = Get-Content $configPath -Raw -Encoding UTF8 | ConvertFrom-Json
+    if (-not $cfg.app) {{ $cfg | Add-Member -NotePropertyName app -NotePropertyValue (@{{}}) -Force }}
+    $cfg.app.version = $newVersion
+    $cfg | ConvertTo-Json -Depth 10 | Set-Content $configPath -Encoding UTF8
+    Log "Config updated to $newVersion"
+}} catch {{
+    Log "Config update failed: $_"
+}}
 
-echo [%date% %time%] Update complete >> "{log_file}"
-echo.
-echo ============================================
-echo   Update Complete! v{new_version}
-echo ============================================
-echo.
+# Cleanup
+Remove-Item -Path $backupExe -Force -ErrorAction SilentlyContinue
+Remove-Item -Path $tempDir -Recurse -Force -ErrorAction SilentlyContinue
+Log 'Update complete'
 
-REM --- Show completion dialog, ask to launch ---
-powershell -Command "{ps_msgbox} $msg = 'ClaudeBeep has been updated to v{new_version}!' + $nl + $nl + 'Launch ClaudeBeep now?'; $result = [System.Windows.MessageBox]::Show($msg, 'Update Complete', 'YesNo', 'Information'); if ($result -eq 'Yes') {{ Start-Process '{current_exe}' }}"
+# Ask to launch
+$msg = "ClaudeBeep has been updated to v$newVersion!" + $nl + $nl + "Launch ClaudeBeep now?"
+$result = [System.Windows.MessageBox]::Show($msg, 'Update Complete', 'YesNo', 'Information')
+if ($result -eq 'Yes') {{
+    Start-Process $currentExe
+}}
 
-REM --- Self-delete ---
-del /F "%~f0" >nul 2>&1
-"""
-    bat_path = temp_dir / "update.bat"
-    with open(bat_path, "w", encoding="utf-8") as f:
-        f.write(bat_content)
+# Self-delete
+Remove-Item -Path $MyInvocation.MyCommand.Path -Force -ErrorAction SilentlyContinue
+'''
+
+    # Write as .ps1 file instead of .bat — PowerShell handles process checks natively
+    ps_path = temp_dir / "update.ps1"
+    with open(ps_path, "w", encoding="utf-8-sig") as f:
+        f.write(ps_script)
 
     _log("Launching update script...")
     subprocess.Popen(
-        ["cmd", "/c", str(bat_path)],
+        [
+            "powershell", "-NoProfile", "-ExecutionPolicy", "Bypass",
+            "-WindowStyle", "Hidden", "-File", str(ps_path),
+        ],
         creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NO_WINDOW,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
