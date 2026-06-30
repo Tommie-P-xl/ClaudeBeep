@@ -20,7 +20,7 @@ from pathlib import Path
 from typing import Any
 
 APP_NAME = "ClaudeBeep"
-APP_VERSION = "1.0.6"
+APP_VERSION = "1.0.7"
 SCRIPT_DIR = Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent
 RESOURCE_DIR = Path(getattr(sys, "_MEIPASS", SCRIPT_DIR))
 CONFIG_FILE = SCRIPT_DIR / "config.json"

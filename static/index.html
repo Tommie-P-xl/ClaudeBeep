@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ClaudeBeep</title>
 <link rel="icon" href="/assets/icon.png" type="image/png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
 <script src="/static/vendor/tailwindcss.js"></script>
 <script src="/static/vendor/qrcode.min.js"></script>
 <script defer src="/static/vendor/alpine.min.js"></script>
@@ -13,175 +16,343 @@
 
   /* ─── Theme Variables ─── */
   :root {
-    --bg-primary: #f8fafc;
-    --bg-secondary: #ffffff;
-    --bg-tertiary: #f1f5f9;
-    --bg-glass: rgba(255,255,255,0.85);
-    --border-primary: #e2e8f0;
-    --border-hover: #cbd5e1;
-    --text-primary: #0f172a;
-    --text-secondary: #334155;
-    --text-tertiary: #64748b;
-    --text-muted: #94a3b8;
-    --accent: #6366f1;
-    --accent-light: #818cf8;
-    --accent-bg: rgba(99,102,241,0.08);
-    --card-shadow: 0 1px 3px rgba(0,0,0,0.05);
-    --card-shadow-hover: 0 4px 16px rgba(0,0,0,0.08);
-    --toast-bg: rgba(15,23,42,0.9);
-    --input-bg: #ffffff;
-    --input-border: #d1d5db;
-    --input-focus: #6366f1;
-    --status-bar-bg: rgba(241,245,249,0.8);
+    --font-family: 'Nunito', -apple-system, BlinkMacSystemFont, sans-serif;
+    --bg-ground: #FFF8F0;
+    --bg-surface: #FFFFFF;
+    --bg-surface-alt: #FFF2E6;
+    --bg-glass: rgba(255,248,240,0.88);
+    --border-primary: rgba(244,165,115,0.2);
+    --border-hover: rgba(244,165,115,0.4);
+    --border-active: #F4A573;
+    --text-ink: #1B3A47;
+    --text-body: #3D5A68;
+    --text-muted: #8A9BAA;
+    --text-faint: #B0BEC5;
+    --accent: #F4A573;
+    --accent-hover: #E8925E;
+    --accent-light: rgba(244,165,115,0.12);
+    --accent-glow: rgba(244,165,115,0.2);
+    --success: #9DB67A;
+    --success-light: rgba(157,182,122,0.12);
+    --warning: #E8956A;
+    --warning-light: rgba(232,149,106,0.12);
+    --danger: #E07060;
+    --danger-light: rgba(224,112,96,0.12);
+    --info: #7BAFCA;
+    --info-light: rgba(123,175,202,0.12);
+    --lavender: #B0A5D1;
+    --lavender-light: rgba(176,165,209,0.12);
+    --card-shadow: 0 2px 12px rgba(244,165,115,0.08);
+    --card-shadow-hover: 0 8px 32px rgba(244,165,115,0.16);
+    --toast-bg: rgba(27,58,71,0.92);
+    --input-bg: #FFFFFF;
+    --input-border: rgba(244,165,115,0.25);
+    --input-focus: #F4A573;
+    --toggle-off: #D5C8BB;
+    --pill-bg: rgba(244,165,115,0.08);
+    --pill-active-bg: #F4A573;
+    --pill-active-text: #FFFFFF;
+    --code-bg: #FFF2E6;
+    --scrollbar-thumb: rgba(244,165,115,0.3);
   }
 
   [data-theme="dark"] {
-    --bg-primary: #0b0f19;
-    --bg-secondary: #111827;
-    --bg-tertiary: #1e293b;
-    --bg-glass: rgba(17,24,39,0.9);
-    --border-primary: #1e293b;
-    --border-hover: #334155;
-    --text-primary: #f1f5f9;
-    --text-secondary: #cbd5e1;
-    --text-tertiary: #94a3b8;
-    --text-muted: #64748b;
-    --accent: #818cf8;
-    --accent-light: #a5b4fc;
-    --accent-bg: rgba(129,140,248,0.12);
-    --card-shadow: 0 1px 3px rgba(0,0,0,0.3);
-    --card-shadow-hover: 0 4px 16px rgba(0,0,0,0.4);
-    --toast-bg: rgba(15,23,42,0.95);
-    --input-bg: #1e293b;
-    --input-border: #334155;
-    --input-focus: #818cf8;
-    --status-bar-bg: rgba(30,41,59,0.8);
+    --bg-ground: #181828;
+    --bg-surface: #222238;
+    --bg-surface-alt: #2A2A45;
+    --bg-glass: rgba(24,24,40,0.92);
+    --border-primary: rgba(232,149,106,0.15);
+    --border-hover: rgba(232,149,106,0.3);
+    --border-active: #E8956A;
+    --text-ink: #F5EDE4;
+    --text-body: #C8BBB0;
+    --text-muted: #7A6E65;
+    --text-faint: #5A5048;
+    --accent: #E8956A;
+    --accent-hover: #D6845C;
+    --accent-light: rgba(232,149,106,0.12);
+    --accent-glow: rgba(232,149,106,0.2);
+    --success: #8DAA6A;
+    --success-light: rgba(141,170,106,0.12);
+    --warning: #D08560;
+    --warning-light: rgba(208,133,96,0.12);
+    --danger: #C86050;
+    --danger-light: rgba(200,96,80,0.12);
+    --info: #6A9AB5;
+    --info-light: rgba(106,154,181,0.12);
+    --lavender: #9A8FBB;
+    --lavender-light: rgba(154,143,187,0.12);
+    --card-shadow: 0 2px 12px rgba(0,0,0,0.3);
+    --card-shadow-hover: 0 8px 32px rgba(0,0,0,0.4);
+    --toast-bg: rgba(34,34,56,0.95);
+    --input-bg: #2A2A45;
+    --input-border: rgba(232,149,106,0.2);
+    --input-focus: #E8956A;
+    --toggle-off: #3A3A55;
+    --pill-bg: rgba(232,149,106,0.08);
+    --pill-active-bg: #E8956A;
+    --pill-active-text: #181828;
+    --code-bg: #2A2A45;
+    --scrollbar-thumb: rgba(232,149,106,0.25);
+  }
+
+  /* ─── Base ─── */
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: var(--font-family);
+    background: var(--bg-ground);
+    color: var(--text-body);
+    min-height: 100vh;
+    transition: background 0.5s ease, color 0.5s ease;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   /* ─── Animations ─── */
-  @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-  .toast-in { animation: fadeIn 0.3s ease-out; }
-  @keyframes pulse-ring { 0% { transform: scale(0.8); opacity: 1; } 100% { transform: scale(2.2); opacity: 0; } }
-  .pulse-dot::before { content: ''; position: absolute; inset: 0; border-radius: 50%; background: inherit; animation: pulse-ring 1.5s infinite; }
-  @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
-
-  /* ─── Base ─── */
-  * { box-sizing: border-box; }
-  body {
-    background: var(--bg-primary);
-    color: var(--text-secondary);
-    min-height: 100vh;
-    transition: background 0.3s, color 0.3s;
+  @keyframes breathe {
+    0%, 100% { transform: scale(1); opacity: 0.8; }
+    50% { transform: scale(1.6); opacity: 0; }
+  }
+  .breathe-dot::before {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border-radius: 50%;
+    background: inherit;
+    animation: breathe 2.5s ease-in-out infinite;
+  }
+  @keyframes fadeSlideIn {
+    from { opacity: 0; transform: translateY(-8px) scale(0.97); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .toast-in { animation: fadeSlideIn 0.4s cubic-bezier(0.22, 1, 0.36, 1); }
+  @keyframes gentlePulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
   }
 
   /* ─── Glass Header ─── */
   .glass {
     background: var(--bg-glass);
-    backdrop-filter: blur(16px) saturate(180%);
-    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
     border-bottom: 1px solid var(--border-primary);
   }
 
   /* ─── Cards ─── */
   .card {
-    background: var(--bg-secondary);
+    background: var(--bg-surface);
     border: 1px solid var(--border-primary);
-    border-radius: 16px;
-    transition: all 0.3s;
+    border-radius: 20px;
+    transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
     box-shadow: var(--card-shadow);
   }
   .card:hover {
     box-shadow: var(--card-shadow-hover);
     border-color: var(--border-hover);
+    transform: translateY(-1px);
   }
 
-  /* ─── Buttons ─── */
+  /* ─── Pill Buttons ─── */
+  .btn-pill {
+    border-radius: 50px;
+    font-family: var(--font-family);
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    transition: all 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  }
   .btn-primary {
-    background: linear-gradient(135deg, #6366f1, #7c3aed);
-    transition: all 0.2s;
-    box-shadow: 0 2px 8px rgba(99,102,241,0.3);
+    background: var(--accent);
+    color: #fff;
+    box-shadow: 0 4px 16px var(--accent-glow);
   }
   .btn-primary:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 6px 20px rgba(99,102,241,0.4);
+    background: var(--accent-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 28px var(--accent-glow);
   }
   .btn-primary:active { transform: translateY(0); }
-  .btn-danger {
-    background: linear-gradient(135deg, #ef4444, #dc2626);
-    box-shadow: 0 2px 8px rgba(239,68,68,0.3);
+  .btn-ghost {
+    background: var(--pill-bg);
+    color: var(--text-body);
+    border: 1px solid var(--border-primary);
   }
-  .btn-danger:hover { box-shadow: 0 6px 20px rgba(239,68,68,0.4); }
+  .btn-ghost:hover {
+    background: var(--accent-light);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .btn-danger {
+    background: var(--danger);
+    color: #fff;
+    box-shadow: 0 4px 16px rgba(224,112,96,0.25);
+  }
+  .btn-danger:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 28px rgba(224,112,96,0.35);
+  }
 
   /* ─── Toggle ─── */
-  .toggle-track { transition: background 0.3s; }
-  .toggle-thumb { transition: transform 0.3s; }
+  .toggle-track {
+    width: 48px; height: 26px;
+    border-radius: 50px;
+    position: relative;
+    cursor: pointer;
+    transition: background 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+    flex-shrink: 0;
+  }
+  .toggle-thumb {
+    position: absolute;
+    top: 3px; left: 3px;
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+    transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  }
 
-  /* ─── Tabs ─── */
-  .tab-active {
-    border-bottom: 2px solid var(--accent);
-    color: var(--accent);
+  /* ─── Tabs (pill segments) ─── */
+  .tab-bar {
+    display: inline-flex;
+    background: var(--pill-bg);
+    border-radius: 50px;
+    padding: 4px;
+    gap: 2px;
+  }
+  .tab-pill {
+    border-radius: 50px;
+    padding: 8px 18px;
+    font-size: 13px;
     font-weight: 600;
-  }
-  .tab-inactive {
-    border-bottom: 2px solid transparent;
     color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+    white-space: nowrap;
+    border: none;
+    background: transparent;
+    font-family: var(--font-family);
   }
-  .tab-inactive:hover { color: var(--text-secondary); }
-
-  /* ─── Log ─── */
-  .log-line { font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 12px; }
+  .tab-pill:hover { color: var(--text-body); }
+  .tab-pill.active {
+    background: var(--pill-active-bg);
+    color: var(--pill-active-text);
+    box-shadow: 0 2px 10px var(--accent-glow);
+  }
 
   /* ─── Theme Toggle ─── */
   .theme-btn {
-    width: 32px; height: 32px;
+    width: 36px; height: 36px;
     display: flex; align-items: center; justify-content: center;
-    border-radius: 10px;
+    border-radius: 50%;
     border: 1px solid var(--border-primary);
-    background: var(--bg-tertiary);
-    color: var(--text-tertiary);
+    background: var(--bg-surface-alt);
+    color: var(--text-muted);
     cursor: pointer;
-    transition: all 0.2s;
-    font-size: 16px;
+    transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+    font-size: 18px;
   }
   .theme-btn:hover {
     border-color: var(--accent);
     color: var(--accent);
-    background: var(--accent-bg);
+    background: var(--accent-light);
+    transform: scale(1.08);
   }
 
   /* ─── Input Styles ─── */
-  input[type="text"], input[type="password"], input[type="number"], select {
+  input[type="text"], input[type="password"], input[type="number"], select, textarea {
+    font-family: var(--font-family);
     background: var(--input-bg);
     border: 1px solid var(--input-border);
-    color: var(--text-primary);
-    transition: border-color 0.2s, box-shadow 0.2s;
+    color: var(--text-ink);
+    border-radius: 14px;
+    transition: border-color 0.3s, box-shadow 0.3s;
   }
-  input:focus, select:focus {
+  input:focus, select:focus, textarea:focus {
     border-color: var(--input-focus);
-    box-shadow: 0 0 0 3px var(--accent-bg);
+    box-shadow: 0 0 0 4px var(--accent-light);
     outline: none;
   }
+
+  /* ─── Log ─── */
+  .log-line { font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 12px; }
 
   /* ─── Scrollbar ─── */
   ::-webkit-scrollbar { width: 6px; height: 6px; }
   ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: var(--border-primary); border-radius: 3px; }
-  ::-webkit-scrollbar-thumb:hover { background: var(--border-hover); }
+  ::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 50px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+  /* ─── Status Badge ─── */
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 50px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  /* ─── Section Label ─── */
+  .section-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+  }
+
+  /* ─── Permission Mode Cards ─── */
+  .perm-card {
+    border-radius: 16px;
+    padding: 16px;
+    text-align: left;
+    transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+    cursor: pointer;
+    border: 2px solid transparent;
+    background: var(--bg-surface-alt);
+    font-family: var(--font-family);
+  }
+  .perm-card:hover {
+    border-color: var(--border-hover);
+    transform: translateY(-2px);
+  }
+  .perm-card.selected {
+    border-color: var(--accent);
+    background: var(--accent-light);
+  }
+
+  /* ─── Smooth transitions for theme ─── */
+  .card, .glass, .btn-pill, .toggle-track, .tab-bar, .tab-pill,
+  .theme-btn, .perm-card, .status-badge, footer {
+    transition-property: background, color, border-color, box-shadow, transform;
+  }
+
+  /* ─── Info Callout ─── */
+  .callout {
+    border-radius: 14px;
+    padding: 14px 16px;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  .callout-info { background: var(--info-light); color: var(--text-body); }
+  .callout-warn { background: var(--warning-light); color: var(--text-body); }
+  .callout-success { background: var(--success-light); color: var(--text-body); }
 </style>
 </head>
 <body x-data="app()" x-init="init()" :data-theme="themeMode === 'dark' ? 'dark' : themeMode === 'light' ? 'light' : (sysDark ? 'dark' : 'light')">
 
 <!-- Toast Container -->
-<div class="fixed top-4 right-4 z-50 flex flex-col gap-2" style="min-width:320px">
+<div class="fixed top-4 right-4 z-50 flex flex-col gap-3" style="min-width:320px;max-width:400px">
   <template x-for="t in toasts" :key="t.id">
-    <div class="toast-in rounded-lg px-4 py-3 shadow-xl flex items-start gap-3 text-white"
-         :style="t.type==='success' ? 'background:rgba(16,185,129,0.92)' : t.type==='error' ? 'background:rgba(239,68,68,0.92)' : 'background:rgba(99,102,241,0.92)'">
-      <span class="mt-0.5" x-text="t.type==='success' ? '&#10003;' : t.type==='error' ? '&#10007;' : '&#9432;'"></span>
+    <div class="toast-in rounded-2xl px-5 py-4 shadow-xl flex items-start gap-3 text-white"
+         :style="t.type==='success' ? 'background:rgba(157,182,122,0.95)' : t.type==='error' ? 'background:rgba(224,112,96,0.95)' : 'background:var(--toast-bg)'">
+      <span class="mt-0.5 text-lg" x-text="t.type==='success' ? '&#10003;' : t.type==='error' ? '&#10007;' : '&#9432;'"></span>
       <div class="flex-1">
-        <div class="font-semibold text-sm" x-text="t.title"></div>
-        <div class="text-xs opacity-90 mt-0.5" x-text="t.message"></div>
+        <div class="font-bold text-sm" x-text="t.title"></div>
+        <div class="text-xs opacity-80 mt-1" x-text="t.message" style="font-weight:400"></div>
       </div>
-      <button @click="removeToast(t.id)" class="opacity-60 hover:opacity-100 text-white">&times;</button>
+      <button @click="removeToast(t.id)" class="opacity-50 hover:opacity-100 text-white text-lg leading-none">&times;</button>
     </div>
   </template>
 </div>
@@ -189,20 +360,19 @@
 <!-- Header -->
 <header class="glass sticky top-0 z-40">
   <div class="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
-    <div class="flex items-center gap-3">
-      <img src="/assets/icon.png" alt="ClaudeBeep" class="w-9 h-9 rounded-lg shadow-sm">
+    <div class="flex items-center gap-3.5">
+      <img src="/assets/icon.png" alt="ClaudeBeep" class="w-10 h-10 rounded-2xl shadow-sm">
       <div>
-        <h1 class="text-lg font-bold" style="color:var(--text-primary)">ClaudeBeep</h1>
-        <p class="text-xs" style="color:var(--text-muted)">多渠道通知 &middot; Web 管理</p>
+        <h1 class="text-lg font-bold" style="color:var(--text-ink);line-height:1.2">ClaudeBeep</h1>
+        <p class="text-xs font-medium" style="color:var(--text-muted);margin-top:2px">多渠道通知 &middot; Web 管理</p>
       </div>
     </div>
     <div class="flex items-center gap-3">
-      <span class="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs"
-            :style="status.hooks_installed ? 'background:rgba(16,185,129,0.12);color:#10b981' : 'background:rgba(245,158,11,0.12);color:#f59e0b'">
-        <span class="w-1.5 h-1.5 rounded-full" :style="status.hooks_installed ? 'background:#10b981' : 'background:#f59e0b'"></span>
+      <span class="status-badge"
+            :style="status.hooks_installed ? 'background:var(--success-light);color:var(--success)' : 'background:var(--warning-light);color:var(--warning)'">
+        <span class="w-2 h-2 rounded-full breathe-dot relative" :style="status.hooks_installed ? 'background:var(--success)' : 'background:var(--warning)'"></span>
         Hooks <span x-text="status.hooks_installed ? '已安装' : '未安装'"></span>
       </span>
-      <!-- Theme Toggle -->
       <button @click="cycleTheme()" class="theme-btn" :title="themeLabel">
         <span x-text="themeMode==='light' ? '&#9788;' : themeMode==='dark' ? '&#9790;' : '&#9681;'"></span>
       </button>
@@ -211,12 +381,12 @@
 </header>
 
 <!-- Tabs -->
-<nav class="max-w-5xl mx-auto px-6 mt-1">
-  <div class="flex gap-6 overflow-x-auto">
+<nav class="max-w-5xl mx-auto px-6 mt-4 mb-2">
+  <div class="tab-bar overflow-x-auto">
     <template x-for="tab in tabs" :key="tab.id">
       <button @click="currentTab = tab.id"
-              class="py-3 text-sm font-medium transition-colors whitespace-nowrap"
-              :class="currentTab === tab.id ? 'tab-active' : 'tab-inactive'"
+              class="tab-pill"
+              :class="currentTab === tab.id ? 'active' : ''"
               x-text="tab.label"></button>
     </template>
   </div>
@@ -227,37 +397,42 @@
 
   <!-- ==================== Dashboard ==================== -->
   <div x-show="currentTab === 'dashboard'" x-cloak>
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+
+    <!-- Channel Cards -->
+    <div class="section-label mb-3 px-1">通知渠道</div>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+
       <!-- Windows Toast Card -->
-      <div class="card rounded-xl p-5">
+      <div class="card p-5">
         <div class="flex items-center justify-between mb-4">
           <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-lg flex items-center justify-center"><svg viewBox="0 0 1024 1024" width="28" height="28"><path d="M0 0h485.4v485.2H0zm538.6 0H1024v485.2H538.6zM0 538.6h485.4V1024H0zm538.6 0H1024V1024H538.6" fill="#0078D4"/></svg></div>
+            <div class="w-10 h-10 rounded-2xl flex items-center justify-center" style="background:var(--info-light)">
+              <svg viewBox="0 0 1024 1024" width="22" height="22"><path d="M0 0h485.4v485.2H0zm538.6 0H1024v485.2H538.6zM0 538.6h485.4V1024H0zm538.6 0H1024V1024H538.6" fill="#0078D4"/></svg>
+            </div>
             <div>
-              <div class="font-semibold" style="color:var(--text-primary)">Windows Toast</div>
+              <div class="font-bold text-sm" style="color:var(--text-ink)">Windows Toast</div>
               <div class="text-xs" style="color:var(--text-muted)">系统原生通知</div>
             </div>
           </div>
           <button @click="toggleChannel('windows_toast', !config.windows_toast?.enabled)"
-                  class="relative w-11 h-6 rounded-full toggle-track"
-                  :style="config.windows_toast?.enabled ? 'background:#6366f1' : 'background:var(--border-primary)'">
-            <span class="absolute top-0.5 left-0.5 w-5 h-5 rounded-full shadow toggle-thumb"
-                  :style="config.windows_toast?.enabled ? 'transform:translateX(20px);background:#fff' : 'transform:translateX(0);background:#fff'"></span>
+                  class="toggle-track"
+                  :style="config.windows_toast?.enabled ? 'background:var(--accent)' : 'background:var(--toggle-off)'">
+            <span class="toggle-thumb"
+                  :style="config.windows_toast?.enabled ? 'transform:translateX(22px)' : 'transform:translateX(0)'"></span>
           </button>
         </div>
-        <!-- 提示音设置 -->
         <div class="mb-3 flex items-center justify-between">
-          <span class="text-xs" style="color:var(--text-muted)">提示音</span>
+          <span class="text-xs font-medium" style="color:var(--text-muted)">提示音</span>
           <button @click="toggleSound()"
-                  class="relative w-11 h-6 rounded-full toggle-track"
-                  :style="soundEnabled ? 'background:#6366f1' : 'background:var(--border-primary)'">
-            <span class="absolute top-0.5 left-0.5 w-5 h-5 rounded-full shadow toggle-thumb"
-                  :style="soundEnabled ? 'transform:translateX(20px);background:#fff' : 'transform:translateX(0);background:#fff'"></span>
+                  class="toggle-track" style="width:40px;height:22px"
+                  :style="soundEnabled ? 'background:var(--accent)' : 'background:var(--toggle-off)'">
+            <span class="toggle-thumb" style="width:16px;height:16px;top:3px;left:3px"
+                  :style="soundEnabled ? 'transform:translateX(18px)' : 'transform:translateX(0)'"></span>
           </button>
         </div>
         <div x-show="soundEnabled" class="mb-3">
           <select x-model="soundType" @change="saveSoundConfig()"
-                  class="w-full rounded-lg px-2 py-1.5 text-xs" style="background:var(--input-bg);border:1px solid var(--input-border);color:var(--text-primary)">
+                  class="w-full rounded-xl px-3 py-2 text-xs font-medium" style="background:var(--input-bg);border:1px solid var(--input-border);color:var(--text-ink)">
             <option value="default">默认 (Default)</option>
             <option value="reminder">提醒 (Reminder) - 推荐</option>
             <option value="alarm">闹钟 (Alarm) - 最响</option>
@@ -268,240 +443,253 @@
           </select>
         </div>
         <div class="flex items-center gap-2 text-xs">
-          <span class="w-2 h-2 rounded-full pulse-dot relative"
-                :style="config.windows_toast?.enabled ? 'background:#10b981' : 'background:var(--text-muted)'"></span>
+          <span class="w-2 h-2 rounded-full breathe-dot relative"
+                :style="config.windows_toast?.enabled ? 'background:var(--success)' : 'background:var(--text-faint)'"></span>
           <span x-text="config.windows_toast?.enabled ? '已启用' : '已禁用'" style="color:var(--text-muted)"></span>
         </div>
       </div>
 
       <!-- WeChat Card -->
-      <div class="card rounded-xl p-5">
+      <div class="card p-5">
         <div class="flex items-center justify-between mb-4">
           <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-lg flex items-center justify-center"><svg viewBox="0 0 1024 1024" width="28" height="28"><path d="M183.4 699.6c-4.2 0-8.4-1-11.5-3.7-6.3-4.7-9.4-12-7.8-19.3l13-77.3C137 553.3 115 496.3 115 437.3c0-144.7 131.1-262.3 293.1-262.3 76.8 0 149.4 26.6 204.8 74.7 55.4 48.6 86.7 113.9 88.3 183.4 0 5.7-2.1 11-6.3 14.6s-9.4 5.7-15.2 5.7c-5.2-.5-9.4-.5-13.6-.5-112.3 0-203.2 80-203.2 178.7 0 13.6 1.6 27.2 5.2 40.8 1.6 5.7.5 11.5-2.6 16.2-3.1 4.7-8.4 7.8-14.1 8.9-14.1 2.1-28.7 3.1-43.4 3.1" fill="#0B9682"/><path d="M303.5 352.7a35 35 0 1070 0 35 35 0 10-70 0" fill="#DCFFFA"/><path d="M512 352.7a35 35 0 1070 0 35 35 0 10-70 0" fill="#DCFFFA"/><path d="M849.5 849.5c-3.1 0-6.3-.5-9.4-2.1l-52.2-27.2c-37.1 19.3-78.9 29.8-122.3 29.8-134.3 0-243-98.2-243-218.4s108.7-218.4 243-218.4 243.4 98.2 243.4 218.4c0 48-17.8 95-50.7 133.2l10.5 61.6c1 7.3-1.6 15.2-7.8 19.3-3.1 3.1-7.3 4.2-11.5 4.2" fill="#16C4AF"/><path d="M576.3 575.7a29.8 29.8 0 1059.6 0 29.8 29.8 0 10-59.6 0" fill="#DCFFFA"/><path d="M755.5 575.7a29.8 29.8 0 1059.6 0 29.8 29.8 0 10-59.6 0" fill="#DCFFFA"/></svg></div>
+            <div class="w-10 h-10 rounded-2xl flex items-center justify-center" style="background:var(--success-light)">
+              <svg viewBox="0 0 1024 1024" width="22" height="22"><path d="M183.4 699.6c-4.2 0-8.4-1-11.5-3.7-6.3-4.7-9.4-12-7.8-19.3l13-77.3C137 553.3 115 496.3 115 437.3c0-144.7 131.1-262.3 293.1-262.3 76.8 0 149.4 26.6 204.8 74.7 55.4 48.6 86.7 113.9 88.3 183.4 0 5.7-2.1 11-6.3 14.6s-9.4 5.7-15.2 5.7c-5.2-.5-9.4-.5-13.6-.5-112.3 0-203.2 80-203.2 178.7 0 13.6 1.6 27.2 5.2 40.8 1.6 5.7.5 11.5-2.6 16.2-3.1 4.7-8.4 7.8-14.1 8.9-14.1 2.1-28.7 3.1-43.4 3.1" fill="#0B9682"/><path d="M303.5 352.7a35 35 0 1070 0 35 35 0 10-70 0" fill="#DCFFFA"/><path d="M512 352.7a35 35 0 1070 0 35 35 0 10-70 0" fill="#DCFFFA"/><path d="M849.5 849.5c-3.1 0-6.3-.5-9.4-2.1l-52.2-27.2c-37.1 19.3-78.9 29.8-122.3 29.8-134.3 0-243-98.2-243-218.4s108.7-218.4 243-218.4 243.4 98.2 243.4 218.4c0 48-17.8 95-50.7 133.2l10.5 61.6c1 7.3-1.6 15.2-7.8 19.3-3.1 3.1-7.3 4.2-11.5 4.2" fill="#16C4AF"/><path d="M576.3 575.7a29.8 29.8 0 1059.6 0 29.8 29.8 0 10-59.6 0" fill="#DCFFFA"/><path d="M755.5 575.7a29.8 29.8 0 1059.6 0 29.8 29.8 0 10-59.6 0" fill="#DCFFFA"/></svg>
+            </div>
             <div>
-              <div class="font-semibold" style="color:var(--text-primary)">微信 <span class="text-xs font-normal px-1.5 py-0.5 rounded" style="background:rgba(245,158,11,0.12);color:#f59e0b">⚠️ 不推荐</span></div>
+              <div class="font-bold text-sm" style="color:var(--text-ink)">微信</div>
               <div class="text-xs" style="color:var(--text-muted)">WeChat 通知</div>
             </div>
           </div>
           <button @click="toggleChannel('weixin', !config.weixin?.enabled)"
-                  class="relative w-11 h-6 rounded-full toggle-track"
-                  :style="config.weixin?.enabled ? 'background:#6366f1' : 'background:var(--border-primary)'">
-            <span class="absolute top-0.5 left-0.5 w-5 h-5 rounded-full shadow toggle-thumb"
-                  :style="config.weixin?.enabled ? 'transform:translateX(20px);background:#fff' : 'transform:translateX(0);background:#fff'"></span>
+                  class="toggle-track"
+                  :style="config.weixin?.enabled ? 'background:var(--accent)' : 'background:var(--toggle-off)'">
+            <span class="toggle-thumb"
+                  :style="config.weixin?.enabled ? 'transform:translateX(22px)' : 'transform:translateX(0)'"></span>
           </button>
         </div>
+        <div class="mb-2">
+          <span class="inline-block px-2 py-0.5 rounded-full text-xs font-bold" style="background:var(--warning-light);color:var(--warning)">不推荐</span>
+        </div>
         <div class="flex items-center gap-2 text-xs">
-          <span class="w-2 h-2 rounded-full pulse-dot relative"
-                :style="weixinStatus.logged_in ? 'background:#10b981' : 'background:var(--text-muted)'"></span>
+          <span class="w-2 h-2 rounded-full breathe-dot relative"
+                :style="weixinStatus.logged_in ? 'background:var(--success)' : 'background:var(--text-faint)'"></span>
           <span x-text="weixinStatus.message || '检查中...'" style="color:var(--text-muted)"></span>
         </div>
       </div>
 
       <!-- QQ Card -->
-      <div class="card rounded-xl p-5">
+      <div class="card p-5">
         <div class="flex items-center justify-between mb-4">
           <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-lg flex items-center justify-center"><svg viewBox="0 0 1024 1024" width="28" height="28"><path d="M511 957.3c-80.2 0-153.7-25-201.1-62.4-24 6.7-54.8 17.5-74.3 30.9-16.6 11.4-14.5 23.1-11.5 27.8 13.1 20.7 225.6 13.2 287 6.8v-3.1z" fill="#FAAD08"/><path d="M496.7 957.3c80.2 0 153.7-25 201.1-62.4 24 6.7 54.8 17.5 74.3 30.9 16.6 11.4 14.5 23.1 11.5 27.8-13.1 20.7-225.6 13.2-287 6.8v-3.1z" fill="#FAAD08"/><path d="M497.1 474.5c132-.9 237.7-25.8 273.5-35.3 8.5-2.3 13.1-6.4 13.1-6.4.03-1.2.5-21 .5-31.2C784.3 229.8 701.1 57.2 496.6 57.2 292.2 57.2 209 229.8 209 401.7c0 10.2.5 30 .5 31.2 0 0 3.7 3.8 10.5 5.7 33.1 9 140.8 35.1 276.1 36h1z" fill="#000"/><path d="M860.3 619.8c-8.1-26.1-19.2-56.5-30.4-85.7 0 0-6.5-.8-9.7.1-100.7 29.2-222.8 47.8-315.8 46.7h-1C410.9 582 289.7 563.6 189.3 534.7c-3.8-1.1-11.4-.6-11.4-.6-11.2 29.2-22.3 59.6-30.4 85.7C108.7 744.2 121.3 795.6 130.8 796.8c20.5 2.5 79.8-93.6 79.8-93.6 0 97.7 88.3 247.6 290.6 249a718 718 0 015.4 0c202.3-1.3 290.6-151.3 290.6-249 0 0 59.3 96.1 79.8 93.6 9.5-1.2 22.1-52.6-16.6-177" fill="#000"/><path d="M434.4 316.9c-27.9 1.2-51.7-30.1-53.2-70-1.5-39.9 19.9-73.2 47.8-74.5 27.9-1.2 51.7 30.1 53.2 70 1.5 39.9-19.8 73.2-47.7 74.4m206.7-70c-1.5 39.9-25.3 71.2-53.2 70-27.9-1.2-49.3-34.6-47.7-74.4 1.5-39.9 25.3-71.2 53.2-70 27.9 1.2 49.3 34.6 47.8 74.5" fill="#FFF"/><path d="M684 368.6c-7.3-17.6-81-37.2-172.4-37.2h-1c-91.3 0-165 19.6-172.4 37.2a6.2 6.2 0 00-.5 2.5c0 1.3.4 2.4 1 3.4 6.2 9.8 88 58 171.9 58h1c83.8 0 165.7-48.3 171.9-58a6.4 6.4 0 001-3.4c0-.9-.2-1.7-.5-2.5" fill="#FAAD08"/><path d="M467.6 256.4c1.3 15.9-7.4 30-19.3 31.5-11.9 1.5-22.6-10-23.8-26-1.2-15.9 7.4-30 19.2-31.5 12-1.5 22.6 10 23.9 26m73.1 7.9c2.5-4.1 19.8-25.8 55.6-17.9 9.4 2.1 13.8 5.1 14.7 6.3 1.4 1.8 1.7 4.3.4 7.7-2.7 6.7-8.3 6.5-11.5 5.2-2-.8-26.9-15.9-49.9 6.6-1.6 1.5-4.4 2.1-7.1.2-2.7-1.8-3.8-5.6-2.2-8.1" fill="#000"/><path d="M504.3 584.5h-1c-63.6.7-140.6-7.5-215.3-21.9-6.4 36.3-10.2 81.8-7 136.2 8.4 137.4 91.6 223.7 220.1 225h4.2c128.5-1.3 211.7-87.6 220.1-225 3.3-54.4-.5-100-6.9-136.2-74.7 14.4-151.7 22.7-215.3 21.9" fill="#FFF"/><path d="M323.3 577v137.5s65 12.7 130 3.9V591.6c-41.2-2.3-85.7-7.3-130-14.6" fill="#EB1C26"/><path d="M788.1 432.5s-122 40.4-283.7 41.5h-1c-161.5-1.1-283.3-41.4-283.7-41.5l-40.9 107c102.2 32.3 228.8 53.1 324.6 51.9h1c95.8 1.2 222.4-19.6 324.6-51.9l-40.9-107z" fill="#EB1C26"/></svg></div>
+            <div class="w-10 h-10 rounded-2xl flex items-center justify-center" style="background:var(--warning-light)">
+              <svg viewBox="0 0 1024 1024" width="22" height="22"><path d="M511 957.3c-80.2 0-153.7-25-201.1-62.4-24 6.7-54.8 17.5-74.3 30.9-16.6 11.4-14.5 23.1-11.5 27.8 13.1 20.7 225.6 13.2 287 6.8v-3.1z" fill="#FAAD08"/><path d="M496.7 957.3c80.2 0 153.7-25 201.1-62.4 24 6.7 54.8 17.5 74.3 30.9 16.6 11.4 14.5 23.1 11.5 27.8-13.1 20.7-225.6 13.2-287 6.8v-3.1z" fill="#FAAD08"/><path d="M497.1 474.5c132-.9 237.7-25.8 273.5-35.3 8.5-2.3 13.1-6.4 13.1-6.4.03-1.2.5-21 .5-31.2C784.3 229.8 701.1 57.2 496.6 57.2 292.2 57.2 209 229.8 209 401.7c0 10.2.5 30 .5 31.2 0 0 3.7 3.8 10.5 5.7 33.1 9 140.8 35.1 276.1 36h1z" fill="#000"/><path d="M860.3 619.8c-8.1-26.1-19.2-56.5-30.4-85.7 0 0-6.5-.8-9.7.1-100.7 29.2-222.8 47.8-315.8 46.7h-1C410.9 582 289.7 563.6 189.3 534.7c-3.8-1.1-11.4-.6-11.4-.6-11.2 29.2-22.3 59.6-30.4 85.7C108.7 744.2 121.3 795.6 130.8 796.8c20.5 2.5 79.8-93.6 79.8-93.6 0 97.7 88.3 247.6 290.6 249a718 718 0 015.4 0c202.3-1.3 290.6-151.3 290.6-249 0 0 59.3 96.1 79.8 93.6 9.5-1.2 22.1-52.6-16.6-177" fill="#000"/><path d="M434.4 316.9c-27.9 1.2-51.7-30.1-53.2-70-1.5-39.9 19.9-73.2 47.8-74.5 27.9-1.2 51.7 30.1 53.2 70 1.5 39.9-19.8 73.2-47.7 74.4m206.7-70c-1.5 39.9-25.3 71.2-53.2 70-27.9-1.2-49.3-34.6-47.7-74.4 1.5-39.9 25.3-71.2 53.2-70 27.9 1.2 49.3 34.6 47.8 74.5" fill="#FFF"/><path d="M684 368.6c-7.3-17.6-81-37.2-172.4-37.2h-1c-91.3 0-165 19.6-172.4 37.2a6.2 6.2 0 00-.5 2.5c0 1.3.4 2.4 1 3.4 6.2 9.8 88 58 171.9 58h1c83.8 0 165.7-48.3 171.9-58a6.4 6.4 0 001-3.4c0-.9-.2-1.7-.5-2.5" fill="#FAAD08"/></svg>
+            </div>
             <div>
-              <div class="font-semibold" style="color:var(--text-primary)">QQ Bot</div>
+              <div class="font-bold text-sm" style="color:var(--text-ink)">QQ Bot</div>
               <div class="text-xs" style="color:var(--text-muted)">QQ 通知</div>
             </div>
           </div>
           <button @click="toggleChannel('qq', !config.qq?.enabled)"
-                  class="relative w-11 h-6 rounded-full toggle-track"
-                  :style="config.qq?.enabled ? 'background:#6366f1' : 'background:var(--border-primary)'">
-            <span class="absolute top-0.5 left-0.5 w-5 h-5 rounded-full shadow toggle-thumb"
-                  :style="config.qq?.enabled ? 'transform:translateX(20px);background:#fff' : 'transform:translateX(0);background:#fff'"></span>
+                  class="toggle-track"
+                  :style="config.qq?.enabled ? 'background:var(--accent)' : 'background:var(--toggle-off)'">
+            <span class="toggle-thumb"
+                  :style="config.qq?.enabled ? 'transform:translateX(22px)' : 'transform:translateX(0)'"></span>
           </button>
         </div>
         <div class="flex items-center gap-2 text-xs">
-          <span class="w-2 h-2 rounded-full pulse-dot relative"
-                :style="qqStatus.logged_in ? 'background:#10b981' : 'background:var(--text-muted)'"></span>
+          <span class="w-2 h-2 rounded-full breathe-dot relative"
+                :style="qqStatus.logged_in ? 'background:var(--success)' : 'background:var(--text-faint)'"></span>
           <span x-text="qqStatus.message || '检查中...'" style="color:var(--text-muted)"></span>
         </div>
       </div>
 
       <!-- Telegram Card -->
-      <div class="card rounded-xl p-5">
+      <div class="card p-5">
         <div class="flex items-center justify-between mb-4">
           <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-lg flex items-center justify-center"><svg viewBox="0 0 1024 1024" width="28" height="28"><path d="M679.4 746.9l84-396c7.4-34.9-12.6-48.6-35.4-40L234.3 501.1c-33.7 13.1-33.1 32-5.7 40.6l126.3 39.4 293.2-184.6c13.7-9.1 26.3-4 16 5.2L427 616l-9.1 130.3c13.1 0 18.9-5.7 25.7-12.6l61.7-59.4 128 94.3c23.4 13.1 40 6.3 46.3-21.7zM1024 512c0 282.8-229.2 512-512 512S0 794.8 0 512 229.2 0 512 0s512 229.2 512 512z" fill="#1296DB"/></svg></div>
+            <div class="w-10 h-10 rounded-2xl flex items-center justify-center" style="background:var(--info-light)">
+              <svg viewBox="0 0 1024 1024" width="22" height="22"><path d="M679.4 746.9l84-396c7.4-34.9-12.6-48.6-35.4-40L234.3 501.1c-33.7 13.1-33.1 32-5.7 40.6l126.3 39.4 293.2-184.6c13.7-9.1 26.3-4 16 5.2L427 616l-9.1 130.3c13.1 0 18.9-5.7 25.7-12.6l61.7-59.4 128 94.3c23.4 13.1 40 6.3 46.3-21.7zM1024 512c0 282.8-229.2 512-512 512S0 794.8 0 512 229.2 0 512 0s512 229.2 512 512z" fill="#1296DB"/></svg>
+            </div>
             <div>
-              <div class="font-semibold" style="color:var(--text-primary)">Telegram</div>
+              <div class="font-bold text-sm" style="color:var(--text-ink)">Telegram</div>
               <div class="text-xs" style="color:var(--text-muted)">Bot API</div>
             </div>
           </div>
           <button @click="toggleChannel('telegram', !config.telegram?.enabled)"
-                  class="relative w-11 h-6 rounded-full toggle-track"
-                  :style="config.telegram?.enabled ? 'background:#6366f1' : 'background:var(--border-primary)'">
-            <span class="absolute top-0.5 left-0.5 w-5 h-5 rounded-full shadow toggle-thumb"
-                  :style="config.telegram?.enabled ? 'transform:translateX(20px);background:#fff' : 'transform:translateX(0);background:#fff'"></span>
+                  class="toggle-track"
+                  :style="config.telegram?.enabled ? 'background:var(--accent)' : 'background:var(--toggle-off)'">
+            <span class="toggle-thumb"
+                  :style="config.telegram?.enabled ? 'transform:translateX(22px)' : 'transform:translateX(0)'"></span>
           </button>
         </div>
         <div class="flex items-center gap-2 text-xs">
-          <span class="w-2 h-2 rounded-full pulse-dot relative"
-                :style="tgStatus.logged_in ? 'background:#10b981' : 'background:var(--text-muted)'"></span>
+          <span class="w-2 h-2 rounded-full breathe-dot relative"
+                :style="tgStatus.logged_in ? 'background:var(--success)' : 'background:var(--text-faint)'"></span>
           <span x-text="tgStatus.message || '检查中...'" style="color:var(--text-muted)"></span>
         </div>
       </div>
 
       <!-- 飞书 Card -->
-      <div class="card rounded-xl p-5">
+      <div class="card p-5">
         <div class="flex items-center justify-between mb-4">
           <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-lg flex items-center justify-center"><svg viewBox="0 0 1024 1024" width="28" height="28"><path d="M832 367.2c4.1 0 8.3.3 12.3.7a346 346 0 0191.9 25.4c8.5 3.8 10.6 6.9 3.3 14.6a296.5 296.5 0 00-51.5 76c-14.1 29.8-29.6 58.9-44.1 88.6a190 190 0 01-44 58.6c-45.3 41-98 58.2-158.3 49.9-69-9.6-134.5-32.9-196.4-63.7a4.5 4.5 0 01-2.1-4 4.5 4.5 0 012.4-3.8l4.3-2.3c50-26.7 91.9-64 132.1-103.2 17-16.5 33.3-33.7 50.5-50a291 291 0 01135.2-72.4c11.1-2.7 22.3-4.8 33.5-7.2h.5l23.8-2.2" fill="#133C9A"/><path d="M348 850.7c-7.6-.4-26.3-3-28.6-3.3a452.6 452.6 0 01-139.3-40.7c-25.5-12-50-26-74.6-39.7-16.1-9-23.5-23-23.3-42 .5-70.3.5-140.7 0-211-.3-45.3-1.6-90.6-2.3-135.8a36.6 36.6 0 011.9-11.7c2.7-8.2 8.4-8.7 13.9-3.3 6.4 6.2 11.5 13.7 17.9 19.7 56.8 56 117 107.3 184.6 149.5a1018 1018 0 00118.5 65.3c65.6 29.8 133 56 203.4 72.8 62.3 14.7 122.9 5.5 173.3-34.1 15.4-13.2 23-22.8 41.3-47.1a303.7 303.7 0 01-31.6 61.5c-11.7 18.5-38.2 43.2-58.4 62.5-30.6 29.6-70.7 53.6-108.2 73.9-41 22.1-83.5 39.7-129 49.4-23.4 5.8-57 12.5-68.7 13.2-2-.2-9 1.4-12.5 1.1-30 2.3-48.5 3.1-78.4 0z" fill="#3370FF"/><path d="M219.3 172.9a44.3 44.3 0 016.3 0c128.8 0 256.6 2.1 385.3 2.1.2 0 .4.1.6.2a303.5 303.5 0 0133.1 33.9c29 28.9 50.7 79 65.5 109.5 7.4 21 18.5 41.3 23.8 64.7v.4a281.6 281.6 0 00-38.3 15.6c-37.2 18.9-54.1 32.7-85 63.1-16.8 16.5-31.2 31.3-53.5 52.4-7 6.6-24.9 23.3-25.1 22.7-5.9-10.4-106-206.4-307.3-360.5" fill="#00D6B9"/></svg></div>
+            <div class="w-10 h-10 rounded-2xl flex items-center justify-center" style="background:var(--lavender-light)">
+              <svg viewBox="0 0 1024 1024" width="22" height="22"><path d="M832 367.2c4.1 0 8.3.3 12.3.7a346 346 0 0191.9 25.4c8.5 3.8 10.6 6.9 3.3 14.6a296.5 296.5 0 00-51.5 76c-14.1 29.8-29.6 58.9-44.1 88.6a190 190 0 01-44 58.6c-45.3 41-98 58.2-158.3 49.9-69-9.6-134.5-32.9-196.4-63.7a4.5 4.5 0 01-2.1-4 4.5 4.5 0 012.4-3.8l4.3-2.3c50-26.7 91.9-64 132.1-103.2 17-16.5 33.3-33.7 50.5-50a291 291 0 01135.2-72.4c11.1-2.7 22.3-4.8 33.5-7.2h.5l23.8-2.2" fill="#133C9A"/><path d="M348 850.7c-7.6-.4-26.3-3-28.6-3.3a452.6 452.6 0 01-139.3-40.7c-25.5-12-50-26-74.6-39.7-16.1-9-23.5-23-23.3-42 .5-70.3.5-140.7 0-211-.3-45.3-1.6-90.6-2.3-135.8a36.6 36.6 0 011.9-11.7c2.7-8.2 8.4-8.7 13.9-3.3 6.4 6.2 11.5 13.7 17.9 19.7 56.8 56 117 107.3 184.6 149.5a1018 1018 0 00118.5 65.3c65.6 29.8 133 56 203.4 72.8 62.3 14.7 122.9 5.5 173.3-34.1 15.4-13.2 23-22.8 41.3-47.1a303.7 303.7 0 01-31.6 61.5c-11.7 18.5-38.2 43.2-58.4 62.5-30.6 29.6-70.7 53.6-108.2 73.9-41 22.1-83.5 39.7-129 49.4-23.4 5.8-57 12.5-68.7 13.2-2-.2-9 1.4-12.5 1.1-30 2.3-48.5 3.1-78.4 0z" fill="#3370FF"/><path d="M219.3 172.9a44.3 44.3 0 016.3 0c128.8 0 256.6 2.1 385.3 2.1.2 0 .4.1.6.2a303.5 303.5 0 0133.1 33.9c29 28.9 50.7 79 65.5 109.5 7.4 21 18.5 41.3 23.8 64.7v.4a281.6 281.6 0 00-38.3 15.6c-37.2 18.9-54.1 32.7-85 63.1-16.8 16.5-31.2 31.3-53.5 52.4-7 6.6-24.9 23.3-25.1 22.7-5.9-10.4-106-206.4-307.3-360.5" fill="#00D6B9"/></svg>
+            </div>
             <div>
-              <div class="font-semibold" style="color:var(--text-primary)">飞书</div>
+              <div class="font-bold text-sm" style="color:var(--text-ink)">飞书</div>
               <div class="text-xs" style="color:var(--text-muted)">Open API</div>
             </div>
           </div>
           <button @click="toggleChannel('feishu', !config.feishu?.enabled)"
-                  class="relative w-11 h-6 rounded-full toggle-track"
-                  :style="config.feishu?.enabled ? 'background:#6366f1' : 'background:var(--border-primary)'">
-            <span class="absolute top-0.5 left-0.5 w-5 h-5 rounded-full shadow toggle-thumb"
-                  :style="config.feishu?.enabled ? 'transform:translateX(20px);background:#fff' : 'transform:translateX(0);background:#fff'"></span>
+                  class="toggle-track"
+                  :style="config.feishu?.enabled ? 'background:var(--accent)' : 'background:var(--toggle-off)'">
+            <span class="toggle-thumb"
+                  :style="config.feishu?.enabled ? 'transform:translateX(22px)' : 'transform:translateX(0)'"></span>
           </button>
         </div>
         <div class="flex items-center gap-2 text-xs">
-          <span class="w-2 h-2 rounded-full pulse-dot relative"
-                :style="fsStatus.logged_in ? 'background:#10b981' : 'background:var(--text-muted)'"></span>
+          <span class="w-2 h-2 rounded-full breathe-dot relative"
+                :style="fsStatus.logged_in ? 'background:var(--success)' : 'background:var(--text-faint)'"></span>
           <span x-text="fsStatus.message || '检查中...'" style="color:var(--text-muted)"></span>
         </div>
       </div>
 
       <!-- 钉钉 Card -->
-      <div class="card rounded-xl p-5">
+      <div class="card p-5">
         <div class="flex items-center justify-between mb-4">
           <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-lg flex items-center justify-center"><svg viewBox="0 0 1024 1024" width="28" height="28"><path d="M512 79C272.9 79 79 272.9 79 512s193.9 433 433 433 433-193.9 433-433S751.1 79 512 79zm200 375c-.8 3.8-3.1 9.3-6.2 16h.1l-.3.6c-18.2 38.9-65.6 115.1-65.6 115.1l-.2-.5-13.9 24.1h66.8L565 779l29-115.4h-52.6l18.3-76.3c-14.8 3.6-32.3 8.4-53 15.1 0 0-28 16.4-80.6-31.5 0 0-35.5-31.3-14.9-39.1 8.7-3.3 42.5-7.6 69-11.1 36-4.8 58-7.4 58-7.4s-110.6 1.6-136.8-2.5c-26.2-4.1-59.5-47.9-66.6-86.4 0 0-11-21.1 23.6-11.1 34.5 10 177.5 39 177.5 39s-186-57-198.4-71c-12.4-13.8-36.4-75.9-33.3-114 0 0 1.3-9.5 11.1-6.9 0 0 137.5 62.8 231.5 97.2 94 34.4 175.8 51.9 165.2 96.4z" fill="#3AA2EB"/></svg></div>
+            <div class="w-10 h-10 rounded-2xl flex items-center justify-center" style="background:var(--info-light)">
+              <svg viewBox="0 0 1024 1024" width="22" height="22"><path d="M512 79C272.9 79 79 272.9 79 512s193.9 433 433 433 433-193.9 433-433S751.1 79 512 79zm200 375c-.8 3.8-3.1 9.3-6.2 16h.1l-.3.6c-18.2 38.9-65.6 115.1-65.6 115.1l-.2-.5-13.9 24.1h66.8L565 779l29-115.4h-52.6l18.3-76.3c-14.8 3.6-32.3 8.4-53 15.1 0 0-28 16.4-80.6-31.5 0 0-35.5-31.3-14.9-39.1 8.7-3.3 42.5-7.6 69-11.1 36-4.8 58-7.4 58-7.4s-110.6 1.6-136.8-2.5c-26.2-4.1-59.5-47.9-66.6-86.4 0 0-11-21.1 23.6-11.1 34.5 10 177.5 39 177.5 39s-186-57-198.4-71c-12.4-13.8-36.4-75.9-33.3-114 0 0 1.3-9.5 11.1-6.9 0 0 137.5 62.8 231.5 97.2 94 34.4 175.8 51.9 165.2 96.4z" fill="#3AA2EB"/></svg>
+            </div>
             <div>
-              <div class="font-semibold" style="color:var(--text-primary)">钉钉</div>
+              <div class="font-bold text-sm" style="color:var(--text-ink)">钉钉</div>
               <div class="text-xs" style="color:var(--text-muted)">Stream API</div>
             </div>
           </div>
           <button @click="toggleChannel('dingtalk', !config.dingtalk?.enabled)"
-                  class="relative w-11 h-6 rounded-full toggle-track"
-                  :style="config.dingtalk?.enabled ? 'background:#6366f1' : 'background:var(--border-primary)'">
-            <span class="absolute top-0.5 left-0.5 w-5 h-5 rounded-full shadow toggle-thumb"
-                  :style="config.dingtalk?.enabled ? 'transform:translateX(20px);background:#fff' : 'transform:translateX(0);background:#fff'"></span>
+                  class="toggle-track"
+                  :style="config.dingtalk?.enabled ? 'background:var(--accent)' : 'background:var(--toggle-off)'">
+            <span class="toggle-thumb"
+                  :style="config.dingtalk?.enabled ? 'transform:translateX(22px)' : 'transform:translateX(0)'"></span>
           </button>
         </div>
         <div class="flex items-center gap-2 text-xs">
-          <span class="w-2 h-2 rounded-full pulse-dot relative"
-                :style="dtStatus.logged_in ? 'background:#10b981' : 'background:var(--text-muted)'"></span>
+          <span class="w-2 h-2 rounded-full breathe-dot relative"
+                :style="dtStatus.logged_in ? 'background:var(--success)' : 'background:var(--text-faint)'"></span>
           <span x-text="dtStatus.message || '检查中...'" style="color:var(--text-muted)"></span>
         </div>
       </div>
     </div>
 
     <!-- Permission Mode -->
-    <div class="card rounded-xl p-5 mb-6">
-      <h3 class="font-semibold mb-3" style="color:var(--text-primary)">权限模式</h3>
-      <p class="text-xs mb-4" style="color:var(--text-muted)">控制 Claude Code 工具调用的权限确认方式，影响通知过滤行为</p>
+    <div class="card p-6 mb-6">
+      <h3 class="font-bold text-base mb-1" style="color:var(--text-ink)">权限模式</h3>
+      <p class="text-xs mb-5" style="color:var(--text-muted)">控制 Claude Code 工具调用的权限确认方式，影响通知过滤行为</p>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
         <button @click="setPermissionMode('default')"
-                class="rounded-lg p-4 text-left transition-all border"
-                :style="permMode === 'default' ? 'background:var(--accent-bg);border-color:var(--accent)' : 'background:var(--bg-tertiary);border-color:var(--border-primary)'">
-          <div class="font-medium text-sm" :style="permMode === 'default' ? 'color:var(--accent)' : 'color:var(--text-secondary)'">default</div>
+                class="perm-card"
+                :class="permMode === 'default' ? 'selected' : ''">
+          <div class="font-bold text-sm" :style="permMode === 'default' ? 'color:var(--accent)' : 'color:var(--text-ink)'">default</div>
           <div class="text-xs mt-1" style="color:var(--text-muted)">每次工具调用都弹窗确认</div>
-          <div class="text-xs mt-2" :style="permMode === 'default' ? 'color:var(--accent-light)' : 'color:var(--text-muted)'">所有操作都通知</div>
+          <div class="text-xs mt-2 font-medium" :style="permMode === 'default' ? 'color:var(--accent)' : 'color:var(--text-faint)'">所有操作都通知</div>
         </button>
         <button @click="setPermissionMode('acceptEdits')"
-                class="rounded-lg p-4 text-left transition-all border"
-                :style="permMode === 'acceptEdits' ? 'background:rgba(16,185,129,0.1);border-color:#10b981' : 'background:var(--bg-tertiary);border-color:var(--border-primary)'">
-          <div class="font-medium text-sm" :style="permMode === 'acceptEdits' ? 'color:#10b981' : 'color:var(--text-secondary)'">acceptEdits</div>
+                class="perm-card"
+                :class="permMode === 'acceptEdits' ? 'selected' : ''"
+                :style="permMode === 'acceptEdits' ? 'border-color:var(--success);background:var(--success-light)' : ''">
+          <div class="font-bold text-sm" :style="permMode === 'acceptEdits' ? 'color:var(--success)' : 'color:var(--text-ink)'">acceptEdits</div>
           <div class="text-xs mt-1" style="color:var(--text-muted)">文件编辑自动放行，Bash 仍需确认</div>
-          <div class="text-xs mt-2" :style="permMode === 'acceptEdits' ? 'color:#34d399' : 'color:var(--text-muted)'">只有 Bash 和完成时通知</div>
+          <div class="text-xs mt-2 font-medium" :style="permMode === 'acceptEdits' ? 'color:var(--success)' : 'color:var(--text-faint)'">只有 Bash 和完成时通知</div>
         </button>
         <button @click="setPermissionMode('bypassPermissions')"
-                class="rounded-lg p-4 text-left transition-all border"
-                :style="permMode === 'bypassPermissions' ? 'background:rgba(245,158,11,0.1);border-color:#f59e0b' : 'background:var(--bg-tertiary);border-color:var(--border-primary)'">
-          <div class="font-medium text-sm" :style="permMode === 'bypassPermissions' ? 'color:#f59e0b' : 'color:var(--text-secondary)'">bypassPermissions</div>
+                class="perm-card"
+                :class="permMode === 'bypassPermissions' ? 'selected' : ''"
+                :style="permMode === 'bypassPermissions' ? 'border-color:var(--warning);background:var(--warning-light)' : ''">
+          <div class="font-bold text-sm" :style="permMode === 'bypassPermissions' ? 'color:var(--warning)' : 'color:var(--text-ink)'">bypassPermissions</div>
           <div class="text-xs mt-1" style="color:var(--text-muted)">全部自动放行，无弹窗</div>
-          <div class="text-xs mt-2" :style="permMode === 'bypassPermissions' ? 'color:#fbbf24' : 'color:var(--text-muted)'">只在完成时通知一次</div>
+          <div class="text-xs mt-2 font-medium" :style="permMode === 'bypassPermissions' ? 'color:var(--warning)' : 'color:var(--text-faint)'">只在完成时通知一次</div>
         </button>
       </div>
     </div>
 
     <!-- 交互模式卡片 -->
-    <div class="card rounded-xl p-6 mb-6">
-      <div class="flex items-center justify-between mb-4">
+    <div class="card p-6 mb-6">
+      <div class="flex items-center justify-between mb-2">
         <div>
-          <h3 class="text-lg font-semibold" style="color:var(--text-primary)">交互模式</h3>
-          <p class="text-sm" style="color:var(--text-muted)">
+          <h3 class="font-bold text-base" style="color:var(--text-ink)">交互模式</h3>
+          <p class="text-xs mt-1" style="color:var(--text-muted)">
             开启后，审批通知可直接通过终端、微信、QQ、飞书、钉钉、Telegram 回复
           </p>
         </div>
         <button
           @click="toggleInteraction()"
-          class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors"
-          :style="interactionEnabled ? 'background:#6366f1' : 'background:var(--border-primary)'"
+          class="toggle-track"
+          :style="interactionEnabled ? 'background:var(--accent)' : 'background:var(--toggle-off)'"
         >
-          <span
-            :class="interactionEnabled ? 'translate-x-6' : 'translate-x-1'"
-            class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
-          ></span>
+          <span class="toggle-thumb"
+                :style="interactionEnabled ? 'transform:translateX(22px)' : 'transform:translateX(0)'"></span>
         </button>
       </div>
-      <div x-show="interactionEnabled" x-transition class="space-y-3 mt-4 pt-4" style="border-top:1px solid var(--border-primary)">
+      <div x-show="interactionEnabled" x-transition class="space-y-4 mt-5 pt-5" style="border-top:1px solid var(--border-primary)">
         <div class="flex items-center justify-between">
           <div>
-            <label class="text-sm" style="color:var(--text-secondary)">超时（秒，0=无限）</label>
-            <p class="text-xs" style="color:var(--text-muted)">等待用户回复的时间，超时后自动取消请求并继续执行。设为 0 则一直等待直到收到回复。</p>
+            <label class="text-sm font-semibold" style="color:var(--text-body)">超时（秒，0=无限）</label>
+            <p class="text-xs mt-1" style="color:var(--text-muted)">等待用户回复的时间，超时后自动取消请求并继续执行</p>
           </div>
           <input type="number" x-model.number="interactionTimeout" @change="saveInteraction()" min="0"
-            class="w-24 px-2 py-1 text-sm rounded" style="background:var(--input-bg);border:1px solid var(--input-border);color:var(--text-primary)">
+            class="w-24 px-3 py-2 text-sm rounded-xl" style="background:var(--input-bg);border:1px solid var(--input-border);color:var(--text-ink)">
         </div>
         <div class="flex items-center justify-between">
           <div>
-            <label class="text-sm" style="color:var(--text-secondary)">终端显示选项</label>
-            <p class="text-xs" style="color:var(--text-muted)">开启后，Claude Code 终端会显示可选选项供直接输入回复；关闭则仅通过手机端渠道回复。</p>
+            <label class="text-sm font-semibold" style="color:var(--text-body)">终端显示选项</label>
+            <p class="text-xs mt-1" style="color:var(--text-muted)">开启后，Claude Code 终端会显示可选选项供直接输入回复</p>
           </div>
           <button @click="interactionShowTerminal = !interactionShowTerminal; saveInteraction()"
-            class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors"
-            :style="interactionShowTerminal ? 'background:#6366f1' : 'background:var(--border-primary)'">
-            <span :class="interactionShowTerminal ? 'translate-x-5' : 'translate-x-0.5'"
-              class="inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform"></span>
+            class="toggle-track" style="width:40px;height:22px"
+            :style="interactionShowTerminal ? 'background:var(--accent)' : 'background:var(--toggle-off)'">
+            <span class="toggle-thumb" style="width:16px;height:16px;top:3px;left:3px"
+                  :style="interactionShowTerminal ? 'transform:translateX(18px)' : 'transform:translateX(0)'"></span>
           </button>
         </div>
       </div>
     </div>
 
     <!-- Quick Actions -->
-    <div class="card rounded-xl p-5 mb-6">
-      <h3 class="font-semibold mb-4" style="color:var(--text-primary)">快捷操作</h3>
+    <div class="card p-6 mb-6">
+      <h3 class="font-bold text-base mb-4" style="color:var(--text-ink)">快捷操作</h3>
       <div class="flex flex-wrap gap-3">
-        <button @click="testNotifications()" class="btn-primary px-4 py-2 rounded-lg text-sm text-white font-medium">
+        <button @click="testNotifications()" class="btn-pill btn-primary px-5 py-2.5 text-sm">
           测试所有已启用渠道
         </button>
-        <button @click="installHooks()" class="btn-primary px-4 py-2 rounded-lg text-sm text-white font-medium">
+        <button @click="installHooks()" class="btn-pill btn-primary px-5 py-2.5 text-sm">
           安装 Hooks
         </button>
-        <button @click="uninstallHooks()" class="btn-danger px-4 py-2 rounded-lg text-sm text-white font-medium">
+        <button @click="uninstallHooks()" class="btn-pill btn-danger px-5 py-2.5 text-sm">
           卸载 Hooks
         </button>
-        <button @click="refreshAll()" class="px-4 py-2 rounded-lg text-sm font-medium transition" style="background:var(--bg-tertiary);color:var(--text-secondary);border:1px solid var(--border-primary)">
+        <button @click="refreshAll()" class="btn-pill btn-ghost px-5 py-2.5 text-sm">
           刷新状态
         </button>
       </div>
     </div>
 
     <!-- System Info -->
-    <div class="card rounded-xl p-5">
-      <h3 class="font-semibold mb-3" style="color:var(--text-primary)">系统信息</h3>
+    <div class="card p-6">
+      <h3 class="font-bold text-base mb-4" style="color:var(--text-ink)">系统信息</h3>
       <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
         <div>
-          <div class="text-xs" style="color:var(--text-muted)">Python</div>
-          <div style="color:var(--text-primary)" x-text="status.python_version?.split(' ')[0] || '-'"></div>
+          <div class="section-label mb-1">Python</div>
+          <div class="font-semibold" style="color:var(--text-ink)" x-text="status.python_version?.split(' ')[0] || '-'"></div>
         </div>
         <div>
-          <div class="text-xs" style="color:var(--text-muted)">Hooks</div>
-          <div style="color:var(--text-primary)" x-text="status.hooks_installed ? '已安装' : '未安装'"></div>
+          <div class="section-label mb-1">Hooks</div>
+          <div class="font-semibold" style="color:var(--text-ink)" x-text="status.hooks_installed ? '已安装' : '未安装'"></div>
         </div>
         <div>
-          <div class="text-xs" style="color:var(--text-muted)">已启用渠道</div>
-          <div style="color:var(--text-primary)" x-text="enabledChannelCount"></div>
+          <div class="section-label mb-1">已启用渠道</div>
+          <div class="font-semibold" style="color:var(--text-ink)" x-text="enabledChannelCount"></div>
         </div>
       </div>
     </div>
@@ -509,56 +697,48 @@
 
   <!-- ==================== WeChat Tab ==================== -->
   <div x-show="currentTab === 'weixin'" x-cloak>
-    <div class="card rounded-xl p-6 mb-6">
-      <h3 class="font-semibold mb-4 flex items-center gap-2" style="color:var(--text-primary)">
-        <span class="w-8 h-8 rounded-lg flex items-center justify-center"><svg viewBox="0 0 1024 1024" width="22" height="22"><path d="M183.4 699.6c-4.2 0-8.4-1-11.5-3.7-6.3-4.7-9.4-12-7.8-19.3l13-77.3C137 553.3 115 496.3 115 437.3c0-144.7 131.1-262.3 293.1-262.3 76.8 0 149.4 26.6 204.8 74.7 55.4 48.6 86.7 113.9 88.3 183.4 0 5.7-2.1 11-6.3 14.6s-9.4 5.7-15.2 5.7c-5.2-.5-9.4-.5-13.6-.5-112.3 0-203.2 80-203.2 178.7 0 13.6 1.6 27.2 5.2 40.8 1.6 5.7.5 11.5-2.6 16.2-3.1 4.7-8.4 7.8-14.1 8.9-14.1 2.1-28.7 3.1-43.4 3.1" fill="#0B9682"/><path d="M303.5 352.7a35 35 0 1070 0 35 35 0 10-70 0" fill="#DCFFFA"/><path d="M512 352.7a35 35 0 1070 0 35 35 0 10-70 0" fill="#DCFFFA"/><path d="M849.5 849.5c-3.1 0-6.3-.5-9.4-2.1l-52.2-27.2c-37.1 19.3-78.9 29.8-122.3 29.8-134.3 0-243-98.2-243-218.4s108.7-218.4 243-218.4 243.4 98.2 243.4 218.4c0 48-17.8 95-50.7 133.2l10.5 61.6c1 7.3-1.6 15.2-7.8 19.3-3.1 3.1-7.3 4.2-11.5 4.2" fill="#16C4AF"/><path d="M576.3 575.7a29.8 29.8 0 1059.6 0 29.8 29.8 0 10-59.6 0" fill="#DCFFFA"/><path d="M755.5 575.7a29.8 29.8 0 1059.6 0 29.8 29.8 0 10-59.6 0" fill="#DCFFFA"/></svg></span>
+    <div class="card p-6 mb-6">
+      <h3 class="font-bold text-base mb-4 flex items-center gap-3" style="color:var(--text-ink)">
+        <span class="w-9 h-9 rounded-2xl flex items-center justify-center" style="background:var(--success-light)">
+          <svg viewBox="0 0 1024 1024" width="20" height="20"><path d="M183.4 699.6c-4.2 0-8.4-1-11.5-3.7-6.3-4.7-9.4-12-7.8-19.3l13-77.3C137 553.3 115 496.3 115 437.3c0-144.7 131.1-262.3 293.1-262.3 76.8 0 149.4 26.6 204.8 74.7 55.4 48.6 86.7 113.9 88.3 183.4 0 5.7-2.1 11-6.3 14.6s-9.4 5.7-15.2 5.7c-5.2-.5-9.4-.5-13.6-.5-112.3 0-203.2 80-203.2 178.7 0 13.6 1.6 27.2 5.2 40.8 1.6 5.7.5 11.5-2.6 16.2-3.1 4.7-8.4 7.8-14.1 8.9-14.1 2.1-28.7 3.1-43.4 3.1" fill="#0B9682"/><path d="M303.5 352.7a35 35 0 1070 0 35 35 0 10-70 0" fill="#DCFFFA"/><path d="M512 352.7a35 35 0 1070 0 35 35 0 10-70 0" fill="#DCFFFA"/><path d="M849.5 849.5c-3.1 0-6.3-.5-9.4-2.1l-52.2-27.2c-37.1 19.3-78.9 29.8-122.3 29.8-134.3 0-243-98.2-243-218.4s108.7-218.4 243-218.4 243.4 98.2 243.4 218.4c0 48-17.8 95-50.7 133.2l10.5 61.6c1 7.3-1.6 15.2-7.8 19.3-3.1 3.1-7.3 4.2-11.5 4.2" fill="#16C4AF"/><path d="M576.3 575.7a29.8 29.8 0 1059.6 0 29.8 29.8 0 10-59.6 0" fill="#DCFFFA"/><path d="M755.5 575.7a29.8 29.8 0 1059.6 0 29.8 29.8 0 10-59.6 0" fill="#DCFFFA"/></svg>
+        </span>
         微信通知配置
-        <span class="text-xs font-normal px-2 py-0.5 rounded-full" style="background:rgba(245,158,11,0.12);color:#f59e0b;border:1px solid rgba(245,158,11,0.2)">⚠️ 不推荐</span>
+        <span class="px-2.5 py-1 rounded-full text-xs font-bold" style="background:var(--warning-light);color:var(--warning)">不推荐</span>
       </h3>
 
-      <div class="mb-6 p-4 rounded-lg" style="background:var(--accent-bg);border:1px solid var(--border-primary)">
-        <p class="text-xs" style="color:var(--text-muted)">
-          微信通知通过 ilink Bot API 直接发送，无需安装 OpenClaw。扫码登录后即可使用。
-        </p>
+      <div class="callout callout-info mb-6">
+        微信通知通过 ilink Bot API 直接发送，无需安装 OpenClaw。扫码登录后即可使用。
       </div>
 
-      <!-- Login Status -->
-      <div class="mb-6 p-4 rounded-lg" :style="weixinStatus.logged_in ? 'background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2)' : 'background:var(--bg-tertiary);border:1px solid var(--border-primary)'">
+      <div class="mb-6 p-4 rounded-2xl" :style="weixinStatus.logged_in ? 'background:var(--success-light);border:1px solid rgba(157,182,122,0.3)' : 'background:var(--bg-surface-alt);border:1px solid var(--border-primary)'">
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-3">
-            <span class="w-3 h-3 rounded-full" :style="weixinStatus.logged_in ? 'background:#10b981' : 'background:var(--text-muted)'"></span>
+            <span class="w-3 h-3 rounded-full breathe-dot relative" :style="weixinStatus.logged_in ? 'background:var(--success)' : 'background:var(--text-faint)'"></span>
             <div>
-              <div class="text-sm font-medium" style="color:var(--text-primary)" x-text="weixinStatus.logged_in ? '已登录' : '未登录'"></div>
+              <div class="text-sm font-bold" style="color:var(--text-ink)" x-text="weixinStatus.logged_in ? '已登录' : '未登录'"></div>
               <div class="text-xs mt-0.5" style="color:var(--text-muted)" x-text="weixinStatus.message || ''"></div>
               <div x-show="weixinStatus.ilink_user_id" class="text-xs mt-0.5" style="color:var(--text-muted)">用户 ID: <span x-text="weixinStatus.ilink_user_id"></span></div>
             </div>
           </div>
           <div class="flex gap-2">
-            <button @click="refreshWeixinStatus()" class="px-3 py-1.5 text-xs rounded-lg transition" style="background:var(--bg-tertiary);color:var(--text-secondary);border:1px solid var(--border-primary)">刷新</button>
+            <button @click="refreshWeixinStatus()" class="btn-pill btn-ghost px-4 py-1.5 text-xs">刷新</button>
             <button x-show="weixinStatus.logged_in" @click="weixinLogout()"
-                    class="px-3 py-1.5 text-xs rounded-lg transition" style="background:rgba(239,68,68,0.1);color:#ef4444;border:1px solid rgba(239,68,68,0.2)">清除登录</button>
+                    class="btn-pill px-4 py-1.5 text-xs" style="background:var(--danger-light);color:var(--danger)">清除登录</button>
           </div>
         </div>
       </div>
 
-      <!-- 微信 Session 说明 -->
-      <div class="mb-6 p-4 rounded-lg" style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2)">
-        <div class="flex items-start gap-2">
-          <span style="color:#f59e0b" class="mt-0.5">⚠</span>
-          <div class="text-xs" style="color:var(--text-secondary)">
-            <div class="font-medium mb-1">微信 Session 说明</div>
-            <div>扫码登录成功后，Session 不会自动续期。如果长时间未使用（通常数天），Session 过期后发送消息会失败，需要在此页面重新扫码登录。</div>
-            <div class="mt-1">首次使用须先在微信中给 Bot 发送一条消息以建立会话。</div>
-          </div>
-        </div>
+      <div class="callout callout-warn mb-6">
+        <div class="font-bold mb-1">微信 Session 说明</div>
+        <div>扫码登录成功后，Session 不会自动续期。如果长时间未使用（通常数天），Session 过期后发送消息会失败，需要在此页面重新扫码登录。</div>
+        <div class="mt-1">首次使用须先在微信中给 Bot 发送一条消息以建立会话。</div>
       </div>
 
-      <!-- QR Login -->
       <div class="mb-6">
-        <h4 class="text-sm font-medium mb-3" style="color:var(--text-secondary)">扫码登录</h4>
-        <p class="text-xs mb-3" style="color:var(--text-muted)">点击按钮获取微信二维码，使用微信扫码授权后自动完成登录。</p>
+        <h4 class="text-sm font-bold mb-3" style="color:var(--text-body)">扫码登录</h4>
+        <p class="text-xs mb-4" style="color:var(--text-muted)">点击按钮获取微信二维码，使用微信扫码授权后自动完成登录。</p>
         <button @click="startWeixinQR()" :disabled="qrLogin.in_progress"
-                class="btn-primary px-5 py-2.5 rounded-lg text-sm text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed">
+                class="btn-pill btn-primary px-6 py-2.5 text-sm disabled:opacity-50 disabled:cursor-not-allowed">
           <span x-show="!qrLogin.in_progress">获取二维码</span>
           <span x-show="qrLogin.in_progress" class="flex items-center gap-2">
             <svg class="animate-spin w-4 h-4" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" opacity="0.3"/><path fill="currentColor" d="M4 12a8 8 0 018-8v3a5 5 0 00-5 5H4z"/></svg>
@@ -567,50 +747,47 @@
         </button>
       </div>
 
-      <!-- QR Code Display -->
       <div x-show="qrLogin.qr_url" class="mb-6">
-        <h4 class="text-sm font-medium mb-3" style="color:var(--text-secondary)">请使用微信扫描二维码</h4>
-        <div class="rounded-xl p-4 inline-block shadow-lg" style="background:var(--bg-secondary)">
+        <h4 class="text-sm font-bold mb-3" style="color:var(--text-body)">请使用微信扫描二维码</h4>
+        <div class="rounded-2xl p-5 inline-block shadow-lg" style="background:var(--bg-surface)">
           <div id="qrcode-canvas" class="w-56 h-56 flex items-center justify-center"></div>
         </div>
-        <p class="text-xs mt-2" style="color:var(--text-muted)">二维码有效期 5 分钟，过期后自动刷新</p>
-        <div x-show="qrLogin.error" class="mt-3 text-sm" style="color:#ef4444" x-text="qrLogin.error"></div>
-        <div x-show="qrLogin.status === 'confirmed'" class="mt-3 text-sm" style="color:#10b981">登录成功！Token 已自动保存。</div>
+        <p class="text-xs mt-3" style="color:var(--text-muted)">二维码有效期 5 分钟，过期后自动刷新</p>
+        <div x-show="qrLogin.error" class="mt-3 text-sm font-medium" style="color:var(--danger)" x-text="qrLogin.error"></div>
+        <div x-show="qrLogin.status === 'confirmed'" class="mt-3 text-sm font-medium" style="color:var(--success)">登录成功！Token 已自动保存。</div>
       </div>
 
-      <!-- 等待获取 to_user_id 提醒 -->
-      <div x-show="wxWaitingUserId" class="mb-6 p-4 rounded-lg" style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2)">
+      <div x-show="wxWaitingUserId" class="mb-6 callout callout-warn">
         <div class="flex items-start gap-2">
-          <svg class="animate-spin w-4 h-4 mt-0.5" style="color:#f59e0b" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" opacity="0.3"/><path fill="currentColor" d="M4 12a8 8 0 018-8v3a5 5 0 00-5 5H4z"/></svg>
-          <div class="text-xs" style="color:var(--text-secondary)">
-            <div class="font-medium mb-1">正在等待获取接收用户 ID...</div>
+          <svg class="animate-spin w-4 h-4 mt-0.5 flex-shrink-0" style="color:var(--warning)" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" opacity="0.3"/><path fill="currentColor" d="M4 12a8 8 0 018-8v3a5 5 0 00-5 5H4z"/></svg>
+          <div>
+            <div class="font-bold mb-1">正在等待获取接收用户 ID...</div>
             <div>请在微信中找到你的 Bot 并发送一条消息（如"你好"），系统会自动捕获用户 ID。</div>
             <div class="mt-1" style="color:var(--text-muted)">超时时间 2 分钟。</div>
           </div>
         </div>
       </div>
 
-      <!-- Manual Config -->
       <div class="mt-6 pt-6" style="border-top:1px solid var(--border-primary)">
-        <h4 class="text-sm font-medium mb-3" style="color:var(--text-secondary)">手动配置（可选）</h4>
+        <h4 class="text-sm font-bold mb-3" style="color:var(--text-body)">手动配置（可选）</h4>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label class="block text-xs mb-1" style="color:var(--text-muted)">Bot Token</label>
+            <label class="block text-xs font-semibold mb-1.5" style="color:var(--text-muted)">Bot Token</label>
             <input type="password" x-model="wxForm.bot_token" placeholder="ilink bot token"
-                   class="w-full rounded-lg px-3 py-2 text-sm" style="background:var(--input-bg);border:1px solid var(--input-border);color:var(--text-primary)">
+                   class="w-full rounded-xl px-4 py-2.5 text-sm">
           </div>
           <div>
-            <label class="block text-xs mb-1" style="color:var(--text-muted)">Base URL</label>
+            <label class="block text-xs font-semibold mb-1.5" style="color:var(--text-muted)">Base URL</label>
             <input type="text" x-model="wxForm.baseurl" placeholder="https://ilinkai.weixin.qq.com"
-                   class="w-full rounded-lg px-3 py-2 text-sm" style="background:var(--input-bg);border:1px solid var(--input-border);color:var(--text-primary)">
+                   class="w-full rounded-xl px-4 py-2.5 text-sm">
           </div>
           <div>
-            <label class="block text-xs mb-1" style="color:var(--text-muted)">接收用户 ID (to_user_id)</label>
+            <label class="block text-xs font-semibold mb-1.5" style="color:var(--text-muted)">接收用户 ID (to_user_id)</label>
             <input type="text" x-model="wxForm.to_user_id" placeholder="ilink_user_id，扫码登录后自动填入"
-                   class="w-full rounded-lg px-3 py-2 text-sm" style="background:var(--input-bg);border:1px solid var(--input-border);color:var(--text-primary)">
+                   class="w-full rounded-xl px-4 py-2.5 text-sm">
           </div>
         </div>
-        <button @click="saveWeixinConfig()" class="btn-primary px-5 py-2 rounded-lg text-sm text-white font-medium mt-4">
+        <button @click="saveWeixinConfig()" class="btn-pill btn-primary px-6 py-2.5 text-sm mt-5">
           保存配置
         </button>
       </div>
@@ -619,70 +796,64 @@
 
   <!-- ==================== QQ Tab ==================== -->
   <div x-show="currentTab === 'qq'" x-cloak>
-    <div class="card rounded-xl p-6 mb-6">
-      <h3 class="font-semibold mb-4 flex items-center gap-2" style="color:var(--text-primary)">
-        <span class="w-8 h-8 rounded-lg flex items-center justify-center"><svg viewBox="0 0 1024 1024" width="22" height="22"><path d="M511 957.3c-80.2 0-153.7-25-201.1-62.4-24 6.7-54.8 17.5-74.3 30.9-16.6 11.4-14.5 23.1-11.5 27.8 13.1 20.7 225.6 13.2 287 6.8v-3.1z" fill="#FAAD08"/><path d="M496.7 957.3c80.2 0 153.7-25 201.1-62.4 24 6.7 54.8 17.5 74.3 30.9 16.6 11.4 14.5 23.1 11.5 27.8-13.1 20.7-225.6 13.2-287 6.8v-3.1z" fill="#FAAD08"/><path d="M497.1 474.5c132-.9 237.7-25.8 273.5-35.3 8.5-2.3 13.1-6.4 13.1-6.4.03-1.2.5-21 .5-31.2C784.3 229.8 701.1 57.2 496.6 57.2 292.2 57.2 209 229.8 209 401.7c0 10.2.5 30 .5 31.2 0 0 3.7 3.8 10.5 5.7 33.1 9 140.8 35.1 276.1 36h1z" fill="#000"/><path d="M860.3 619.8c-8.1-26.1-19.2-56.5-30.4-85.7 0 0-6.5-.8-9.7.1-100.7 29.2-222.8 47.8-315.8 46.7h-1C410.9 582 289.7 563.6 189.3 534.7c-3.8-1.1-11.4-.6-11.4-.6-11.2 29.2-22.3 59.6-30.4 85.7C108.7 744.2 121.3 795.6 130.8 796.8c20.5 2.5 79.8-93.6 79.8-93.6 0 97.7 88.3 247.6 290.6 249a718 718 0 015.4 0c202.3-1.3 290.6-151.3 290.6-249 0 0 59.3 96.1 79.8 93.6 9.5-1.2 22.1-52.6-16.6-177" fill="#000"/><path d="M434.4 316.9c-27.9 1.2-51.7-30.1-53.2-70-1.5-39.9 19.9-73.2 47.8-74.5 27.9-1.2 51.7 30.1 53.2 70 1.5 39.9-19.8 73.2-47.7 74.4m206.7-70c-1.5 39.9-25.3 71.2-53.2 70-27.9-1.2-49.3-34.6-47.7-74.4 1.5-39.9 25.3-71.2 53.2-70 27.9 1.2 49.3 34.6 47.8 74.5" fill="#FFF"/><path d="M684 368.6c-7.3-17.6-81-37.2-172.4-37.2h-1c-91.3 0-165 19.6-172.4 37.2a6.2 6.2 0 00-.5 2.5c0 1.3.4 2.4 1 3.4 6.2 9.8 88 58 171.9 58h1c83.8 0 165.7-48.3 171.9-58a6.4 6.4 0 001-3.4c0-.9-.2-1.7-.5-2.5" fill="#FAAD08"/><path d="M467.6 256.4c1.3 15.9-7.4 30-19.3 31.5-11.9 1.5-22.6-10-23.8-26-1.2-15.9 7.4-30 19.2-31.5 12-1.5 22.6 10 23.9 26m73.1 7.9c2.5-4.1 19.8-25.8 55.6-17.9 9.4 2.1 13.8 5.1 14.7 6.3 1.4 1.8 1.7 4.3.4 7.7-2.7 6.7-8.3 6.5-11.5 5.2-2-.8-26.9-15.9-49.9 6.6-1.6 1.5-4.4 2.1-7.1.2-2.7-1.8-3.8-5.6-2.2-8.1" fill="#000"/><path d="M504.3 584.5h-1c-63.6.7-140.6-7.5-215.3-21.9-6.4 36.3-10.2 81.8-7 136.2 8.4 137.4 91.6 223.7 220.1 225h4.2c128.5-1.3 211.7-87.6 220.1-225 3.3-54.4-.5-100-6.9-136.2-74.7 14.4-151.7 22.7-215.3 21.9" fill="#FFF"/><path d="M323.3 577v137.5s65 12.7 130 3.9V591.6c-41.2-2.3-85.7-7.3-130-14.6" fill="#EB1C26"/><path d="M788.1 432.5s-122 40.4-283.7 41.5h-1c-161.5-1.1-283.3-41.4-283.7-41.5l-40.9 107c102.2 32.3 228.8 53.1 324.6 51.9h1c95.8 1.2 222.4-19.6 324.6-51.9l-40.9-107z" fill="#EB1C26"/></svg></span>
+    <div class="card p-6 mb-6">
+      <h3 class="font-bold text-base mb-4 flex items-center gap-3" style="color:var(--text-ink)">
+        <span class="w-9 h-9 rounded-2xl flex items-center justify-center" style="background:var(--warning-light)">
+          <svg viewBox="0 0 1024 1024" width="20" height="20"><path d="M511 957.3c-80.2 0-153.7-25-201.1-62.4-24 6.7-54.8 17.5-74.3 30.9-16.6 11.4-14.5 23.1-11.5 27.8 13.1 20.7 225.6 13.2 287 6.8v-3.1z" fill="#FAAD08"/><path d="M496.7 957.3c80.2 0 153.7-25 201.1-62.4 24 6.7 54.8 17.5 74.3 30.9 16.6 11.4 14.5 23.1 11.5 27.8-13.1 20.7-225.6 13.2-287 6.8v-3.1z" fill="#FAAD08"/><path d="M497.1 474.5c132-.9 237.7-25.8 273.5-35.3 8.5-2.3 13.1-6.4 13.1-6.4.03-1.2.5-21 .5-31.2C784.3 229.8 701.1 57.2 496.6 57.2 292.2 57.2 209 229.8 209 401.7c0 10.2.5 30 .5 31.2 0 0 3.7 3.8 10.5 5.7 33.1 9 140.8 35.1 276.1 36h1z" fill="#000"/><path d="M860.3 619.8c-8.1-26.1-19.2-56.5-30.4-85.7 0 0-6.5-.8-9.7.1-100.7 29.2-222.8 47.8-315.8 46.7h-1C410.9 582 289.7 563.6 189.3 534.7c-3.8-1.1-11.4-.6-11.4-.6-11.2 29.2-22.3 59.6-30.4 85.7C108.7 744.2 121.3 795.6 130.8 796.8c20.5 2.5 79.8-93.6 79.8-93.6 0 97.7 88.3 247.6 290.6 249a718 718 0 015.4 0c202.3-1.3 290.6-151.3 290.6-249 0 0 59.3 96.1 79.8 93.6 9.5-1.2 22.1-52.6-16.6-177" fill="#000"/><path d="M434.4 316.9c-27.9 1.2-51.7-30.1-53.2-70-1.5-39.9 19.9-73.2 47.8-74.5 27.9-1.2 51.7 30.1 53.2 70 1.5 39.9-19.8 73.2-47.7 74.4m206.7-70c-1.5 39.9-25.3 71.2-53.2 70-27.9-1.2-49.3-34.6-47.7-74.4 1.5-39.9 25.3-71.2 53.2-70 27.9 1.2 49.3 34.6 47.8 74.5" fill="#FFF"/><path d="M684 368.6c-7.3-17.6-81-37.2-172.4-37.2h-1c-91.3 0-165 19.6-172.4 37.2a6.2 6.2 0 00-.5 2.5c0 1.3.4 2.4 1 3.4 6.2 9.8 88 58 171.9 58h1c83.8 0 165.7-48.3 171.9-58a6.4 6.4 0 001-3.4c0-.9-.2-1.7-.5-2.5" fill="#FAAD08"/></svg>
+        </span>
         QQ Bot 通知配置
       </h3>
 
-      <div class="mb-6 p-4 rounded-lg" style="background:var(--accent-bg);border:1px solid var(--border-primary)">
-        <p class="text-xs" style="color:var(--text-muted)">
-          QQ Bot 需要在 <a href="https://q.qq.com/" target="_blank" style="color:var(--accent)" class="hover:underline">QQ 开放平台</a> 创建机器人获取 AppID 和 AppSecret。
-        </p>
-        <p class="text-xs mt-2" style="color:var(--text-muted)">
-          验证凭据后，系统会自动通过 WebSocket 监听 QQ 消息事件。在 QQ 中给 bot 发送一条消息，系统将自动获取你的 OpenID 并完成配置。
-        </p>
+      <div class="callout callout-info mb-6">
+        QQ Bot 需要在 <a href="https://q.qq.com/" target="_blank" style="color:var(--accent)" class="hover:underline font-semibold">QQ 开放平台</a> 创建机器人获取 AppID 和 AppSecret。验证凭据后，系统会自动通过 WebSocket 监听 QQ 消息事件。
       </div>
 
-      <!-- Login Status -->
-      <div class="mb-6 p-4 rounded-lg" :style="qqStatus.logged_in ? 'background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2)' : 'background:var(--bg-tertiary);border:1px solid var(--border-primary)'">
+      <div class="mb-6 p-4 rounded-2xl" :style="qqStatus.logged_in ? 'background:var(--success-light);border:1px solid rgba(157,182,122,0.3)' : 'background:var(--bg-surface-alt);border:1px solid var(--border-primary)'">
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-3">
-            <span class="w-3 h-3 rounded-full" :style="qqStatus.logged_in ? 'background:#10b981' : 'background:var(--text-muted)'"></span>
+            <span class="w-3 h-3 rounded-full breathe-dot relative" :style="qqStatus.logged_in ? 'background:var(--success)' : 'background:var(--text-faint)'"></span>
             <div>
-              <div class="text-sm font-medium" style="color:var(--text-primary)" x-text="qqStatus.logged_in ? '已配置' : '未配置'"></div>
+              <div class="text-sm font-bold" style="color:var(--text-ink)" x-text="qqStatus.logged_in ? '已配置' : '未配置'"></div>
               <div class="text-xs mt-0.5" style="color:var(--text-muted)" x-text="qqStatus.message || ''"></div>
               <div x-show="qqStatus.app_id" class="text-xs mt-0.5" style="color:var(--text-muted)">AppID: <span x-text="qqStatus.app_id"></span></div>
             </div>
           </div>
           <div class="flex gap-2">
-            <button @click="refreshQQStatus()" class="px-3 py-1.5 text-xs rounded-lg transition" style="background:var(--bg-tertiary);color:var(--text-secondary);border:1px solid var(--border-primary)">刷新</button>
+            <button @click="refreshQQStatus()" class="btn-pill btn-ghost px-4 py-1.5 text-xs">刷新</button>
             <button x-show="qqStatus.logged_in" @click="qqLogout()"
-                    class="px-3 py-1.5 text-xs rounded-lg transition" style="background:rgba(239,68,68,0.1);color:#ef4444;border:1px solid rgba(239,68,68,0.2)">清除登录</button>
+                    class="btn-pill px-4 py-1.5 text-xs" style="background:var(--danger-light);color:var(--danger)">清除登录</button>
           </div>
         </div>
       </div>
 
-      <!-- QQ Config Form -->
       <div>
-        <h4 class="text-sm font-medium mb-3" style="color:var(--text-secondary)">Bot 凭据</h4>
+        <h4 class="text-sm font-bold mb-3" style="color:var(--text-body)">Bot 凭据</h4>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <div>
-            <label class="block text-xs mb-1" style="color:var(--text-muted)">AppID</label>
+            <label class="block text-xs font-semibold mb-1.5" style="color:var(--text-muted)">AppID</label>
             <input type="text" x-model="qqForm.app_id" placeholder="QQ Bot AppID"
-                   class="w-full rounded-lg px-3 py-2 text-sm" style="background:var(--input-bg);border:1px solid var(--input-border);color:var(--text-primary)">
+                   class="w-full rounded-xl px-4 py-2.5 text-sm">
           </div>
           <div>
-            <label class="block text-xs mb-1" style="color:var(--text-muted)">AppSecret</label>
+            <label class="block text-xs font-semibold mb-1.5" style="color:var(--text-muted)">AppSecret</label>
             <input type="password" x-model="qqForm.app_secret" placeholder="QQ Bot AppSecret"
-                   class="w-full rounded-lg px-3 py-2 text-sm" style="background:var(--input-bg);border:1px solid var(--input-border);color:var(--text-primary)">
+                   class="w-full rounded-xl px-4 py-2.5 text-sm">
           </div>
         </div>
         <div class="flex gap-3">
           <button @click="validateQQ()" :disabled="qqValidating || qqWaitingOpenId"
-                  class="btn-primary px-5 py-2 rounded-lg text-sm text-white font-medium disabled:opacity-50">
+                  class="btn-pill btn-primary px-6 py-2.5 text-sm disabled:opacity-50">
             <span x-show="!qqValidating && !qqWaitingOpenId">验证并保存</span>
             <span x-show="qqValidating">验证中...</span>
             <span x-show="qqWaitingOpenId">等待获取 OpenID...</span>
           </button>
         </div>
 
-        <!-- 等待 OpenID 提示 -->
-        <div x-show="qqWaitingOpenId" class="mt-4 p-4 rounded-lg" style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2)">
+        <div x-show="qqWaitingOpenId" class="mt-4 callout callout-warn">
           <div class="flex items-start gap-2">
-            <svg class="animate-spin w-4 h-4 mt-0.5" style="color:#f59e0b" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" opacity="0.3"/><path fill="currentColor" d="M4 12a8 8 0 018-8v3a5 5 0 00-5 5H4z"/></svg>
-            <div class="text-xs" style="color:var(--text-secondary)">
-              <div class="font-medium mb-1">正在等待获取 OpenID...</div>
+            <svg class="animate-spin w-4 h-4 mt-0.5 flex-shrink-0" style="color:var(--warning)" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" opacity="0.3"/><path fill="currentColor" d="M4 12a8 8 0 018-8v3a5 5 0 00-5 5H4z"/></svg>
+            <div>
+              <div class="font-bold mb-1">正在等待获取 OpenID...</div>
               <div>请在 QQ 中找到你的 bot 并发送一条消息（如"你好"），系统会自动捕获你的 OpenID。</div>
               <div class="mt-1" style="color:var(--text-muted)">超时时间 2 分钟，也可手动填入 Target ID。</div>
             </div>
@@ -694,55 +865,57 @@
 
   <!-- ==================== Telegram Tab ==================== -->
   <div x-show="currentTab === 'telegram'" x-cloak>
-    <div class="card rounded-xl p-6 mb-6">
-      <h3 class="font-semibold mb-4 flex items-center gap-2" style="color:var(--text-primary)">
-        <span class="w-8 h-8 rounded-lg flex items-center justify-center"><svg viewBox="0 0 1024 1024" width="22" height="22"><path d="M679.4 746.9l84-396c7.4-34.9-12.6-48.6-35.4-40L234.3 501.1c-33.7 13.1-33.1 32-5.7 40.6l126.3 39.4 293.2-184.6c13.7-9.1 26.3-4 16 5.2L427 616l-9.1 130.3c13.1 0 18.9-5.7 25.7-12.6l61.7-59.4 128 94.3c23.4 13.1 40 6.3 46.3-21.7zM1024 512c0 282.8-229.2 512-512 512S0 794.8 0 512 229.2 0 512 0s512 229.2 512 512z" fill="#1296DB"/></svg></span>
+    <div class="card p-6 mb-6">
+      <h3 class="font-bold text-base mb-4 flex items-center gap-3" style="color:var(--text-ink)">
+        <span class="w-9 h-9 rounded-2xl flex items-center justify-center" style="background:var(--info-light)">
+          <svg viewBox="0 0 1024 1024" width="20" height="20"><path d="M679.4 746.9l84-396c7.4-34.9-12.6-48.6-35.4-40L234.3 501.1c-33.7 13.1-33.1 32-5.7 40.6l126.3 39.4 293.2-184.6c13.7-9.1 26.3-4 16 5.2L427 616l-9.1 130.3c13.1 0 18.9-5.7 25.7-12.6l61.7-59.4 128 94.3c23.4 13.1 40 6.3 46.3-21.7zM1024 512c0 282.8-229.2 512-512 512S0 794.8 0 512 229.2 0 512 0s512 229.2 512 512z" fill="#1296DB"/></svg>
+        </span>
         Telegram Bot 配置
       </h3>
 
-      <div class="mb-6 p-4 rounded-lg" style="background:var(--accent-bg);border:1px solid var(--border-primary)">
-        <p class="text-xs font-medium mb-2" style="color:var(--text-muted)">配置步骤：</p>
-        <ol class="text-xs space-y-1 list-decimal list-inside" style="color:var(--text-muted)">
-          <li>在 Telegram 中找 <a href="https://t.me/BotFather" target="_blank" style="color:var(--accent)" class="hover:underline">@BotFather</a>，发送 <code class="px-1 rounded" style="background:var(--bg-tertiary)">/newbot</code> 创建 Bot</li>
+      <div class="callout callout-info mb-6">
+        <p class="font-bold mb-2">配置步骤：</p>
+        <ol class="space-y-1 list-decimal list-inside">
+          <li>在 Telegram 中找 <a href="https://t.me/BotFather" target="_blank" style="color:var(--accent)" class="hover:underline font-semibold">@BotFather</a>，发送 <code class="px-1.5 py-0.5 rounded-lg text-xs font-bold" style="background:var(--code-bg)">/newbot</code> 创建 Bot</li>
           <li>获取 Bot Token，填入下方验证</li>
           <li>验证成功后，给 Bot 发送一条消息，系统自动获取 Chat ID</li>
         </ol>
       </div>
 
-      <div class="mb-6 p-4 rounded-lg" :style="tgStatus.logged_in ? 'background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2)' : 'background:var(--bg-tertiary);border:1px solid var(--border-primary)'">
+      <div class="mb-6 p-4 rounded-2xl" :style="tgStatus.logged_in ? 'background:var(--success-light);border:1px solid rgba(157,182,122,0.3)' : 'background:var(--bg-surface-alt);border:1px solid var(--border-primary)'">
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-3">
-            <span class="w-3 h-3 rounded-full" :style="tgStatus.logged_in ? 'background:#10b981' : 'background:var(--text-muted)'"></span>
+            <span class="w-3 h-3 rounded-full breathe-dot relative" :style="tgStatus.logged_in ? 'background:var(--success)' : 'background:var(--text-faint)'"></span>
             <div>
-              <div class="text-sm font-medium" style="color:var(--text-primary)" x-text="tgStatus.logged_in ? '已配置' : '未配置'"></div>
+              <div class="text-sm font-bold" style="color:var(--text-ink)" x-text="tgStatus.logged_in ? '已配置' : '未配置'"></div>
               <div class="text-xs mt-0.5" style="color:var(--text-muted)" x-text="tgStatus.message || ''"></div>
             </div>
           </div>
           <div class="flex gap-2">
-            <button @click="refreshTgStatus()" class="px-3 py-1.5 text-xs rounded-lg transition" style="background:var(--bg-tertiary);color:var(--text-secondary);border:1px solid var(--border-primary)">刷新</button>
+            <button @click="refreshTgStatus()" class="btn-pill btn-ghost px-4 py-1.5 text-xs">刷新</button>
             <button x-show="tgStatus.logged_in" @click="tgLogout()"
-                    class="px-3 py-1.5 text-xs rounded-lg transition" style="background:rgba(239,68,68,0.1);color:#ef4444;border:1px solid rgba(239,68,68,0.2)">清除</button>
+                    class="btn-pill px-4 py-1.5 text-xs" style="background:var(--danger-light);color:var(--danger)">清除</button>
           </div>
         </div>
       </div>
 
       <div>
-        <h4 class="text-sm font-medium mb-3" style="color:var(--text-secondary)">Bot Token</h4>
+        <h4 class="text-sm font-bold mb-3" style="color:var(--text-body)">Bot Token</h4>
         <div class="mb-4">
           <input type="password" x-model="tgForm.bot_token" placeholder="从 @BotFather 获取"
-                 class="w-full rounded-lg px-3 py-2 text-sm" style="background:var(--input-bg);border:1px solid var(--input-border);color:var(--text-primary)">
+                 class="w-full rounded-xl px-4 py-2.5 text-sm">
         </div>
         <button @click="validateTg()" :disabled="tgWaitingChatId"
-                class="btn-primary px-5 py-2 rounded-lg text-sm text-white font-medium disabled:opacity-50">
+                class="btn-pill btn-primary px-6 py-2.5 text-sm disabled:opacity-50">
           <span x-show="!tgWaitingChatId">验证并保存</span>
           <span x-show="tgWaitingChatId">等待获取 Chat ID...</span>
         </button>
 
-        <div x-show="tgWaitingChatId" class="mt-4 p-4 rounded-lg" style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2)">
+        <div x-show="tgWaitingChatId" class="mt-4 callout callout-warn">
           <div class="flex items-start gap-2">
-            <svg class="animate-spin w-4 h-4 mt-0.5" style="color:#f59e0b" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" opacity="0.3"/><path fill="currentColor" d="M4 12a8 8 0 018-8v3a5 5 0 00-5 5H4z"/></svg>
-            <div class="text-xs" style="color:var(--text-secondary)">
-              <div class="font-medium mb-1">正在等待获取 Chat ID...</div>
+            <svg class="animate-spin w-4 h-4 mt-0.5 flex-shrink-0" style="color:var(--warning)" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" opacity="0.3"/><path fill="currentColor" d="M4 12a8 8 0 018-8v3a5 5 0 00-5 5H4z"/></svg>
+            <div>
+              <div class="font-bold mb-1">正在等待获取 Chat ID...</div>
               <div>请在 Telegram 中找到你的 Bot 并发送一条消息（如"你好"），系统会自动捕获 Chat ID。</div>
               <div class="mt-1" style="color:var(--text-muted)">超时时间 2 分钟，也可手动填入 Chat ID。</div>
             </div>
@@ -754,72 +927,74 @@
 
   <!-- ==================== 飞书 Tab ==================== -->
   <div x-show="currentTab === 'feishu'" x-cloak>
-    <div class="card rounded-xl p-6 mb-6">
-      <h3 class="font-semibold mb-4 flex items-center gap-2" style="color:var(--text-primary)">
-        <span class="w-8 h-8 rounded-lg flex items-center justify-center"><svg viewBox="0 0 1024 1024" width="22" height="22"><path d="M832 367.2c4.1 0 8.3.3 12.3.7a346 346 0 0191.9 25.4c8.5 3.8 10.6 6.9 3.3 14.6a296.5 296.5 0 00-51.5 76c-14.1 29.8-29.6 58.9-44.1 88.6a190 190 0 01-44 58.6c-45.3 41-98 58.2-158.3 49.9-69-9.6-134.5-32.9-196.4-63.7a4.5 4.5 0 01-2.1-4 4.5 4.5 0 012.4-3.8l4.3-2.3c50-26.7 91.9-64 132.1-103.2 17-16.5 33.3-33.7 50.5-50a291 291 0 01135.2-72.4c11.1-2.7 22.3-4.8 33.5-7.2h.5l23.8-2.2" fill="#133C9A"/><path d="M348 850.7c-7.6-.4-26.3-3-28.6-3.3a452.6 452.6 0 01-139.3-40.7c-25.5-12-50-26-74.6-39.7-16.1-9-23.5-23-23.3-42 .5-70.3.5-140.7 0-211-.3-45.3-1.6-90.6-2.3-135.8a36.6 36.6 0 011.9-11.7c2.7-8.2 8.4-8.7 13.9-3.3 6.4 6.2 11.5 13.7 17.9 19.7 56.8 56 117 107.3 184.6 149.5a1018 1018 0 00118.5 65.3c65.6 29.8 133 56 203.4 72.8 62.3 14.7 122.9 5.5 173.3-34.1 15.4-13.2 23-22.8 41.3-47.1a303.7 303.7 0 01-31.6 61.5c-11.7 18.5-38.2 43.2-58.4 62.5-30.6 29.6-70.7 53.6-108.2 73.9-41 22.1-83.5 39.7-129 49.4-23.4 5.8-57 12.5-68.7 13.2-2-.2-9 1.4-12.5 1.1-30 2.3-48.5 3.1-78.4 0z" fill="#3370FF"/><path d="M219.3 172.9a44.3 44.3 0 016.3 0c128.8 0 256.6 2.1 385.3 2.1.2 0 .4.1.6.2a303.5 303.5 0 0133.1 33.9c29 28.9 50.7 79 65.5 109.5 7.4 21 18.5 41.3 23.8 64.7v.4a281.6 281.6 0 00-38.3 15.6c-37.2 18.9-54.1 32.7-85 63.1-16.8 16.5-31.2 31.3-53.5 52.4-7 6.6-24.9 23.3-25.1 22.7-5.9-10.4-106-206.4-307.3-360.5" fill="#00D6B9"/></svg></span>
+    <div class="card p-6 mb-6">
+      <h3 class="font-bold text-base mb-4 flex items-center gap-3" style="color:var(--text-ink)">
+        <span class="w-9 h-9 rounded-2xl flex items-center justify-center" style="background:var(--lavender-light)">
+          <svg viewBox="0 0 1024 1024" width="20" height="20"><path d="M832 367.2c4.1 0 8.3.3 12.3.7a346 346 0 0191.9 25.4c8.5 3.8 10.6 6.9 3.3 14.6a296.5 296.5 0 00-51.5 76c-14.1 29.8-29.6 58.9-44.1 88.6a190 190 0 01-44 58.6c-45.3 41-98 58.2-158.3 49.9-69-9.6-134.5-32.9-196.4-63.7a4.5 4.5 0 01-2.1-4 4.5 4.5 0 012.4-3.8l4.3-2.3c50-26.7 91.9-64 132.1-103.2 17-16.5 33.3-33.7 50.5-50a291 291 0 01135.2-72.4c11.1-2.7 22.3-4.8 33.5-7.2h.5l23.8-2.2" fill="#133C9A"/><path d="M348 850.7c-7.6-.4-26.3-3-28.6-3.3a452.6 452.6 0 01-139.3-40.7c-25.5-12-50-26-74.6-39.7-16.1-9-23.5-23-23.3-42 .5-70.3.5-140.7 0-211-.3-45.3-1.6-90.6-2.3-135.8a36.6 36.6 0 011.9-11.7c2.7-8.2 8.4-8.7 13.9-3.3 6.4 6.2 11.5 13.7 17.9 19.7 56.8 56 117 107.3 184.6 149.5a1018 1018 0 00118.5 65.3c65.6 29.8 133 56 203.4 72.8 62.3 14.7 122.9 5.5 173.3-34.1 15.4-13.2 23-22.8 41.3-47.1a303.7 303.7 0 01-31.6 61.5c-11.7 18.5-38.2 43.2-58.4 62.5-30.6 29.6-70.7 53.6-108.2 73.9-41 22.1-83.5 39.7-129 49.4-23.4 5.8-57 12.5-68.7 13.2-2-.2-9 1.4-12.5 1.1-30 2.3-48.5 3.1-78.4 0z" fill="#3370FF"/><path d="M219.3 172.9a44.3 44.3 0 016.3 0c128.8 0 256.6 2.1 385.3 2.1.2 0 .4.1.6.2a303.5 303.5 0 0133.1 33.9c29 28.9 50.7 79 65.5 109.5 7.4 21 18.5 41.3 23.8 64.7v.4a281.6 281.6 0 00-38.3 15.6c-37.2 18.9-54.1 32.7-85 63.1-16.8 16.5-31.2 31.3-53.5 52.4-7 6.6-24.9 23.3-25.1 22.7-5.9-10.4-106-206.4-307.3-360.5" fill="#00D6B9"/></svg>
+        </span>
         飞书 Bot 配置
       </h3>
 
-      <div class="mb-6 p-4 rounded-lg" style="background:var(--accent-bg);border:1px solid var(--border-primary)">
-        <p class="text-xs font-medium mb-2" style="color:var(--text-muted)">配置步骤：</p>
-        <ol class="text-xs space-y-1 list-decimal list-inside" style="color:var(--text-muted)">
-          <li>在 <a href="https://open.feishu.cn/" target="_blank" style="color:var(--accent)" class="hover:underline">飞书开放平台</a> 创建企业自建应用</li>
+      <div class="callout callout-info mb-6">
+        <p class="font-bold mb-2">配置步骤：</p>
+        <ol class="space-y-1 list-decimal list-inside">
+          <li>在 <a href="https://open.feishu.cn/" target="_blank" style="color:var(--accent)" class="hover:underline font-semibold">飞书开放平台</a> 创建企业自建应用</li>
           <li>开启<b>机器人</b>能力</li>
           <li><b>权限管理</b> → 搜索并开启以下权限：
             <ul class="ml-6 mt-1 space-y-0.5 list-disc">
-              <li><code class="px-1 rounded" style="background:var(--bg-tertiary)">im:message</code> — 获取与发送消息</li>
-              <li><code class="px-1 rounded" style="background:var(--bg-tertiary)">im:message.receive_v1</code> — 接收消息事件</li>
-              <li><code class="px-1 rounded" style="background:var(--bg-tertiary)">auth:user_access_token:read</code> — 用户信息</li>
+              <li><code class="px-1.5 py-0.5 rounded-lg text-xs font-bold" style="background:var(--code-bg)">im:message</code> — 获取与发送消息</li>
+              <li><code class="px-1.5 py-0.5 rounded-lg text-xs font-bold" style="background:var(--code-bg)">im:message.receive_v1</code> — 接收消息事件</li>
+              <li><code class="px-1.5 py-0.5 rounded-lg text-xs font-bold" style="background:var(--code-bg)">auth:user_access_token:read</code> — 用户信息</li>
             </ul>
           </li>
-          <li><b>事件订阅</b> → 连接方式选择 <b>WebSocket</b> → 添加事件 <code class="px-1 rounded" style="background:var(--bg-tertiary)">im.message.receive_v1</code></li>
+          <li><b>事件订阅</b> → 连接方式选择 <b>WebSocket</b> → 添加事件 <code class="px-1.5 py-0.5 rounded-lg text-xs font-bold" style="background:var(--code-bg)">im.message.receive_v1</code></li>
           <li>发布应用（至少发布到企业内部），权限变更后需重新发布版本才生效</li>
           <li>验证凭据后，在飞书中找到 Bot 发送一条消息，系统自动获取 Open ID</li>
         </ol>
       </div>
 
-      <div class="mb-6 p-4 rounded-lg" :style="fsStatus.logged_in ? 'background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2)' : 'background:var(--bg-tertiary);border:1px solid var(--border-primary)'">
+      <div class="mb-6 p-4 rounded-2xl" :style="fsStatus.logged_in ? 'background:var(--success-light);border:1px solid rgba(157,182,122,0.3)' : 'background:var(--bg-surface-alt);border:1px solid var(--border-primary)'">
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-3">
-            <span class="w-3 h-3 rounded-full" :style="fsStatus.logged_in ? 'background:#10b981' : 'background:var(--text-muted)'"></span>
+            <span class="w-3 h-3 rounded-full breathe-dot relative" :style="fsStatus.logged_in ? 'background:var(--success)' : 'background:var(--text-faint)'"></span>
             <div>
-              <div class="text-sm font-medium" style="color:var(--text-primary)" x-text="fsStatus.logged_in ? '已配置' : '未配置'"></div>
+              <div class="text-sm font-bold" style="color:var(--text-ink)" x-text="fsStatus.logged_in ? '已配置' : '未配置'"></div>
               <div class="text-xs mt-0.5" style="color:var(--text-muted)" x-text="fsStatus.message || ''"></div>
             </div>
           </div>
           <div class="flex gap-2">
-            <button @click="refreshFsStatus()" class="px-3 py-1.5 text-xs rounded-lg transition" style="background:var(--bg-tertiary);color:var(--text-secondary);border:1px solid var(--border-primary)">刷新</button>
+            <button @click="refreshFsStatus()" class="btn-pill btn-ghost px-4 py-1.5 text-xs">刷新</button>
             <button x-show="fsStatus.logged_in" @click="fsLogout()"
-                    class="px-3 py-1.5 text-xs rounded-lg transition" style="background:rgba(239,68,68,0.1);color:#ef4444;border:1px solid rgba(239,68,68,0.2)">清除</button>
+                    class="btn-pill px-4 py-1.5 text-xs" style="background:var(--danger-light);color:var(--danger)">清除</button>
           </div>
         </div>
       </div>
 
       <div>
-        <h4 class="text-sm font-medium mb-3" style="color:var(--text-secondary)">应用凭据</h4>
+        <h4 class="text-sm font-bold mb-3" style="color:var(--text-body)">应用凭据</h4>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <div>
-            <label class="block text-xs mb-1" style="color:var(--text-muted)">App ID</label>
+            <label class="block text-xs font-semibold mb-1.5" style="color:var(--text-muted)">App ID</label>
             <input type="text" x-model="fsForm.app_id" placeholder="飞书 App ID"
-                   class="w-full rounded-lg px-3 py-2 text-sm" style="background:var(--input-bg);border:1px solid var(--input-border);color:var(--text-primary)">
+                   class="w-full rounded-xl px-4 py-2.5 text-sm">
           </div>
           <div>
-            <label class="block text-xs mb-1" style="color:var(--text-muted)">Client Secret</label>
+            <label class="block text-xs font-semibold mb-1.5" style="color:var(--text-muted)">Client Secret</label>
             <input type="password" x-model="fsForm.app_secret" placeholder="飞书 App Secret"
-                   class="w-full rounded-lg px-3 py-2 text-sm" style="background:var(--input-bg);border:1px solid var(--input-border);color:var(--text-primary)">
+                   class="w-full rounded-xl px-4 py-2.5 text-sm">
           </div>
         </div>
         <button @click="validateFs()" :disabled="fsWaitingOpenId"
-                class="btn-primary px-5 py-2 rounded-lg text-sm text-white font-medium disabled:opacity-50">
+                class="btn-pill btn-primary px-6 py-2.5 text-sm disabled:opacity-50">
           <span x-show="!fsWaitingOpenId">验证并保存</span>
           <span x-show="fsWaitingOpenId">等待获取 Open ID...</span>
         </button>
 
-        <div x-show="fsWaitingOpenId" class="mt-4 p-4 rounded-lg" style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2)">
+        <div x-show="fsWaitingOpenId" class="mt-4 callout callout-warn">
           <div class="flex items-start gap-2">
-            <svg class="animate-spin w-4 h-4 mt-0.5" style="color:#f59e0b" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" opacity="0.3"/><path fill="currentColor" d="M4 12a8 8 0 018-8v3a5 5 0 00-5 5H4z"/></svg>
-            <div class="text-xs" style="color:var(--text-secondary)">
-              <div class="font-medium mb-1">正在等待获取 Open ID...</div>
+            <svg class="animate-spin w-4 h-4 mt-0.5 flex-shrink-0" style="color:var(--warning)" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" opacity="0.3"/><path fill="currentColor" d="M4 12a8 8 0 018-8v3a5 5 0 00-5 5H4z"/></svg>
+            <div>
+              <div class="font-bold mb-1">正在等待获取 Open ID...</div>
               <div>请在飞书中找到你的 Bot 并发送一条消息（如"你好"），系统会自动捕获 Open ID。</div>
               <div class="mt-1" style="color:var(--text-muted)">超时时间 2 分钟。</div>
             </div>
@@ -831,72 +1006,74 @@
 
   <!-- ==================== 钉钉 Tab ==================== -->
   <div x-show="currentTab === 'dingtalk'" x-cloak>
-    <div class="card rounded-xl p-6 mb-6">
-      <h3 class="font-semibold mb-4 flex items-center gap-2" style="color:var(--text-primary)">
-        <span class="w-8 h-8 rounded-lg flex items-center justify-center"><svg viewBox="0 0 1024 1024" width="22" height="22"><path d="M512 79C272.9 79 79 272.9 79 512s193.9 433 433 433 433-193.9 433-433S751.1 79 512 79zm200 375c-.8 3.8-3.1 9.3-6.2 16h.1l-.3.6c-18.2 38.9-65.6 115.1-65.6 115.1l-.2-.5-13.9 24.1h66.8L565 779l29-115.4h-52.6l18.3-76.3c-14.8 3.6-32.3 8.4-53 15.1 0 0-28 16.4-80.6-31.5 0 0-35.5-31.3-14.9-39.1 8.7-3.3 42.5-7.6 69-11.1 36-4.8 58-7.4 58-7.4s-110.6 1.6-136.8-2.5c-26.2-4.1-59.5-47.9-66.6-86.4 0 0-11-21.1 23.6-11.1 34.5 10 177.5 39 177.5 39s-186-57-198.4-71c-12.4-13.8-36.4-75.9-33.3-114 0 0 1.3-9.5 11.1-6.9 0 0 137.5 62.8 231.5 97.2 94 34.4 175.8 51.9 165.2 96.4z" fill="#3AA2EB"/></svg></span>
+    <div class="card p-6 mb-6">
+      <h3 class="font-bold text-base mb-4 flex items-center gap-3" style="color:var(--text-ink)">
+        <span class="w-9 h-9 rounded-2xl flex items-center justify-center" style="background:var(--info-light)">
+          <svg viewBox="0 0 1024 1024" width="20" height="20"><path d="M512 79C272.9 79 79 272.9 79 512s193.9 433 433 433 433-193.9 433-433S751.1 79 512 79zm200 375c-.8 3.8-3.1 9.3-6.2 16h.1l-.3.6c-18.2 38.9-65.6 115.1-65.6 115.1l-.2-.5-13.9 24.1h66.8L565 779l29-115.4h-52.6l18.3-76.3c-14.8 3.6-32.3 8.4-53 15.1 0 0-28 16.4-80.6-31.5 0 0-35.5-31.3-14.9-39.1 8.7-3.3 42.5-7.6 69-11.1 36-4.8 58-7.4 58-7.4s-110.6 1.6-136.8-2.5c-26.2-4.1-59.5-47.9-66.6-86.4 0 0-11-21.1 23.6-11.1 34.5 10 177.5 39 177.5 39s-186-57-198.4-71c-12.4-13.8-36.4-75.9-33.3-114 0 0 1.3-9.5 11.1-6.9 0 0 137.5 62.8 231.5 97.2 94 34.4 175.8 51.9 165.2 96.4z" fill="#3AA2EB"/></svg>
+        </span>
         钉钉 Bot 配置
       </h3>
 
-      <div class="mb-6 p-4 rounded-lg" style="background:var(--accent-bg);border:1px solid var(--border-primary)">
-        <p class="text-xs font-medium mb-2" style="color:var(--text-muted)">配置步骤：</p>
-        <ol class="text-xs space-y-1 list-decimal list-inside" style="color:var(--text-muted)">
-          <li>在 <a href="https://open.dingtalk.com/" target="_blank" style="color:var(--accent)" class="hover:underline">钉钉开放平台</a> 创建应用</li>
+      <div class="callout callout-info mb-6">
+        <p class="font-bold mb-2">配置步骤：</p>
+        <ol class="space-y-1 list-decimal list-inside">
+          <li>在 <a href="https://open.dingtalk.com/" target="_blank" style="color:var(--accent)" class="hover:underline font-semibold">钉钉开放平台</a> 创建应用</li>
           <li>添加<b>机器人</b>能力，在「消息接收模式」中选择 <b>Stream 模式</b></li>
           <li><b>权限管理</b> → 搜索并开启以下权限：
             <ul class="ml-6 mt-1 space-y-0.5 list-disc">
-              <li><code class="px-1 rounded" style="background:var(--bg-tertiary)">qyapi_robot_sendmsg</code> — 发送消息</li>
-              <li><code class="px-1 rounded" style="background:var(--bg-tertiary)">Robot.SingleChat.ReadWrite</code> — 读写单聊消息（<b style="color:#f59e0b">必须开启，否则收不到用户回复</b>）</li>
+              <li><code class="px-1.5 py-0.5 rounded-lg text-xs font-bold" style="background:var(--code-bg)">qyapi_robot_sendmsg</code> — 发送消息</li>
+              <li><code class="px-1.5 py-0.5 rounded-lg text-xs font-bold" style="background:var(--code-bg)">Robot.SingleChat.ReadWrite</code> — 读写单聊消息（<b style="color:var(--warning)">必须开启，否则收不到用户回复</b>）</li>
             </ul>
           </li>
           <li>获取 Client ID 和 Client Secret（在应用凭证页面）</li>
           <li>发布应用</li>
           <li>验证凭据后，在钉钉中找到 Bot 发送一条消息，系统自动获取 User ID</li>
         </ol>
-        <p class="text-xs mt-2" style="color:var(--text-muted)">💡 机器人接收消息的能力内置于「机器人」能力中，无需在「事件订阅」中单独添加事件。</p>
+        <p class="mt-2 text-xs" style="color:var(--text-muted)">机器人接收消息的能力内置于「机器人」能力中，无需在「事件订阅」中单独添加事件。</p>
       </div>
 
-      <div class="mb-6 p-4 rounded-lg" :style="dtStatus.logged_in ? 'background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2)' : 'background:var(--bg-tertiary);border:1px solid var(--border-primary)'">
+      <div class="mb-6 p-4 rounded-2xl" :style="dtStatus.logged_in ? 'background:var(--success-light);border:1px solid rgba(157,182,122,0.3)' : 'background:var(--bg-surface-alt);border:1px solid var(--border-primary)'">
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-3">
-            <span class="w-3 h-3 rounded-full" :style="dtStatus.logged_in ? 'background:#10b981' : 'background:var(--text-muted)'"></span>
+            <span class="w-3 h-3 rounded-full breathe-dot relative" :style="dtStatus.logged_in ? 'background:var(--success)' : 'background:var(--text-faint)'"></span>
             <div>
-              <div class="text-sm font-medium" style="color:var(--text-primary)" x-text="dtStatus.logged_in ? '已配置' : '未配置'"></div>
+              <div class="text-sm font-bold" style="color:var(--text-ink)" x-text="dtStatus.logged_in ? '已配置' : '未配置'"></div>
               <div class="text-xs mt-0.5" style="color:var(--text-muted)" x-text="dtStatus.message || ''"></div>
             </div>
           </div>
           <div class="flex gap-2">
-            <button @click="refreshDtStatus()" class="px-3 py-1.5 text-xs rounded-lg transition" style="background:var(--bg-tertiary);color:var(--text-secondary);border:1px solid var(--border-primary)">刷新</button>
+            <button @click="refreshDtStatus()" class="btn-pill btn-ghost px-4 py-1.5 text-xs">刷新</button>
             <button x-show="dtStatus.logged_in" @click="dtLogout()"
-                    class="px-3 py-1.5 text-xs rounded-lg transition" style="background:rgba(239,68,68,0.1);color:#ef4444;border:1px solid rgba(239,68,68,0.2)">清除</button>
+                    class="btn-pill px-4 py-1.5 text-xs" style="background:var(--danger-light);color:var(--danger)">清除</button>
           </div>
         </div>
       </div>
 
       <div>
-        <h4 class="text-sm font-medium mb-3" style="color:var(--text-secondary)">应用凭据</h4>
+        <h4 class="text-sm font-bold mb-3" style="color:var(--text-body)">应用凭据</h4>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <div>
-            <label class="block text-xs mb-1" style="color:var(--text-muted)">Client ID</label>
+            <label class="block text-xs font-semibold mb-1.5" style="color:var(--text-muted)">Client ID</label>
             <input type="text" x-model="dtForm.client_id" placeholder="钉钉 Client ID"
-                   class="w-full rounded-lg px-3 py-2 text-sm" style="background:var(--input-bg);border:1px solid var(--input-border);color:var(--text-primary)">
+                   class="w-full rounded-xl px-4 py-2.5 text-sm">
           </div>
           <div>
-            <label class="block text-xs mb-1" style="color:var(--text-muted)">Client Secret</label>
+            <label class="block text-xs font-semibold mb-1.5" style="color:var(--text-muted)">Client Secret</label>
             <input type="password" x-model="dtForm.client_secret" placeholder="钉钉 Client Secret"
-                   class="w-full rounded-lg px-3 py-2 text-sm" style="background:var(--input-bg);border:1px solid var(--input-border);color:var(--text-primary)">
+                   class="w-full rounded-xl px-4 py-2.5 text-sm">
           </div>
         </div>
         <button @click="validateDt()" :disabled="dtWaitingUserId"
-                class="btn-primary px-5 py-2 rounded-lg text-sm text-white font-medium disabled:opacity-50">
+                class="btn-pill btn-primary px-6 py-2.5 text-sm disabled:opacity-50">
           <span x-show="!dtWaitingUserId">验证并保存</span>
           <span x-show="dtWaitingUserId">等待获取 User ID...</span>
         </button>
 
-        <div x-show="dtWaitingUserId" class="mt-4 p-4 rounded-lg" style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2)">
+        <div x-show="dtWaitingUserId" class="mt-4 callout callout-warn">
           <div class="flex items-start gap-2">
-            <svg class="animate-spin w-4 h-4 mt-0.5" style="color:#f59e0b" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" opacity="0.3"/><path fill="currentColor" d="M4 12a8 8 0 018-8v3a5 5 0 00-5 5H4z"/></svg>
-            <div class="text-xs" style="color:var(--text-secondary)">
-              <div class="font-medium mb-1">正在等待获取 User ID...</div>
+            <svg class="animate-spin w-4 h-4 mt-0.5 flex-shrink-0" style="color:var(--warning)" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" opacity="0.3"/><path fill="currentColor" d="M4 12a8 8 0 018-8v3a5 5 0 00-5 5H4z"/></svg>
+            <div>
+              <div class="font-bold mb-1">正在等待获取 User ID...</div>
               <div>请在钉钉中找到你的 Bot 并发送一条消息（如"你好"），系统会自动捕获 User ID。</div>
               <div class="mt-1" style="color:var(--text-muted)">超时时间 2 分钟。</div>
             </div>
@@ -908,79 +1085,77 @@
 
   <!-- ==================== Hooks Tab ==================== -->
   <div x-show="currentTab === 'hooks'" x-cloak>
-    <div class="card rounded-xl p-6 mb-6">
-      <h3 class="font-semibold mb-4" style="color:var(--text-primary)">Hook 管理</h3>
-      <p class="text-xs mb-4" style="color:var(--text-muted)">
+    <div class="card p-6 mb-6">
+      <h3 class="font-bold text-base mb-2" style="color:var(--text-ink)">Hook 管理</h3>
+      <p class="text-xs mb-5" style="color:var(--text-muted)">
         Claude Code 通过 hooks 机制在特定事件触发时调用通知脚本。安装后，Claude 的各种操作（完成、询问、编辑文件、执行命令等）都会自动发送通知。
       </p>
 
-      <!-- Hook Status -->
       <div class="space-y-3 mb-6">
         <template x-for="(installed, event) in hooksInfo.events" :key="event">
-          <div class="flex items-center justify-between p-3 rounded-lg" style="background:var(--bg-tertiary)">
+          <div class="flex items-center justify-between p-4 rounded-2xl" style="background:var(--bg-surface-alt)">
             <div class="flex items-center gap-3">
-              <span class="w-2 h-2 rounded-full" :style="installed ? 'background:#10b981' : 'background:var(--text-muted)'"></span>
+              <span class="w-2.5 h-2.5 rounded-full breathe-dot relative" :style="installed ? 'background:var(--success)' : 'background:var(--text-faint)'"></span>
               <div>
-                <div class="text-sm font-medium" style="color:var(--text-primary)" x-text="event"></div>
+                <div class="text-sm font-bold" style="color:var(--text-ink)" x-text="event"></div>
                 <div class="text-xs" style="color:var(--text-muted)" x-text="hookDescriptions[event] || ''"></div>
               </div>
             </div>
-            <span class="text-xs px-2 py-0.5 rounded-full"
-                  :style="installed ? 'background:rgba(16,185,129,0.12);color:#10b981' : 'background:var(--bg-secondary);color:var(--text-muted)'"
+            <span class="px-3 py-1 rounded-full text-xs font-bold"
+                  :style="installed ? 'background:var(--success-light);color:var(--success)' : 'background:var(--bg-surface);color:var(--text-muted)'"
                   x-text="installed ? '已安装' : '未安装'"></span>
           </div>
         </template>
       </div>
 
-      <!-- PreToolUse Matchers -->
       <div x-show="hooksInfo.tool_matchers?.length" class="mb-6">
-        <h4 class="text-sm font-medium mb-2" style="color:var(--text-secondary)">PreToolUse 监控的工具类型</h4>
+        <h4 class="text-sm font-bold mb-3" style="color:var(--text-body)">PreToolUse 监控的工具类型</h4>
         <div class="flex flex-wrap gap-2">
           <template x-for="m in hooksInfo.tool_matchers" :key="m">
-            <span class="px-2 py-1 text-xs rounded-md" style="background:var(--accent-bg);color:var(--accent);border:1px solid var(--border-primary)" x-text="m"></span>
+            <span class="px-3 py-1.5 text-xs rounded-full font-semibold" style="background:var(--accent-light);color:var(--accent);border:1px solid var(--border-primary)" x-text="m"></span>
           </template>
         </div>
       </div>
 
       <div class="flex gap-3">
-        <button @click="installHooks()" class="btn-primary px-5 py-2 rounded-lg text-sm text-white font-medium">
+        <button @click="installHooks()" class="btn-pill btn-primary px-6 py-2.5 text-sm">
           安装全部 Hooks
         </button>
-        <button @click="uninstallHooks()" class="btn-danger px-5 py-2 rounded-lg text-sm text-white font-medium">
+        <button @click="uninstallHooks()" class="btn-pill btn-danger px-6 py-2.5 text-sm">
           卸载全部 Hooks
         </button>
       </div>
     </div>
 
-    <div class="card rounded-xl p-6">
-      <h3 class="font-semibold mb-3" style="color:var(--text-primary)">settings.json 路径</h3>
-      <code class="text-xs px-3 py-1.5 rounded-lg inline-block" style="background:var(--accent-bg);color:var(--accent)">~/.claude/settings.json</code>
+    <div class="card p-6">
+      <h3 class="font-bold text-base mb-3" style="color:var(--text-ink)">settings.json 路径</h3>
+      <code class="text-xs px-4 py-2 rounded-xl inline-block font-bold" style="background:var(--accent-light);color:var(--accent)">~/.claude/settings.json</code>
     </div>
   </div>
 
   <!-- ==================== Logs Tab ==================== -->
   <div x-show="currentTab === 'logs'" x-cloak>
-    <div class="card rounded-xl p-6">
+    <div class="card p-6">
       <div class="flex items-center justify-between mb-4">
-        <h3 class="font-semibold" style="color:var(--text-primary)">运行日志</h3>
+        <h3 class="font-bold text-base" style="color:var(--text-ink)">运行日志</h3>
         <div class="flex gap-2">
-          <button @click="loadLogs()" class="px-3 py-1.5 text-xs rounded-lg transition" style="background:var(--bg-tertiary);color:var(--text-secondary);border:1px solid var(--border-primary)">刷新</button>
-          <button @click="clearLogs()" class="px-3 py-1.5 text-xs rounded-lg transition" style="background:rgba(239,68,68,0.1);color:#ef4444;border:1px solid rgba(239,68,68,0.2)">清除日志</button>
+          <button @click="loadLogs()" class="btn-pill btn-ghost px-4 py-1.5 text-xs">刷新</button>
+          <button @click="clearLogs()" class="btn-pill px-4 py-1.5 text-xs" style="background:var(--danger-light);color:var(--danger)">清除日志</button>
         </div>
       </div>
-      <div class="rounded-lg p-4 max-h-96 overflow-y-auto font-mono" style="background:var(--bg-tertiary);border:1px solid var(--border-primary)">
+      <div class="rounded-2xl p-5 max-h-96 overflow-y-auto" style="background:var(--bg-surface-alt);border:1px solid var(--border-primary)">
         <template x-if="logLines.length === 0">
           <div class="text-sm" style="color:var(--text-muted)">暂无日志</div>
         </template>
         <template x-for="(line, i) in logLines" :key="i">
-          <div class="log-line py-0.5 transition" style="color:var(--text-secondary)" x-text="line"></div>
+          <div class="log-line py-0.5 transition" style="color:var(--text-body)" x-text="line"></div>
         </template>
       </div>
     </div>
   </div>
 </main>
 
-<footer class="text-center text-xs py-6" style="color:var(--text-muted)">
+<footer class="text-center text-xs py-8 font-medium" style="color:var(--text-muted)">
   ClaudeBeep &middot; ilink Bot API &middot; <a href="https://github.com/Tencent/openclaw-weixin" class="hover:opacity-80" style="color:var(--accent)" target="_blank">openclaw-weixin</a> &middot; <a href="https://github.com/tencent-connect/openclaw-qqbot" class="hover:opacity-80" style="color:var(--accent)" target="_blank">openclaw-qqbot</a>
 </footer>
 
@@ -1009,7 +1184,6 @@ function app() {
     toasts: [],
     toastId: 0,
 
-    // Theme management
     get themeLabel() {
       return this.themeMode === 'light' ? '明亮模式' : this.themeMode === 'dark' ? '暗夜模式' : '跟随系统';
     },
@@ -1057,19 +1231,14 @@ function app() {
     _sseSource: null,
 
     async init() {
-      // Listen for system theme changes
       window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
         this.sysDark = e.matches;
       });
       await this.refreshAll();
       await this.loadInteraction();
-      // SSE 持久连接：连接断开 = 标签页关闭，服务端自动退出
       this._sseSource = new EventSource('/api/stream');
       this._sseSource.onmessage = () => {};
-      this._sseSource.onerror = () => {
-        // 连接断开后浏览器会自动重连，无需处理
-      };
-      // 页面关闭时主动关闭 SSE 连接
+      this._sseSource.onerror = () => {};
       window.addEventListener('beforeunload', () => {
         if (this._sseSource) {
           this._sseSource.close();
@@ -1108,7 +1277,6 @@ function app() {
 
     async refreshAll() {
       try {
-        // 并行加载，单个失败不影响其他
         const safe = async (fn) => { try { return await fn(); } catch (e) { return {}; } };
         const [cfg, st, wx, qq, tg, fs, dt, hk, lg, pm] = await Promise.all([
           safe(() => this.api('GET', '/api/config')),
@@ -1132,7 +1300,6 @@ function app() {
         this.hooksInfo = hk || { installed: false, events: {}, tool_matchers: [] };
         this.logLines = (lg && lg.lines) || [];
         this.permMode = (pm && pm.mode) || 'default';
-        // 读取提示音配置
         const wtSound = cfg.windows_toast?.sound || 'reminder';
         this.soundEnabled = wtSound !== 'silent';
         this.soundType = wtSound === 'silent' ? 'reminder' : wtSound;
@@ -1215,7 +1382,6 @@ function app() {
       } catch (e) { this.toast('error', '卸载失败', e.message); }
     },
 
-    // === WeChat ===
     _renderQR(url) {
       const el = document.getElementById('qrcode-canvas');
       if (!el || !url) return;
@@ -1228,7 +1394,7 @@ function app() {
         const svg = el.querySelector('svg');
         if (svg) { svg.style.width = '100%'; svg.style.height = '100%'; }
       } catch (e) {
-        el.innerHTML = '<span class="text-red-500 text-xs">QR 生成失败</span>';
+        el.innerHTML = '<span style="color:var(--danger);font-size:12px">QR 生成失败</span>';
       }
     },
 
@@ -1259,7 +1425,6 @@ function app() {
             clearInterval(this._qrPollTimer);
             this.toast('success', '微信登录成功', 'Token 已自动保存');
             await this.refreshAll();
-            // 扫码成功后始终显示提醒，等待用户发消息获取 to_user_id
             this.wxWaitingUserId = true;
             this._startWxUserIdPoll();
           }
@@ -1294,7 +1459,7 @@ function app() {
             return;
           }
         } catch (e) {}
-        if (attempts >= 60) { // 2 分钟超时
+        if (attempts >= 60) {
           this.wxWaitingUserId = false;
           clearInterval(this._wxPollTimer);
           this._wxPollTimer = null;
@@ -1318,7 +1483,6 @@ function app() {
 
     async saveWeixinConfig() {
       try {
-        // 只发送非空字段，避免覆盖 QR 登录保存的 token
         const payload = {};
         for (const [k, v] of Object.entries(this.wxForm)) {
           if (v !== '' && v !== null && v !== undefined) payload[k] = v;
@@ -1329,7 +1493,6 @@ function app() {
       } catch (e) { this.toast('error', '保存失败', e.message); }
     },
 
-    // === QQ ===
     async validateQQ() {
       if (!this.qqForm.app_id || !this.qqForm.app_secret) {
         this.toast('error', '请填写 AppID 和 AppSecret');
@@ -1340,7 +1503,6 @@ function app() {
         const r = await this.api('POST', '/api/qq/validate', this.qqForm);
         if (r.ok) {
           this.toast('success', '验证成功', '正在自动获取 OpenID...');
-          // 如果没有 target_id，开始轮询等待用户发消息
           if (!this.qqForm.target_id) {
             this.qqWaitingOpenId = true;
             this._startQQOpenIdPoll();
@@ -1369,7 +1531,7 @@ function app() {
             return;
           }
         } catch (e) {}
-        if (attempts >= 60) { // 2 分钟超时
+        if (attempts >= 60) {
           this.qqWaitingOpenId = false;
           clearInterval(this._qqPollTimer);
           this.toast('info', '获取超时', '请在 QQ 中给 bot 发送消息后手动填入 Target ID');
@@ -1398,14 +1560,12 @@ function app() {
       } catch (e) { this.toast('error', '清除失败', e.message); }
     },
 
-    // Telegram
     async validateTg() {
       try {
         const r = await this.api('POST', '/api/telegram/validate', { bot_token: this.tgForm.bot_token });
         if (r.ok) {
           this.tgForm.bot_token = '';
           this.toast('success', 'Telegram 验证成功', r.message);
-          // 检查是否已有 chat_id
           await this.refreshTgStatus();
           if (!this.tgStatus.chat_id) {
             this.tgWaitingChatId = true;
@@ -1427,7 +1587,6 @@ function app() {
           this.toast('success', 'Chat ID 已获取', this.tgStatus.chat_id);
         }
       }, 3000);
-      // 2 分钟超时
       setTimeout(() => {
         if (this._tgPollTimer) {
           clearInterval(this._tgPollTimer);
@@ -1447,7 +1606,6 @@ function app() {
       } catch (e) { this.toast('error', '清除失败', e.message); }
     },
 
-    // 飞书
     async validateFs() {
       try {
         const r = await this.api('POST', '/api/feishu/validate', { app_id: this.fsForm.app_id, app_secret: this.fsForm.app_secret });
@@ -1495,7 +1653,6 @@ function app() {
       } catch (e) { this.toast('error', '清除失败', e.message); }
     },
 
-    // 钉钉
     async validateDt() {
       try {
         const r = await this.api('POST', '/api/dingtalk/validate', { client_id: this.dtForm.client_id, client_secret: this.dtForm.client_secret });
@@ -1543,8 +1700,6 @@ function app() {
       } catch (e) { this.toast('error', '清除失败', e.message); }
     },
 
-    // === Logs ===
-    // === Interaction Mode ===
     async loadInteraction() {
       try {
         const resp = await fetch('/api/interaction');
@@ -1572,7 +1727,6 @@ function app() {
       } catch (e) { console.error('save interaction failed', e); }
     },
 
-    // === Logs ===
     async loadLogs() {
       try { this.logLines = (await this.api('GET', '/api/logs?lines=100')).lines || []; }
       catch (e) { this.toast('error', '加载日志失败', e.message); }
@@ -1589,7 +1743,6 @@ function app() {
 }
 </script>
 <script>
-// 安全回退：如果 Alpine.js 加载失败，移除 x-cloak 使内容可见
 setTimeout(() => {
   if (!window.Alpine) {
     document.querySelectorAll('[x-cloak]').forEach(el => el.removeAttribute('x-cloak'));

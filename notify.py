@@ -31,7 +31,7 @@ CONFIG_FILE = SCRIPT_DIR / "config.json"
 
 DEFAULT_CONFIG = {
     "app": {
-        "version": "1.0.6",
+        "version": "1.0.7",
         "auto_start": False,
         "auto_cleanup": True,
         "cleanup_interval_hours": 12,

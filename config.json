@@ -1,6 +1,6 @@
 {
   "app": {
-    "version": "1.0.5",
+    "version": "1.0.7",
     "auto_start": false,
     "auto_cleanup": true,
     "cleanup_interval_hours": 12,

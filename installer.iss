@@ -1,5 +1,5 @@
 #define MyAppName "ClaudeBeep"
-#define MyAppVersion "1.0.6"
+#define MyAppVersion "1.0.7"
 #define MyAppExeName "ClaudeBeep.exe"
 
 [Setup]
