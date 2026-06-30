@@ -1551,12 +1551,38 @@ function app() {
             return;
           }
           if (st.status === 'error' || st.status === 'timeout') {
+            // 兜底：检查 config 是否已写入（capture 成功但状态未同步）
+            try {
+              const cfg = await this.api('GET', '/api/config');
+              if (cfg.qq && cfg.qq.target_id) {
+                this.qqForm.target_id = cfg.qq.target_id;
+                this.qqWaitingOpenId = false;
+                clearInterval(this._qqPollTimer);
+                this.toast('success', '已自动获取 OpenID', cfg.qq.target_id);
+                await this.refreshAll();
+                return;
+              }
+            } catch (_) {}
             this.qqWaitingOpenId = false;
             clearInterval(this._qqPollTimer);
             this.toast('error', '获取失败', st.error || '请手动填入 Target ID');
             return;
           }
         } catch (e) {}
+        // 每 5 次（10秒）额外检查一次 config 兜底
+        if (attempts % 5 === 0) {
+          try {
+            const cfg = await this.api('GET', '/api/config');
+            if (cfg.qq && cfg.qq.target_id) {
+              this.qqForm.target_id = cfg.qq.target_id;
+              this.qqWaitingOpenId = false;
+              clearInterval(this._qqPollTimer);
+              this.toast('success', '已自动获取 OpenID', cfg.qq.target_id);
+              await this.refreshAll();
+              return;
+            }
+          } catch (_) {}
+        }
         if (attempts >= 90) {
           this.qqWaitingOpenId = false;
           clearInterval(this._qqPollTimer);
@@ -1623,12 +1649,34 @@ function app() {
             return;
           }
           if (st.status === 'error' || st.status === 'timeout') {
+            try {
+              const cfg = await this.api('GET', '/api/config');
+              if (cfg.telegram && cfg.telegram.chat_id) {
+                this.tgWaitingChatId = false;
+                clearInterval(this._tgPollTimer);
+                this.toast('success', 'Chat ID 已获取', cfg.telegram.chat_id);
+                await this.refreshTgStatus();
+                return;
+              }
+            } catch (_) {}
             this.tgWaitingChatId = false;
             clearInterval(this._tgPollTimer);
             this.toast('error', '获取失败', st.error || '请手动填入 Chat ID');
             return;
           }
         } catch (e) {}
+        if (attempts % 5 === 0) {
+          try {
+            const cfg = await this.api('GET', '/api/config');
+            if (cfg.telegram && cfg.telegram.chat_id) {
+              this.tgWaitingChatId = false;
+              clearInterval(this._tgPollTimer);
+              this.toast('success', 'Chat ID 已获取', cfg.telegram.chat_id);
+              await this.refreshTgStatus();
+              return;
+            }
+          } catch (_) {}
+        }
         if (attempts >= 90) {
           this.tgWaitingChatId = false;
           clearInterval(this._tgPollTimer);
@@ -1685,12 +1733,34 @@ function app() {
             return;
           }
           if (st.status === 'error' || st.status === 'timeout') {
+            try {
+              const cfg = await this.api('GET', '/api/config');
+              if (cfg.feishu && cfg.feishu.receive_id) {
+                this.fsWaitingOpenId = false;
+                clearInterval(this._fsPollTimer);
+                this.toast('success', 'Open ID 已获取', cfg.feishu.receive_id);
+                await this.refreshFsStatus();
+                return;
+              }
+            } catch (_) {}
             this.fsWaitingOpenId = false;
             clearInterval(this._fsPollTimer);
             this.toast('error', '获取失败', st.error || '请手动填入 Open ID');
             return;
           }
         } catch (e) {}
+        if (attempts % 5 === 0) {
+          try {
+            const cfg = await this.api('GET', '/api/config');
+            if (cfg.feishu && cfg.feishu.receive_id) {
+              this.fsWaitingOpenId = false;
+              clearInterval(this._fsPollTimer);
+              this.toast('success', 'Open ID 已获取', cfg.feishu.receive_id);
+              await this.refreshFsStatus();
+              return;
+            }
+          } catch (_) {}
+        }
         if (attempts >= 90) {
           this.fsWaitingOpenId = false;
           clearInterval(this._fsPollTimer);
@@ -1747,12 +1817,34 @@ function app() {
             return;
           }
           if (st.status === 'error' || st.status === 'timeout') {
+            try {
+              const cfg = await this.api('GET', '/api/config');
+              if (cfg.dingtalk && cfg.dingtalk.user_id) {
+                this.dtWaitingUserId = false;
+                clearInterval(this._dtPollTimer);
+                this.toast('success', 'User ID 已获取', cfg.dingtalk.user_id);
+                await this.refreshDtStatus();
+                return;
+              }
+            } catch (_) {}
             this.dtWaitingUserId = false;
             clearInterval(this._dtPollTimer);
             this.toast('error', '获取失败', st.error || '请手动填入 User ID');
             return;
           }
         } catch (e) {}
+        if (attempts % 5 === 0) {
+          try {
+            const cfg = await this.api('GET', '/api/config');
+            if (cfg.dingtalk && cfg.dingtalk.user_id) {
+              this.dtWaitingUserId = false;
+              clearInterval(this._dtPollTimer);
+              this.toast('success', 'User ID 已获取', cfg.dingtalk.user_id);
+              await this.refreshDtStatus();
+              return;
+            }
+          } catch (_) {}
+        }
         if (attempts >= 90) {
           this.dtWaitingUserId = false;
           clearInterval(this._dtPollTimer);

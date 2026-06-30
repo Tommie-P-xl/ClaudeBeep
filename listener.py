@@ -446,11 +446,22 @@ def _qq_listener(config: dict, request_id: str, pending: dict, stop_event: threa
                     try:
                         raw = await asyncio.wait_for(ws.recv(), timeout=2)
                         msg = json.loads(raw)
+                        op = msg.get("op")
+                        event_type = msg.get("t")
 
-                        if msg.get("op") == 0 and msg.get("t") == "C2C_MESSAGE_CREATE":
-                            content = msg.get("d", {}).get("content", "").strip()
-                            author = msg.get("d", {}).get("author", {})
+                        # 心跳响应
+                        if op == 1:
+                            await ws.send(json.dumps({"op": 1, "d": None}))
+                            last_heartbeat = time.time()
+                            continue
+
+                        if op == 0 and event_type:
+                            d = msg.get("d", {})
+                            author = d.get("author", {})
                             user_openid = author.get("user_openid", "")
+                            if not user_openid:
+                                user_openid = author.get("id", "")
+                            content = d.get("content", "").strip()
 
                             # 自动更新 target_id
                             if user_openid and not config.get("qq", {}).get("target_id"):
@@ -458,7 +469,7 @@ def _qq_listener(config: dict, request_id: str, pending: dict, stop_event: threa
                                 config["qq"]["target_id"] = f"qqbot:c2c:{user_openid}"
 
                             if content:
-                                _log(f"[qq] 收到消息: {content[:50]}")
+                                _log(f"[qq] 收到消息: {content[:50]} (event={event_type})")
                                 _process_message(content, "qq", request_id, pending, stop_event)
 
                     except asyncio.TimeoutError:
@@ -544,13 +555,32 @@ def start_qq_openid_capture(app_id: str, app_secret: str):
                         try:
                             raw = await asyncio.wait_for(ws.recv(), timeout=2)
                             msg = json.loads(raw)
+                            op = msg.get("op")
+                            event_type = msg.get("t")
+                            _log(f"[qq-capture] 收到事件 op={op} t={event_type}")
 
-                            if msg.get("op") == 0 and msg.get("t") == "C2C_MESSAGE_CREATE":
-                                user_openid = msg.get("d", {}).get("author", {}).get("user_openid", "")
+                            # 心跳
+                            if op == 1:
+                                await ws.send(json.dumps({"op": 1, "d": None}))
+                                last_heartbeat = time.time()
+                                continue
+
+                            # 处理所有消息事件
+                            if op == 0 and event_type:
+                                d = msg.get("d", {})
+                                author = d.get("author", {})
+                                user_openid = author.get("user_openid", "")
+
+                                # 也检查其他可能的字段
+                                if not user_openid:
+                                    user_openid = author.get("id", "")
+                                if not user_openid:
+                                    user_openid = d.get("user_openid", "")
+
                                 if user_openid:
                                     target_id = f"qqbot:c2c:{user_openid}"
                                     _update_config("qq", "target_id", target_id)
-                                    _log(f"[qq-capture] 捕获 OpenID: {user_openid}")
+                                    _log(f"[qq-capture] 捕获 OpenID: {user_openid} (event={event_type})")
                                     with _qq_capture_lock:
                                         _qq_capture_result = {"status": "done", "open_id": target_id, "error": None}
                                     return
