@@ -583,6 +583,221 @@ def get_qq_capture_status() -> dict:
         return dict(_qq_capture_result)
 
 
+# ── Telegram Chat ID 捕获（Web UI 设置用） ────────────────────
+
+_tg_capture_result = {"status": "idle", "chat_id": None, "error": None}
+_tg_capture_lock = threading.Lock()
+
+
+def start_tg_chatid_capture(bot_token: str):
+    """启动后台 Telegram 长轮询，捕获第一条消息的 Chat ID。"""
+    global _tg_capture_result
+    with _tg_capture_lock:
+        _tg_capture_result = {"status": "waiting", "chat_id": None, "error": None}
+
+    def _capture_thread():
+        global _tg_capture_result
+        import urllib.request
+        base_url = f"https://api.telegram.org/bot{bot_token}"
+        _log("[tg-capture] 长轮询启动")
+
+        try:
+            # 先跳过历史消息
+            offset = _get_telegram_latest_offset(base_url)
+            deadline = time.time() + 150
+
+            while time.time() < deadline:
+                try:
+                    url = f"{base_url}/getUpdates?timeout=10&offset={offset}&allowed_updates=[\"message\"]"
+                    req = urllib.request.Request(url, method="GET")
+                    resp = urllib.request.urlopen(req, timeout=15)
+                    data = json.loads(resp.read().decode("utf-8"))
+
+                    if data.get("ok"):
+                        for update in data.get("result", []):
+                            offset = update["update_id"] + 1
+                            chat_id = str(update.get("message", {}).get("chat", {}).get("id", ""))
+                            if chat_id:
+                                _update_config("telegram", "chat_id", chat_id)
+                                _log(f"[tg-capture] 捕获 Chat ID: {chat_id}")
+                                with _tg_capture_lock:
+                                    _tg_capture_result = {"status": "done", "chat_id": chat_id, "error": None}
+                                return
+                    else:
+                        time.sleep(2)
+                except Exception:
+                    if time.time() < deadline:
+                        time.sleep(2)
+
+            with _tg_capture_lock:
+                _tg_capture_result = {"status": "timeout", "chat_id": None, "error": "等待超时"}
+
+        except Exception as e:
+            _log(f"[tg-capture] 异常: {e}")
+            with _tg_capture_lock:
+                _tg_capture_result = {"status": "error", "chat_id": None, "error": str(e)}
+
+    threading.Thread(target=_capture_thread, daemon=True).start()
+
+
+def get_tg_capture_status() -> dict:
+    with _tg_capture_lock:
+        return dict(_tg_capture_result)
+
+
+# ── 飞书 Open ID 捕获（Web UI 设置用） ───────────────────────
+
+_fs_capture_result = {"status": "idle", "receive_id": None, "error": None}
+_fs_capture_lock = threading.Lock()
+
+
+def start_fs_openid_capture(app_id: str, app_secret: str):
+    """启动后台飞书 WebSocket，捕获第一条消息的 Open ID。"""
+    global _fs_capture_result
+    with _fs_capture_lock:
+        _fs_capture_result = {"status": "waiting", "receive_id": None, "error": None}
+
+    def _capture_thread():
+        global _fs_capture_result
+        try:
+            import lark_oapi as lark
+            from lark_oapi.ws import Client as WsClient
+        except ImportError:
+            with _fs_capture_lock:
+                _fs_capture_result = {"status": "error", "receive_id": None, "error": "lark-oapi 未安装"}
+            return
+
+        captured = threading.Event()
+
+        def on_message(data):
+            try:
+                sender = data.event.sender
+                open_id = sender.sender_id.open_id if sender and sender.sender_id else ""
+                if open_id:
+                    _update_config("feishu", "receive_id", open_id)
+                    _log(f"[fs-capture] 捕获 Open ID: {open_id}")
+                    with _fs_capture_lock:
+                        _fs_capture_result = {"status": "done", "receive_id": open_id, "error": None}
+                    captured.set()
+            except Exception as e:
+                _log(f"[fs-capture] 处理消息异常: {e}")
+
+        event_handler = (
+            lark.EventDispatcherHandler.builder("", "")
+            .register_p2_im_message_receive_v1(on_message)
+            .build()
+        )
+
+        client = WsClient(
+            app_id=app_id,
+            app_secret=app_secret,
+            event_handler=event_handler,
+            log_level=lark.LogLevel.WARNING,
+        )
+
+        # 超时看门狗
+        def _timeout_watchdog():
+            if not captured.wait(timeout=150):
+                with _fs_capture_lock:
+                    if _fs_capture_result["status"] == "waiting":
+                        _fs_capture_result = {"status": "timeout", "receive_id": None, "error": "等待超时"}
+                try:
+                    if hasattr(client, '_Client__ws_client') and client._Client__ws_client:
+                        client._Client__ws_client.close()
+                except Exception:
+                    pass
+
+        threading.Thread(target=_timeout_watchdog, daemon=True).start()
+
+        try:
+            _log("[fs-capture] WebSocket 连接中...")
+            client.start()
+        except Exception as e:
+            if not captured.is_set():
+                _log(f"[fs-capture] 异常: {e}")
+                with _fs_capture_lock:
+                    _fs_capture_result = {"status": "error", "receive_id": None, "error": str(e)}
+
+    threading.Thread(target=_capture_thread, daemon=True).start()
+
+
+def get_fs_capture_status() -> dict:
+    with _fs_capture_lock:
+        return dict(_fs_capture_result)
+
+
+# ── 钉钉 User ID 捕获（Web UI 设置用） ───────────────────────
+
+_dt_capture_result = {"status": "idle", "user_id": None, "error": None}
+_dt_capture_lock = threading.Lock()
+
+
+def start_dt_userid_capture(client_id: str, client_secret: str):
+    """启动后台钉钉 Stream，捕获第一条消息的 User ID。"""
+    global _dt_capture_result
+    with _dt_capture_lock:
+        _dt_capture_result = {"status": "waiting", "user_id": None, "error": None}
+
+    def _capture_thread():
+        global _dt_capture_result
+        try:
+            import dingtalk_stream
+            from dingtalk_stream import ChatbotHandler, Credential
+        except ImportError:
+            with _dt_capture_lock:
+                _dt_capture_result = {"status": "error", "user_id": None, "error": "dingtalk-stream 未安装"}
+            return
+
+        captured = threading.Event()
+        credential = Credential(client_id, client_secret)
+        stream_client = dingtalk_stream.DingTalkStreamClient(credential)
+
+        class CaptureHandler(ChatbotHandler):
+            def process(self, callback_message):
+                try:
+                    message = dingtalk_stream.ChatbotMessage.from_dict(callback_message.data)
+                    sender_id = message.sender_staff_id or message.sender_id or ""
+                    if sender_id:
+                        _update_config("dingtalk", "user_id", sender_id)
+                        _log(f"[dt-capture] 捕获 User ID: {sender_id}")
+                        with _dt_capture_lock:
+                            _dt_capture_result = {"status": "done", "user_id": sender_id, "error": None}
+                        captured.set()
+                except Exception as e:
+                    _log(f"[dt-capture] 处理消息异常: {e}")
+
+        stream_client.register_callback_handler(dingtalk_stream.ChatbotMessage.TOPIC, CaptureHandler())
+
+        # 超时看门狗
+        def _timeout_watchdog():
+            if not captured.wait(timeout=150):
+                with _dt_capture_lock:
+                    if _dt_capture_result["status"] == "waiting":
+                        _dt_capture_result = {"status": "timeout", "user_id": None, "error": "等待超时"}
+                try:
+                    stream_client.stop()
+                except Exception:
+                    pass
+
+        threading.Thread(target=_timeout_watchdog, daemon=True).start()
+
+        try:
+            _log("[dt-capture] Stream 连接中...")
+            stream_client.start_forever()
+        except Exception as e:
+            if not captured.is_set():
+                _log(f"[dt-capture] 异常: {e}")
+                with _dt_capture_lock:
+                    _dt_capture_result = {"status": "error", "user_id": None, "error": str(e)}
+
+    threading.Thread(target=_capture_thread, daemon=True).start()
+
+
+def get_dt_capture_status() -> dict:
+    with _dt_capture_lock:
+        return dict(_dt_capture_result)
+
+
 # ── 飞书临时 WebSocket ─────────────────────────────────────
 
 def _feishu_listener(config: dict, request_id: str, pending: dict, stop_event: threading.Event):

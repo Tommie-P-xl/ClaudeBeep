@@ -1591,35 +1591,50 @@ function app() {
         const r = await this.api('POST', '/api/telegram/validate', { bot_token: this.tgForm.bot_token });
         if (r.ok) {
           this.tgForm.bot_token = '';
-          this.toast('success', 'Telegram 验证成功', r.message);
+          this.toast('success', 'Telegram 验证成功', '正在启动 Chat ID 监听...');
           await this.refreshTgStatus();
           if (!this.tgStatus.chat_id) {
-            this.tgWaitingChatId = true;
-            this._startTgPoll();
+            await this._startTgCapture();
           }
         } else {
           this.toast('error', '验证失败', r.error);
         }
       } catch (e) { this.toast('error', '验证失败', e.message); }
     },
-    _startTgPoll() {
+    async _startTgCapture() {
+      try {
+        await this.api('POST', '/api/telegram/capture_chatid');
+      } catch (e) {
+        this.toast('error', '启动监听失败', e.message);
+        return;
+      }
+      this.tgWaitingChatId = true;
       if (this._tgPollTimer) clearInterval(this._tgPollTimer);
+      let attempts = 0;
       this._tgPollTimer = setInterval(async () => {
-        await this.refreshTgStatus();
-        if (this.tgStatus.chat_id) {
+        attempts++;
+        try {
+          const st = await this.api('GET', '/api/telegram/capture_status');
+          if (st.status === 'done' && st.chat_id) {
+            this.tgWaitingChatId = false;
+            clearInterval(this._tgPollTimer);
+            this.toast('success', 'Chat ID 已获取', st.chat_id);
+            await this.refreshTgStatus();
+            return;
+          }
+          if (st.status === 'error' || st.status === 'timeout') {
+            this.tgWaitingChatId = false;
+            clearInterval(this._tgPollTimer);
+            this.toast('error', '获取失败', st.error || '请手动填入 Chat ID');
+            return;
+          }
+        } catch (e) {}
+        if (attempts >= 90) {
           this.tgWaitingChatId = false;
           clearInterval(this._tgPollTimer);
-          this._tgPollTimer = null;
-          this.toast('success', 'Chat ID 已获取', this.tgStatus.chat_id);
+          this.toast('info', '获取超时', '请手动填入 Chat ID');
         }
-      }, 3000);
-      setTimeout(() => {
-        if (this._tgPollTimer) {
-          clearInterval(this._tgPollTimer);
-          this._tgPollTimer = null;
-          this.tgWaitingChatId = false;
-        }
-      }, 120000);
+      }, 2000);
     },
     async refreshTgStatus() {
       try { this.tgStatus = await this.api('GET', '/api/telegram/status'); } catch (e) {}
@@ -1638,35 +1653,50 @@ function app() {
         if (r.ok) {
           this.fsForm.app_id = '';
           this.fsForm.app_secret = '';
-          this.toast('success', '飞书验证成功', r.message);
+          this.toast('success', '飞书验证成功', '正在启动 Open ID 监听...');
           await this.refreshFsStatus();
           if (!this.fsStatus.receive_id) {
-            this.fsWaitingOpenId = true;
-            this._startFsPoll();
+            await this._startFsCapture();
           }
         } else {
           this.toast('error', '验证失败', r.error);
         }
       } catch (e) { this.toast('error', '验证失败', e.message); }
     },
-    _startFsPoll() {
+    async _startFsCapture() {
+      try {
+        await this.api('POST', '/api/feishu/capture_openid');
+      } catch (e) {
+        this.toast('error', '启动监听失败', e.message);
+        return;
+      }
+      this.fsWaitingOpenId = true;
       if (this._fsPollTimer) clearInterval(this._fsPollTimer);
+      let attempts = 0;
       this._fsPollTimer = setInterval(async () => {
-        await this.refreshFsStatus();
-        if (this.fsStatus.receive_id) {
+        attempts++;
+        try {
+          const st = await this.api('GET', '/api/feishu/capture_status');
+          if (st.status === 'done' && st.receive_id) {
+            this.fsWaitingOpenId = false;
+            clearInterval(this._fsPollTimer);
+            this.toast('success', 'Open ID 已获取', st.receive_id);
+            await this.refreshFsStatus();
+            return;
+          }
+          if (st.status === 'error' || st.status === 'timeout') {
+            this.fsWaitingOpenId = false;
+            clearInterval(this._fsPollTimer);
+            this.toast('error', '获取失败', st.error || '请手动填入 Open ID');
+            return;
+          }
+        } catch (e) {}
+        if (attempts >= 90) {
           this.fsWaitingOpenId = false;
           clearInterval(this._fsPollTimer);
-          this._fsPollTimer = null;
-          this.toast('success', 'Open ID 已获取', this.fsStatus.receive_id);
+          this.toast('info', '获取超时', '请手动填入 Open ID');
         }
-      }, 3000);
-      setTimeout(() => {
-        if (this._fsPollTimer) {
-          clearInterval(this._fsPollTimer);
-          this._fsPollTimer = null;
-          this.fsWaitingOpenId = false;
-        }
-      }, 120000);
+      }, 2000);
     },
     async refreshFsStatus() {
       try { this.fsStatus = await this.api('GET', '/api/feishu/status'); } catch (e) {}
@@ -1685,35 +1715,50 @@ function app() {
         if (r.ok) {
           this.dtForm.client_id = '';
           this.dtForm.client_secret = '';
-          this.toast('success', '钉钉验证成功', r.message);
+          this.toast('success', '钉钉验证成功', '正在启动 User ID 监听...');
           await this.refreshDtStatus();
           if (!this.dtStatus.user_id) {
-            this.dtWaitingUserId = true;
-            this._startDtPoll();
+            await this._startDtCapture();
           }
         } else {
           this.toast('error', '验证失败', r.error);
         }
       } catch (e) { this.toast('error', '验证失败', e.message); }
     },
-    _startDtPoll() {
+    async _startDtCapture() {
+      try {
+        await this.api('POST', '/api/dingtalk/capture_userid');
+      } catch (e) {
+        this.toast('error', '启动监听失败', e.message);
+        return;
+      }
+      this.dtWaitingUserId = true;
       if (this._dtPollTimer) clearInterval(this._dtPollTimer);
+      let attempts = 0;
       this._dtPollTimer = setInterval(async () => {
-        await this.refreshDtStatus();
-        if (this.dtStatus.user_id) {
+        attempts++;
+        try {
+          const st = await this.api('GET', '/api/dingtalk/capture_status');
+          if (st.status === 'done' && st.user_id) {
+            this.dtWaitingUserId = false;
+            clearInterval(this._dtPollTimer);
+            this.toast('success', 'User ID 已获取', st.user_id);
+            await this.refreshDtStatus();
+            return;
+          }
+          if (st.status === 'error' || st.status === 'timeout') {
+            this.dtWaitingUserId = false;
+            clearInterval(this._dtPollTimer);
+            this.toast('error', '获取失败', st.error || '请手动填入 User ID');
+            return;
+          }
+        } catch (e) {}
+        if (attempts >= 90) {
           this.dtWaitingUserId = false;
           clearInterval(this._dtPollTimer);
-          this._dtPollTimer = null;
-          this.toast('success', 'User ID 已获取', this.dtStatus.user_id);
+          this.toast('info', '获取超时', '请手动填入 User ID');
         }
-      }, 3000);
-      setTimeout(() => {
-        if (this._dtPollTimer) {
-          clearInterval(this._dtPollTimer);
-          this._dtPollTimer = null;
-          this.dtWaitingUserId = false;
-        }
-      }, 120000);
+      }, 2000);
     },
     async refreshDtStatus() {
       try { this.dtStatus = await this.api('GET', '/api/dingtalk/status'); } catch (e) {}

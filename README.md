@@ -1,4 +1,4 @@
-# ClaudeBeep v1.0.9
+# ClaudeBeep v1.1.0
 
 <p align="center">
   <img src="assets/icon.png" width="128" alt="ClaudeBeep Logo">
@@ -13,7 +13,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-v1.0.9-blue" alt="Version">
+  <img src="https://img.shields.io/badge/version-v1.1.0-blue" alt="Version">
   <img src="https://img.shields.io/badge/python-3.10+-green" alt="Python">
   <img src="https://img.shields.io/badge/platform-Windows-lightgrey" alt="Platform">
   <img src="https://img.shields.io/badge/license-MIT-brightgreen" alt="License">
@@ -170,8 +170,8 @@ This creates `dist/ClaudeBeep.exe` (single-file, windowed, UPX-compressed).
 Pushing a version tag triggers the GitHub Actions workflow:
 
 ```
-git tag v1.0.9
-git push origin v1.0.9
+git tag v1.1.0
+git push origin v1.1.0
 ```
 
 The workflow:

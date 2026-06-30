@@ -307,6 +307,22 @@ def create_app() -> Flask:
         save_config(cfg)
         return jsonify({"ok": True, "message": "Telegram 信息已清除"})
 
+    @app.route("/api/telegram/capture_chatid", methods=["POST"])
+    def telegram_capture_chatid():
+        from notify import load_config
+        from listener import start_tg_chatid_capture
+        cfg = load_config()
+        bot_token = cfg.get("telegram", {}).get("bot_token", "")
+        if not bot_token:
+            return jsonify({"ok": False, "error": "请先配置 Bot Token"}), 400
+        start_tg_chatid_capture(bot_token)
+        return jsonify({"ok": True, "message": "正在监听，发送消息给 Telegram Bot 即可自动捕获 Chat ID"})
+
+    @app.route("/api/telegram/capture_status", methods=["GET"])
+    def telegram_capture_status():
+        from listener import get_tg_capture_status
+        return jsonify(get_tg_capture_status())
+
     # --- 飞书配置 ---
     @app.route("/api/feishu/validate", methods=["POST"])
     def feishu_validate():
@@ -344,6 +360,23 @@ def create_app() -> Flask:
         save_config(cfg)
         return jsonify({"ok": True, "message": "飞书信息已清除"})
 
+    @app.route("/api/feishu/capture_openid", methods=["POST"])
+    def feishu_capture_openid():
+        from notify import load_config
+        from listener import start_fs_openid_capture
+        cfg = load_config()
+        app_id = cfg.get("feishu", {}).get("app_id", "")
+        app_secret = cfg.get("feishu", {}).get("app_secret", "")
+        if not app_id or not app_secret:
+            return jsonify({"ok": False, "error": "请先配置 App ID 和 App Secret"}), 400
+        start_fs_openid_capture(app_id, app_secret)
+        return jsonify({"ok": True, "message": "正在监听，发送消息给飞书 Bot 即可自动捕获 Open ID"})
+
+    @app.route("/api/feishu/capture_status", methods=["GET"])
+    def feishu_capture_status():
+        from listener import get_fs_capture_status
+        return jsonify(get_fs_capture_status())
+
     # --- 钉钉配置 ---
     @app.route("/api/dingtalk/validate", methods=["POST"])
     def dingtalk_validate():
@@ -380,6 +413,23 @@ def create_app() -> Flask:
         cfg["dingtalk"]["enabled"] = False
         save_config(cfg)
         return jsonify({"ok": True, "message": "钉钉信息已清除"})
+
+    @app.route("/api/dingtalk/capture_userid", methods=["POST"])
+    def dingtalk_capture_userid():
+        from notify import load_config
+        from listener import start_dt_userid_capture
+        cfg = load_config()
+        client_id = cfg.get("dingtalk", {}).get("client_id", "")
+        client_secret = cfg.get("dingtalk", {}).get("client_secret", "")
+        if not client_id or not client_secret:
+            return jsonify({"ok": False, "error": "请先配置 Client ID 和 Client Secret"}), 400
+        start_dt_userid_capture(client_id, client_secret)
+        return jsonify({"ok": True, "message": "正在监听，发送消息给钉钉 Bot 即可自动捕获 User ID"})
+
+    @app.route("/api/dingtalk/capture_status", methods=["GET"])
+    def dingtalk_capture_status():
+        from listener import get_dt_capture_status
+        return jsonify(get_dt_capture_status())
 
     # --- Hooks 管理 ---
     @app.route("/api/hooks", methods=["GET"])
