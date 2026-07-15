@@ -168,25 +168,22 @@ def _is_stale_context_error(ret: Any, errcode: Any, errmsg: Any) -> bool:
 
 def _load_config_file() -> dict:
     try:
-        cfg_file = SCRIPT_DIR / "config.json"
-        if cfg_file.exists():
-            return json.loads(cfg_file.read_text(encoding="utf-8"))
+        import config_store
+        return config_store.load_config(SCRIPT_DIR / "config.json")
     except Exception:
         pass
     return {}
 
 
 def _save_config_file(cfg: dict) -> None:
-    cfg_file = SCRIPT_DIR / "config.json"
-    tmp = cfg_file.with_suffix(".json.tmp")
-    tmp.write_text(json.dumps(cfg, ensure_ascii=False, indent=2), encoding="utf-8")
-    os.replace(tmp, cfg_file)
+    import config_store
+    config_store.save_config(cfg, SCRIPT_DIR / "config.json")
 
 
 def _update_config_field(key: str, value: Any) -> None:
     try:
         cfg = _load_config_file()
-        wx = cfg.setdefault("weixin", {})
+        wx = cfg.setdefault("channels", {}).setdefault("weixin", {})
         if wx.get(key) == value:
             return
         wx[key] = value
@@ -198,10 +195,12 @@ def _update_config_field(key: str, value: Any) -> None:
 def _mark_session_timeout() -> None:
     try:
         cfg = _load_config_file()
-        wx = cfg.setdefault("weixin", {})
-        wx["enabled"] = False
+        wx = cfg.setdefault("channels", {}).setdefault("weixin", {})
         wx["context_token"] = ""
         wx["session_expired"] = True
+        for integration in cfg.setdefault("integrations", {}).values():
+            if isinstance(integration, dict):
+                integration.setdefault("channels", {})["weixin"] = False
         _save_config_file(cfg)
     except Exception:
         pass
@@ -476,20 +475,21 @@ def _init_session_after_login(token: str, baseurl: str):
         ret = data.get("ret", data.get("errcode", 0))
         if ret == 0:
             _log("[weixin] getupdates 初始化成功")
-            from notify import load_config, save_config
-            cfg = load_config()
+            import config_store
+            cfg = config_store.load_config(SCRIPT_DIR / "config.json")
+            wx = cfg.setdefault("channels", {}).setdefault("weixin", {})
             for msg in data.get("msgs", []):
                 # 提取 context_token
                 ctx = msg.get("context_token", "")
-                if ctx and not cfg["weixin"].get("context_token"):
-                    cfg["weixin"]["context_token"] = ctx
+                if ctx and not wx.get("context_token"):
+                    wx["context_token"] = ctx
                     _log(f"[weixin] 获取到 context_token")
                 # 提取发送者 ID 作为 to_user_id
                 from_user = msg.get("from_user_id", "")
-                if from_user and not cfg["weixin"].get("to_user_id"):
-                    cfg["weixin"]["to_user_id"] = from_user
+                if from_user and not wx.get("to_user_id"):
+                    wx["to_user_id"] = from_user
                     _log(f"[weixin] 获取到 to_user_id: {from_user}")
-            save_config(cfg)
+            config_store.save_config(cfg, SCRIPT_DIR / "config.json")
         else:
             _log(f"[weixin] getupdates 初始化失败 ret={ret}")
     except Exception as e:
@@ -518,7 +518,7 @@ def get_keepalive_status() -> Dict[str, Any]:
 
 
 def _keepalive_loop() -> None:
-    sync_buf = _load_config_file().get("weixin", {}).get("sync_buf", "")
+    sync_buf = _load_config_file().get("channels", {}).get("weixin", {}).get("sync_buf", "")
     failure_count = 0
     _log("[weixin] 后台保活轮询启动")
     with _keepalive_lock:
@@ -527,11 +527,11 @@ def _keepalive_loop() -> None:
     try:
         while not _keepalive_stop.is_set():
             cfg = _load_config_file()
-            wx = cfg.get("weixin", {})
-            if not wx.get("enabled") or not wx.get("bot_token"):
-                # 即使微信未启用，也处理队列中的消息（可能刚启用）
-                time.sleep(5)
+            import config_store
+            if not config_store.should_run_weixin_keepalive(cfg):
+                time.sleep(10)
                 continue
+            wx = cfg.get("channels", {}).get("weixin", {})
 
             # 处理发送队列（在同一进程内发送，保持会话绑定一致）
             _process_send_queue(lambda t, m: _direct_send(wx, t, m))
@@ -597,7 +597,7 @@ def _keepalive_loop() -> None:
 def _persist_sync_buf(sync_buf: str) -> None:
     try:
         cfg = _load_config_file()
-        wx = cfg.setdefault("weixin", {})
+        wx = cfg.setdefault("channels", {}).setdefault("weixin", {})
         wx["sync_buf"] = sync_buf
         _save_config_file(cfg)
     except Exception:
@@ -629,6 +629,14 @@ def _extract_text(msg: dict) -> str:
 def _dispatch_interaction_reply(text: str) -> None:
     """由托盘常驻轮询直接接收用户回复，避免 hook 进程再开微信长轮询。"""
     try:
+        cfg = _load_config_file()
+        claude = cfg.get("integrations", {}).get("claude_code", {})
+        if not (
+            claude.get("enabled") is True
+            and claude.get("channels", {}).get("weixin") is True
+            and claude.get("interaction", {}).get("enabled") is True
+        ):
+            return
         import interaction
         label, reply = interaction._extract_reply_parts(text)
         pending = interaction.get_request_by_label(label) if label else interaction.get_latest_request()

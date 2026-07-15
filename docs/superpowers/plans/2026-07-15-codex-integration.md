@@ -29,6 +29,7 @@ reviewable, passing intermediate state.
 - Web UI and Windows tray must expose equivalent peer integration controls.
 - Set every application release version to exactly `1.5.0` and update `README.md` and `README_CN.md`.
 - Do not add a new persistent process or a second channel listener.
+- Do not run `git add` or `git commit`; keep implementation changes unstaged and uncommitted until the user explicitly requests otherwise.
 
 ## File Structure
 
@@ -227,12 +228,14 @@ python -m pytest tests/test_claude_regression.py -v
 
 Expected: all four characterization tests pass against v1.1.0 code without changing production code.
 
-- [ ] **Step 5: Commit the baseline**
+- [ ] **Step 5: Record the baseline checkpoint**
 
 ```powershell
-git add .gitignore requirements-dev.txt tests/conftest.py tests/test_claude_regression.py
-git commit -m "test: capture Claude Code notification behavior"
+git diff --check
+git status --short
 ```
+
+Expected: the diff check passes and all Task 1 changes remain unstaged.
 
 ---
 
@@ -466,12 +469,14 @@ python -m pytest tests/test_config_store.py tests/test_claude_regression.py -v
 
 Expected: all tests pass; no real `config.json` is modified.
 
-- [ ] **Step 6: Commit peer configuration**
+- [ ] **Step 6: Record the peer-configuration checkpoint**
 
 ```powershell
-git add config_store.py notify.py tests/test_config_store.py
-git commit -m "feat: add peer integration configuration"
+git diff --check
+git status --short
 ```
+
+Expected: the diff check passes and all Task 2 changes remain unstaged.
 
 ---
 
@@ -667,12 +672,14 @@ python -m pytest tests/test_notification_core.py tests/test_codex_adapter.py tes
 
 Expected: all tests pass and the Claude characterization tests remain green.
 
-- [ ] **Step 7: Commit the adapters**
+- [ ] **Step 7: Record the adapter checkpoint**
 
 ```powershell
-git add notification_core.py codex_adapter.py notify.py tests/test_notification_core.py tests/test_codex_adapter.py
-git commit -m "feat: add isolated Codex notification adapter"
+git diff --check
+git status --short
 ```
+
+Expected: the diff check passes and all Task 3 changes remain unstaged.
 
 ---
 
@@ -839,12 +846,14 @@ python -m pytest tests/test_hook_manager.py tests/test_codex_adapter.py tests/te
 
 Expected: all tests pass; fixture files are the only settings files changed.
 
-- [ ] **Step 6: Commit hook management**
+- [ ] **Step 6: Record the hook-management checkpoint**
 
 ```powershell
-git add hook_manager.py notify.py tray.py tests/test_hook_manager.py
-git commit -m "feat: manage Claude and Codex hooks independently"
+git diff --check
+git status --short
 ```
+
+Expected: the diff check passes and all Task 4 changes remain unstaged.
 
 ---
 
@@ -995,12 +1004,14 @@ python -m pytest -v
 
 Expected: all tests pass.
 
-- [ ] **Step 6: Commit the API**
+- [ ] **Step 6: Record the API checkpoint**
 
 ```powershell
-git add app.py tests/test_app_integrations.py
-git commit -m "feat: expose peer integration APIs"
+git diff --check
+git status --short
 ```
+
+Expected: the diff check passes and all Task 5 changes remain unstaged.
 
 ---
 
@@ -1107,12 +1118,14 @@ overflow, the longest event label fits, no controls overlap, and browser console
 contains no errors. Exercise one event toggle and one channel toggle for each
 platform, then restore fixture/default state.
 
-- [ ] **Step 6: Commit the Web UI**
+- [ ] **Step 6: Record the Web UI checkpoint**
 
 ```powershell
-git add static/index.html tests/test_app_integrations.py
-git commit -m "feat: add peer Claude and Codex dashboard"
+git diff --check
+git status --short
 ```
+
+Expected: the diff check passes and all Task 6 changes remain unstaged.
 
 ---
 
@@ -1219,12 +1232,14 @@ Expected automated result: all tests pass. Manual result: notification and hook
 menus contain separate Claude Code and Codex submenus; toggling one platform
 does not change the other's checkmarks; menu dismissal and dark mode still work.
 
-- [ ] **Step 7: Commit tray management**
+- [ ] **Step 7: Record the tray-management checkpoint**
 
 ```powershell
-git add tray_menu.py tray.py tests/test_tray_menu.py
-git commit -m "feat: manage peer integrations from the tray"
+git diff --check
+git status --short
 ```
+
+Expected: the diff check passes and all Task 7 changes remain unstaged.
 
 ---
 
@@ -1315,12 +1330,14 @@ python -m pytest -v
 Expected: both runs pass, demonstrating tests do not leak global module or file
 state between runs.
 
-- [ ] **Step 5: Commit isolation coverage**
+- [ ] **Step 5: Record the runtime-isolation checkpoint**
 
 ```powershell
-git add tests/test_runtime_isolation.py tests/test_claude_regression.py tests/test_codex_adapter.py tests/test_hook_manager.py notify.py codex_adapter.py notification_core.py
-git commit -m "test: verify integration runtime isolation"
+git diff --check
+git status --short
 ```
+
+Expected: the diff check passes and all Task 8 changes remain unstaged.
 
 ---
 
@@ -1428,12 +1445,16 @@ tray platform menus, open the Web UI, install one Claude event and one Codex
 event, verify Codex displays the `/hooks` trust prompt,
 then uninstall both and confirm unrelated fixture hooks remain.
 
-- [ ] **Step 8: Commit the release update**
+- [ ] **Step 8: Record the release checkpoint**
 
 ```powershell
-git add config_store.py notify.py tray.py installer.iss README.md README_CN.md tests/test_runtime_isolation.py
-git commit -m "release: prepare ClaudeBeep 1.5.0"
+git diff --check
+git status --short
+git diff --cached --quiet
 ```
+
+Expected: the diff check passes, the index is empty, and all release changes
+remain unstaged.
 
 - [ ] **Step 9: Perform final repository review**
 
@@ -1441,10 +1462,10 @@ Run:
 
 ```powershell
 git status --short
-git log -10 --oneline
+git diff --cached --quiet
 python -m pytest -q
 ```
 
-Expected: only intentionally untracked build outputs ignored by `.gitignore`,
-the nine task commits appear in order, and the final test summary reports all
+Expected: all intended source and documentation changes are visible in the
+working tree, the index remains empty, and the final test summary reports all
 tests passed.

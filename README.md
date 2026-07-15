@@ -1,11 +1,11 @@
-# ClaudeBeep v1.1.0
+# ClaudeBeep v1.5.0
 
 <p align="center">
   <img src="assets/icon.png" width="128" alt="ClaudeBeep Logo">
 </p>
 
 <p align="center">
-  <strong>Windows system tray app for Claude Code multi-channel notifications and interactive approval replies</strong>
+  <strong>Windows system tray notifications for Claude Code and Codex</strong>
 </p>
 
 <p align="center">
@@ -13,7 +13,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-v1.1.0-blue" alt="Version">
+  <img src="https://img.shields.io/badge/version-v1.5.0-blue" alt="Version">
   <img src="https://img.shields.io/badge/python-3.10+-green" alt="Python">
   <img src="https://img.shields.io/badge/platform-Windows-lightgrey" alt="Platform">
   <img src="https://img.shields.io/badge/license-MIT-brightgreen" alt="License">
@@ -21,15 +21,14 @@
 
 ---
 
-ClaudeBeep is a Windows system tray application that brings multi-channel notifications and interactive approval replies to [Claude Code](https://claude.ai/code). It packages the original Python hook workflow as a single installable desktop application — install once, manage everything from the system tray, and open the full Web UI only when detailed configuration is needed.
+ClaudeBeep is a Windows system tray application that treats Claude Code and Codex as peer integrations. Each platform has its own enable switch, hook events, and delivery-channel selections, while both reuse one set of channel credentials. Install only the platform you use: an uninstalled integration adds no hook or runtime overhead.
 
 ## Features
 
 ### System Tray
 
 - **Open Dashboard** — launches the Web UI for detailed channel configuration, QR login, and log viewing.
-- **Notification Sources** — expandable submenu. Configured sources show a checkmark when enabled; unconfigured sources are greyed out and cannot be toggled.
-- **Install / Uninstall All Hooks** — registers or removes Claude Code hook entries in `~/.claude/settings.json`.
+- **Peer platform menus** — Claude Code and Codex each expose independent platform and channel controls in the tray. Unconfigured channels are greyed out.
 - **Start with Windows** — toggles per-user auto-start via the Windows registry (`HKCU\Software\Microsoft\Windows\CurrentVersion\Run`).
 - **Check for Updates** — queries GitHub Releases for the latest version; if newer, downloads and replaces the exe in-place via a batch script with retry logic (no uninstall required). Falls back to opening the download page if auto-update fails.
 - **System Dark Mode** — automatically detects the Windows system theme and applies dark mode styling to the tray menu.
@@ -38,6 +37,14 @@ ClaudeBeep is a Windows system tray application that brings multi-channel notifi
 - **High-DPI Awareness** — Application manifest declares Per-Monitor V2 DPI awareness, fixing blurry tray menu text on high-DPI screens.
 - **SVG Icons** — Dashboard and configuration pages use inline SVG vector icons for crisp rendering at any scale.
 - **Quit** — stops all background services and exits.
+
+### Peer Integrations
+
+- **Claude Code** — completion, permission, and elicitation events keep the existing interactive workflow. Approval choices and free-form answers can still arrive from the terminal or a configured remote channel.
+- **Codex** — completion and permission/attention events produce outbound notifications, but approvals and answers remain inside Codex. After installing Codex hooks, run `/hooks` in Codex and review the trust prompt before accepting the configuration.
+- **Independent controls** — the Web UI and tray expose separate platform enable switches, event selections, and delivery-channel selections for Claude Code and Codex.
+- **Shared delivery** — channel credentials are configured once and reused by both integrations. When either enabled platform uses WeChat, the tray maintains one shared keepalive rather than one connection per platform.
+- **Zero unused-platform overhead** — a platform whose hooks are not installed does not start an adapter or add work to that platform.
 
 ### Notification Channels
 
@@ -56,7 +63,7 @@ When Claude Code asks a question (PermissionRequest / Elicitation), ClaudeBeep s
 - The terminal (direct keyboard input)
 - Any remote channel (WeChat, QQ, Telegram, Feishu, DingTalk)
 
-The first reply wins. Responses are written atomically via temp-file rename to prevent race conditions.
+The first reply wins. Responses are written atomically via temp-file rename to prevent race conditions. Codex permission notifications are informational: approval and answer input stays in Codex.
 
 ### Safety & Reliability
 
@@ -68,38 +75,26 @@ The first reply wins. Responses are written atomically via temp-file rename to p
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────┐
-│                   Claude Code                        │
-│  hooks → notify.py --type stop|ask --from-stdin      │
-└──────────────────────┬──────────────────────────────┘
-                       │ (subprocess)
-                       ▼
-┌─────────────────────────────────────────────────────┐
-│              notify.py (hook entry point)             │
-│  • Reads stdin context                               │
-│  • Filters auto-approved events                      │
-│  • Creates pending request (interaction.py)          │
-│  • Sends notification to all enabled channels        │
-│  • Waits for response (terminal + remote listeners)  │
-│  • Outputs hook response JSON to stdout              │
-└──────────────────────┬──────────────────────────────┘
-                       │
-          ┌────────────┼────────────┐
-          ▼            ▼            ▼
-   ┌──────────┐ ┌──────────┐ ┌──────────┐
-   │ WeChat   │ │ QQ/      │ │ Windows  │
-   │ (queue)  │ │ TG/...   │ │ Toast    │
-   └────┬─────┘ └──────────┘ └──────────┘
-        │ IPC (file queue)
-        ▼
-┌─────────────────────────────────────────────────────┐
-│              tray.py (system tray process)            │
-│  • WeChat keepalive loop (getupdates long-poll)      │
-│  • Send queue processor (same-process HTTP)          │
-│  • Heartbeat writer                                  │
-│  • Periodic cleanup                                  │
-│  • Flask Web UI launcher                             │
-└─────────────────────────────────────────────────────┘
+┌────────────────────────┐     ┌────────────────────────┐
+│ Claude Code            │     │ Codex                  │
+│ ~/.claude/settings.json│     │ ~/.codex/hooks.json    │
+└───────────┬────────────┘     └───────────┬────────────┘
+            ▼                              ▼
+┌────────────────────────┐     ┌────────────────────────┐
+│ Claude adapter         │     │ Codex adapter          │
+│ interactive replies    │     │ notify only            │
+└───────────┬────────────┘     └───────────┬────────────┘
+            └──────────────┬───────────────┘
+                           ▼
+                ┌─────────────────────┐
+                │ notification_core   │
+                │ delivery boundary   │
+                └──────────┬──────────┘
+                           ▼
+      Windows Toast / WeChat / QQ / Telegram / Feishu / DingTalk
+
+The adapters are isolated and converge only at delivery. Channel credentials,
+the tray-owned WeChat keepalive, and delivery implementations are shared.
 ```
 
 ### WeChat iLink Protocol — Deep Dive
@@ -143,8 +138,12 @@ The installer:
 ## Development
 
 ```powershell
-# Install dependencies
+# Install runtime and development dependencies
 pip install -r requirements.txt
+pip install -r requirements-dev.txt
+
+# Run the complete test suite
+python -m pytest -v
 
 # Run the tray application
 python tray.py
@@ -170,8 +169,8 @@ This creates `dist/ClaudeBeep.exe` (single-file, windowed, UPX-compressed).
 Pushing a version tag triggers the GitHub Actions workflow:
 
 ```
-git tag v1.1.0
-git push origin v1.1.0
+git tag v1.5.0
+git push origin v1.5.0
 ```
 
 The workflow:
@@ -187,29 +186,33 @@ The workflow:
 ```json
 {
   "app": {
-    "version": "1.0.3",
+    "version": "1.5.0",
     "auto_cleanup": true,
     "cleanup_interval_hours": 12,
     "update_repo": "Tommie-P-xl/ClaudeBeep"
   },
-  "windows_toast": { "enabled": true, "duration_ms": 5000 },
-  "weixin": {
-    "enabled": false,
-    "bot_token": "",
-    "baseurl": "https://ilinkai.weixin.qq.com",
-    "to_user_id": "",
-    "context_token": "",
-    "sync_buf": ""
+  "channels": {
+    "windows_toast": { "duration_ms": 5000, "sound": "reminder" },
+    "weixin": { "bot_token": "", "baseurl": "https://ilinkai.weixin.qq.com" },
+    "telegram": { "bot_token": "", "chat_id": "" }
   },
-  "qq": { "enabled": false, "app_id": "", "app_secret": "", "target_id": "" },
-  "telegram": { "enabled": false, "bot_token": "", "chat_id": "" },
-  "feishu": { "enabled": false, "app_id": "", "app_secret": "", "receive_id": "" },
-  "dingtalk": { "enabled": false, "client_id": "", "client_secret": "", "user_id": "" },
-  "interaction": { "enabled": true, "timeout_seconds": 0, "show_in_terminal": true }
+  "integrations": {
+    "claude_code": {
+      "enabled": true,
+      "events": { "Stop": true, "Elicitation": true, "PermissionRequest": true },
+      "channels": { "windows_toast": true, "weixin": false, "telegram": true },
+      "interaction": { "enabled": true, "timeout_seconds": 0, "show_in_terminal": true }
+    },
+    "codex": {
+      "enabled": false,
+      "events": { "Stop": true, "PermissionRequest": true },
+      "channels": { "windows_toast": true, "weixin": false, "telegram": false }
+    }
+  }
 }
 ```
 
-Sensitive fields (`bot_token`, `app_secret`, etc.) are masked in the API responses.
+The shortened example omits unchanged channel fields. Sensitive fields (`bot_token`, `app_secret`, etc.) are masked in API responses.
 
 ## Privacy
 

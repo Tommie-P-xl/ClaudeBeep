@@ -14,12 +14,28 @@ python -m PyInstaller `
   --name ClaudeBeep `
   --icon assets/icon.ico `
   --manifest ClaudeBeep.manifest `
+  --version-file version_info.txt `
   --add-data "static;static" `
   --add-data "assets;assets" `
   --hidden-import websockets `
   --hidden-import lark_oapi `
   --hidden-import lark_oapi.ws `
   --hidden-import dingtalk_stream `
+  --hidden-import winotify `
+  --hidden-import channels `
+  --hidden-import channels.windows_toast `
+  --hidden-import channels.weixin `
+  --hidden-import channels.qq `
+  --hidden-import channels.telegram `
+  --hidden-import channels.feishu `
+  --hidden-import channels.dingtalk `
+  --hidden-import channels.text `
+  --hidden-import channels.base `
+  --hidden-import config_store `
+  --hidden-import notification_core `
+  --hidden-import codex_adapter `
+  --hidden-import hook_manager `
+  --hidden-import tray_menu `
   tray.py
 
 Write-Host "Built dist\ClaudeBeep.exe"

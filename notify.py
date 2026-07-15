@@ -23,64 +23,15 @@ SCRIPT_DIR = Path(sys.executable).resolve().parent if getattr(sys, "frozen", Fal
 sys.path.insert(0, str(SCRIPT_DIR))
 
 from channels.text import sanitize_data, sanitize_text
+from config_store import DEFAULT_CONFIG, CONFIG_FILE, migrate_config
+from config_store import load_config as _load_config
+from config_store import save_config as _save_config
+from notification_core import NotificationEvent, collect_channels as _collect_channels
+from notification_core import send_event
+import hook_manager
 
 # Channel imports are deferred to collect_channels() to speed up hook cold-start.
 # Only the text utilities are needed at module level for sanitize_text/sanitize_data.
-
-CONFIG_FILE = SCRIPT_DIR / "config.json"
-
-DEFAULT_CONFIG = {
-    "app": {
-        "version": "1.1.0",
-        "auto_start": False,
-        "auto_cleanup": True,
-        "cleanup_interval_hours": 12,
-        "update_repo": "Tommie-P-xl/ClaudeBeep",
-    },
-    "windows_toast": {
-        "enabled": True,
-        "duration_ms": 5000,
-    },
-    "weixin": {
-        "enabled": False,
-        "bot_token": "",
-        "baseurl": "https://ilinkai.weixin.qq.com",
-        "ilink_bot_id": "",
-        "ilink_user_id": "",
-        "to_user_id": "",
-        "context_token": "",
-        "sync_buf": "",
-        "session_expired": False,
-    },
-    "qq": {
-        "enabled": False,
-        "app_id": "",
-        "app_secret": "",
-        "target_id": "",
-    },
-    "telegram": {
-        "enabled": False,
-        "bot_token": "",
-        "chat_id": "",
-    },
-    "feishu": {
-        "enabled": False,
-        "app_id": "",
-        "app_secret": "",
-        "receive_id": "",
-    },
-    "dingtalk": {
-        "enabled": False,
-        "client_id": "",
-        "client_secret": "",
-        "user_id": "",
-    },
-    "interaction": {
-        "enabled": True,
-        "timeout_seconds": 0,
-        "show_in_terminal": True,
-    },
-}
 
 CLAUDECODE_SETTINGS = Path.home() / ".claude" / "settings.json"
 LOG_FILE = SCRIPT_DIR / "notify.log"
@@ -96,16 +47,6 @@ NOTIFY_HOOK_EVENTS = [
 ]
 
 
-def _find_python_exe() -> str | None:
-    """查找可用的 Python 解释器路径，找不到返回 None。"""
-    import shutil
-    for name in ("python", "python3"):
-        path = shutil.which(name)
-        if path:
-            return path
-    return None
-
-
 def _hook_bat_path() -> str:
     """返回 notify_hook.bat 的路径（Windows）或 notify.py 的路径（其他平台）"""
     if getattr(sys, "frozen", False):
@@ -117,25 +58,8 @@ def _hook_bat_path() -> str:
 
 
 def _get_hook_base_cmd() -> str:
-    """生成 hook 基础命令（不含 --type 等参数）。
-
-    当从 frozen EXE 运行时，优先使用 Python 直接调用 notify.py（~200ms），
-    跳过 PyInstaller --onefile 的解压开销（~3-5s）。找不到 Python 则回退到 EXE。
-    """
-    if sys.platform == "win32":
-        if getattr(sys, "frozen", False):
-            py = _find_python_exe()
-            if py:
-                script = SCRIPT_DIR / "notify.py"
-                if script.exists():
-                    return f'"{py}" "{script}"'
-            return f'"{Path(sys.executable).resolve()}"'
-        bat = SCRIPT_DIR / "notify_hook.bat"
-        if bat.exists():
-            return f'"{str(bat).replace(chr(47), chr(92))}"'
-        py = _find_python_exe()
-        return f'"{py}" "{SCRIPT_DIR / "notify.py"}"' if py else f'"{SCRIPT_DIR / "notify.py"}"'
-    return f"{PYTHON_EXE} {(SCRIPT_DIR / 'notify.py').as_posix()}"
+    """Compatibility wrapper for the centralized hook command discovery."""
+    return hook_manager._get_hook_base_cmd()
 
 
 def hook_command(notify_type: str = "stop", extra_msg: str = "") -> str:
@@ -178,166 +102,33 @@ def log(msg: str) -> None:
 
 
 def load_config() -> dict:
-    """加载配置文件"""
-    if CONFIG_FILE.exists():
-        try:
-            with open(CONFIG_FILE, "r", encoding="utf-8") as f:
-                cfg = json.load(f)
-            for key, val in DEFAULT_CONFIG.items():
-                if key not in cfg:
-                    cfg[key] = val
-                elif isinstance(val, dict):
-                    for k, v in val.items():
-                        cfg[key].setdefault(k, v)
-            return cfg
-        except (json.JSONDecodeError, IOError) as e:
-            print(f"[WARN] 配置文件读取失败，使用默认配置: {e}")
-    save_config(DEFAULT_CONFIG)
-    return DEFAULT_CONFIG.copy()
+    return _load_config()
 
 
 def save_config(config: dict) -> None:
-    """保存配置文件"""
-    CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
-    with open(CONFIG_FILE, "w", encoding="utf-8") as f:
-        json.dump(config, f, ensure_ascii=False, indent=2)
+    _save_config(config)
 
 
 def collect_channels(config: dict):
-    """收集所有已注册的通知渠道（延迟导入，加速 hook 冷启动）"""
-    from channels.windows_toast import WindowsToastChannel
-    from channels.weixin import WeixinChannel
-    from channels.qq import QQBotChannel
-    from channels.telegram import TelegramChannel
-    from channels.feishu import FeishuChannel
-    from channels.dingtalk import DingTalkChannel
-    return [
-        WindowsToastChannel(config),
-        WeixinChannel(config),
-        QQBotChannel(config),
-        TelegramChannel(config),
-        FeishuChannel(config),
-        DingTalkChannel(config),
-    ]
-
-
-def _clean_notify_hooks(hooks: dict, event: str) -> int:
-    """清理指定事件中所有 notify 相关的 hook 条目，返回删除数量"""
-    entries = hooks.get(event, [])
-    new_entries = []
-    removed = 0
-    for entry in entries:
-        cmds = _extract_commands(entry)
-        if any(("notify" in c.lower() or "claudebeep" in c.lower()) for c in cmds):
-            removed += 1
-            continue
-        new_entries.append(entry)
-    if new_entries:
-        hooks[event] = new_entries
-    elif event in hooks:
-        del hooks[event]
-    return removed
-
-
-def _extract_commands(entry: dict) -> list:
-    """从 hook 条目中提取所有命令字符串"""
-    if "hooks" in entry and isinstance(entry["hooks"], list):
-        return [h.get("command", "") for h in entry["hooks"] if h.get("type") == "command"]
-    if "command" in entry:
-        return [entry["command"]]
-    return []
+    """收集 Claude Code 通知渠道。"""
+    return _collect_channels(config, "claude_code")
 
 
 def install_hooks() -> bool:
-    """在 Claude Code 用户级 settings.json 中安装所有通知 hooks"""
-    settings_path = CLAUDECODE_SETTINGS
+    """Install Claude Code hooks through the ownership-safe manager."""
+    config = load_config()
 
-    if settings_path.exists():
-        try:
-            with open(settings_path, "r", encoding="utf-8") as f:
-                settings = json.load(f)
-        except (json.JSONDecodeError, IOError):
-            settings = {}
+    integration = config.get("integrations", {}).get("claude_code", {})
+    events = [name for name, enabled in integration.get("events", {}).items() if enabled]
+    if integration.get("enabled"):
+        hook_manager.sync_hooks("claude_code", events)
     else:
-        settings = {}
-        settings_path.parent.mkdir(parents=True, exist_ok=True)
-
-    hooks = settings.setdefault("hooks", {})
-
-    # 先清理旧的 notify.py hooks（包括旧版可能注册的 PreToolUse/Notification hook）
-    all_events_to_clean = NOTIFY_HOOK_EVENTS + ["PreToolUse", "Notification"]
-    for event in all_events_to_clean:
-        _clean_notify_hooks(hooks, event)
-
-    hook_env = stdin_hook_env()
-
-    # 1. Stop hook: Claude 执行完毕（读取 stdin 获取上下文，用于判断是否需要通知）
-    entries = hooks.setdefault("Stop", [])
-    entries.append({
-        "matcher": "",
-        "hooks": [{"type": "command", "command": stdin_hook_command("stop"), "env": hook_env}]
-    })
-
-    # 2. Elicitation hook: MCP 服务器请求用户输入
-    entries = hooks.setdefault("Elicitation", [])
-    entries.append({
-        "matcher": "",
-        "hooks": [{"type": "command", "command": stdin_hook_command("ask"), "env": hook_env}]
-    })
-
-    # 3. PermissionRequest hook: 权限弹窗出现时通知（用户需要手动批准的场景）
-    entries = hooks.setdefault("PermissionRequest", [])
-    entries.append({
-        "matcher": "",
-        "hooks": [{"type": "command", "command": stdin_hook_command("ask"), "env": hook_env}]
-    })
-
-    settings["hooks"] = hooks
-
-    with open(settings_path, "w", encoding="utf-8") as f:
-        json.dump(settings, f, ensure_ascii=False, indent=2)
-
-    print(f"Hooks 已安装到: {settings_path}")
-    print(f"  Stop              → Claude 完成时通知")
-    print(f"  Elicitation       → MCP 请求用户输入时通知")
-    print(f"  PermissionRequest → 需要用户批准时通知")
-    print(f"  PermissionRequest → 权限弹窗出现时通知")
+        hook_manager.uninstall_hooks("claude_code")
     return True
 
 
 def uninstall_hooks() -> bool:
-    """从 Claude Code 设置中移除所有通知 hooks"""
-    settings_path = CLAUDECODE_SETTINGS
-
-    if not settings_path.exists():
-        print("未找到 Claude Code 配置文件，无需卸载。")
-        return True
-
-    try:
-        with open(settings_path, "r", encoding="utf-8") as f:
-            settings = json.load(f)
-    except (json.JSONDecodeError, IOError):
-        print("配置文件读取失败，无需卸载。")
-        return True
-
-    hooks = settings.get("hooks", {})
-    total_removed = 0
-
-    # 同时清理旧版可能注册过的 PreToolUse/Notification
-    all_events_to_clean = NOTIFY_HOOK_EVENTS + ["PreToolUse", "Notification"]
-    for event in all_events_to_clean:
-        total_removed += _clean_notify_hooks(hooks, event)
-
-    if total_removed == 0:
-        print("未找到已安装的通知 hooks，无需卸载。")
-        return True
-
-    settings["hooks"] = hooks
-
-    with open(settings_path, "w", encoding="utf-8") as f:
-        json.dump(settings, f, ensure_ascii=False, indent=2)
-
-    print(f"已移除 {total_removed} 个通知 hooks。")
+    hook_manager.uninstall_hooks("claude_code")
     return True
 
 
@@ -438,6 +229,8 @@ def main():
     )
     parser.add_argument("--message", default="", help="自定义通知消息")
     parser.add_argument("--from-stdin", action="store_true", help="从 stdin 读取 hook 上下文")
+    parser.add_argument("--platform", choices=["claude_code", "codex"], default="claude_code")
+    parser.add_argument("--claudebeep-hook", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--install", action="store_true", help="安装 Claude Code hooks")
     parser.add_argument("--uninstall", action="store_true", help="卸载 Claude Code hooks")
     parser.add_argument("--test", action="store_true", help="测试所有通知渠道")
@@ -446,11 +239,21 @@ def main():
     args = parser.parse_args()
 
     if args.install:
-        install_hooks()
+        config = load_config()
+        integration = config.get("integrations", {}).get(args.platform, {})
+        events = [name for name, enabled in integration.get("events", {}).items() if enabled]
+        if integration.get("enabled"):
+            hook_manager.sync_hooks(args.platform, events)
+        else:
+            hook_manager.uninstall_hooks(args.platform)
         return
     if args.uninstall:
-        uninstall_hooks()
+        hook_manager.uninstall_hooks(args.platform)
         return
+
+    if args.platform == "codex" and (args.claudebeep_hook or args.from_stdin):
+        from codex_adapter import run_codex_hook
+        return run_codex_hook(_read_stdin_utf8())
 
     config = load_config()
 
@@ -506,6 +309,11 @@ def main():
         except (json.JSONDecodeError, IOError):
             pass
 
+    integration = migrate_config(config).get("integrations", {}).get("claude_code", {})
+    requested_event = hook_event or ("Stop" if hook_type == "stop" else "PermissionRequest")
+    if not integration.get("enabled", False) or not integration.get("events", {}).get(requested_event, False):
+        return
+
     final_message = sanitize_text(args.message or context_text)
 
     if hook_type == "ask":
@@ -534,7 +342,7 @@ def main():
             option_type=options_info["option_type"],
             multi_select=options_info["multi_select"],
             allow_custom=options_info["allow_custom"],
-            timeout=config.get("interaction", {}).get("timeout_seconds", 0),
+            timeout=config.get("integrations", {}).get("claude_code", {}).get("interaction", {}).get("timeout_seconds", 0),
             question=options_info.get("question", ""),
             as_elicitation=options_info.get("as_elicitation", False),
         )
@@ -548,8 +356,9 @@ def main():
                 log(f"[{ch.name}] 发送结果: {'成功' if ok else '失败'}")
 
         # 等待响应（终端 + 文件轮询竞争）
-        timeout = config.get("interaction", {}).get("timeout_seconds", 0)
-        show_terminal = config.get("interaction", {}).get("show_in_terminal", True)
+        interaction_cfg = config.get("integrations", {}).get("claude_code", {}).get("interaction", {})
+        timeout = interaction_cfg.get("timeout_seconds", 0)
+        show_terminal = interaction_cfg.get("show_in_terminal", True)
         response = interaction.wait_for_response(
             pending["id"], timeout, show_terminal, config, pending
         )
@@ -590,13 +399,24 @@ def main():
 
     else:
         # ── 现有行为（完全不变）──
-        for ch in channels:
-            if ch.is_enabled():
-                log(f"[{ch.name}] 发送通知: {title} | {message[:80]}")
-                ok = ch.send(title, message)
-                log(f"[{ch.name}] 发送结果: {'成功' if ok else '失败'}")
+        event = NotificationEvent(
+            platform="claude_code",
+            event_name=hook_event,
+            title=title,
+            message=message,
+            cwd=str(ctx.get("cwd", "")),
+            session_id=str(ctx.get("session_id", "")),
+        )
+
+        def log_delivery(stage, channel, result):
+            if stage == "sending":
+                log(f"[{channel.name}] 发送通知: {title} | {message[:80]}")
+            elif stage == "disabled":
+                log(f"[{channel.name}] 已禁用，跳过")
             else:
-                log(f"[{ch.name}] 已禁用，跳过")
+                log(f"[{result.channel}] 发送结果: {'成功' if result.success else '失败'}")
+
+        send_event(event, config, channels=channels, observer=log_delivery)
 
 
 def _load_claude_settings() -> dict:

@@ -1,10 +1,6 @@
+from importlib import import_module
+
 from .base import NotificationChannel
-from .windows_toast import WindowsToastChannel
-from .weixin import WeixinChannel
-from .qq import QQBotChannel
-from .telegram import TelegramChannel
-from .feishu import FeishuChannel
-from .dingtalk import DingTalkChannel
 
 __all__ = [
     "NotificationChannel",
@@ -15,3 +11,21 @@ __all__ = [
     "FeishuChannel",
     "DingTalkChannel",
 ]
+
+_CHANNEL_TYPES = {
+    "WindowsToastChannel": ("windows_toast", "WindowsToastChannel"),
+    "WeixinChannel": ("weixin", "WeixinChannel"),
+    "QQBotChannel": ("qq", "QQBotChannel"),
+    "TelegramChannel": ("telegram", "TelegramChannel"),
+    "FeishuChannel": ("feishu", "FeishuChannel"),
+    "DingTalkChannel": ("dingtalk", "DingTalkChannel"),
+}
+
+
+def __getattr__(name):
+    if name not in _CHANNEL_TYPES:
+        raise AttributeError(name)
+    module, class_name = _CHANNEL_TYPES[name]
+    value = getattr(import_module(f"{__name__}.{module}"), class_name)
+    globals()[name] = value
+    return value
