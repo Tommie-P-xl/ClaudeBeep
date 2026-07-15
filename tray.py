@@ -716,10 +716,8 @@ def _creationflags() -> int:
 
 
 def _is_startup_enabled() -> bool:
+    """Check if auto-start is enabled. Registry is the source of truth."""
     if sys.platform != "win32":
-        return False
-    cfg = _load_config()
-    if not cfg.get("app", {}).get("auto_start", False):
         return False
     try:
         with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Run") as key:
