@@ -32,7 +32,13 @@ Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: de
 Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Additional shortcuts:"; Flags: unchecked
 
 [UninstallDelete]
-Type: filesandirs; Name: "{app}"
+Type: files; Name: "{app}\config.json"
+Type: files; Name: "{app}\notify.log"
+Type: files; Name: "{app}\updater.log"
+Type: files; Name: "{app}\tray_heartbeat.json"
+Type: dirifempty; Name: "{app}\pending"
+Type: dirifempty; Name: "{app}\responses"
+Type: dirifempty; Name: "{app}\send_queue"
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "Launch {#MyAppName}"; Flags: nowait postinstall skipifsilent
