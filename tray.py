@@ -685,6 +685,7 @@ def _acquire_single_instance() -> bool:
 
 
 def _start_background_services() -> None:
+    _sync_startup_config()
     threading.Thread(target=_heartbeat_loop, name="tray-heartbeat", daemon=True).start()
     threading.Thread(target=_cleanup_loop, name="cleanup", daemon=True).start()
     try:
@@ -725,6 +726,18 @@ def _is_startup_enabled() -> bool:
         return True
     except OSError:
         return False
+
+
+def _sync_startup_config() -> None:
+    """Sync config.json auto_start with actual registry state on startup."""
+    try:
+        cfg = _load_config()
+        registry_state = _is_startup_enabled()
+        if cfg.get("app", {}).get("auto_start") != registry_state:
+            cfg.setdefault("app", {})["auto_start"] = registry_state
+            _save_config(cfg)
+    except Exception:
+        pass
 
 
 def _toggle_startup(icon: Any = None) -> None:
