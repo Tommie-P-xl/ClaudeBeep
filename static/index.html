@@ -1377,14 +1377,17 @@ function app() {
     },
     async syncIntegrationHooks(platform) {
       try {
-        await this.api('POST', `/api/integrations/${platform}/hooks/sync`);
+        const r = await this.api('POST', `/api/integrations/${platform}/hooks/sync`);
         await this.loadIntegrations();
+        const count = r.hooks?.configured_events?.length || 0;
+        this.toast('success', `${platform === 'claude_code' ? 'Claude Code' : 'Codex'} Hooks 安装成功`, `${count} 个事件已配置`);
       } catch (e) { this.toast('error', 'Hooks 安装失败', e.message); }
     },
     async uninstallIntegrationHooks(platform) {
       try {
         await this.api('POST', `/api/integrations/${platform}/hooks/uninstall`);
         await this.loadIntegrations();
+        this.toast('success', `${platform === 'claude_code' ? 'Claude Code' : 'Codex'} Hooks 已卸载`);
       } catch (e) { this.toast('error', 'Hooks 卸载失败', e.message); }
     },
 

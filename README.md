@@ -127,13 +127,17 @@ The iLink Bot API uses a **dual-layer token architecture**:
 
 ## Installation
 
-Download the latest `ClaudeBeep-Setup-x.x.x.exe` from [GitHub Releases](https://github.com/Tommie-P-xl/ClaudeBeep/releases) and run it. Choose the installation directory — all runtime files (`config.json`, `notify.log`, `pending/`, `responses/`, `send_queue/`) are stored there.
+Download `ClaudeBeep-Setup-1.5.0.exe` from [Releases](https://github.com/Tommie-P-xl/ClaudeBeep/releases/tag/v1.5.0) and run the installer.
 
-The installer:
-- Registers the application in Add/Remove Programs
-- Creates Start Menu and optional Desktop shortcuts
-- Detects a running instance via mutex and warns before overwriting
-- Supports silent install: `ClaudeBeep-Setup.exe /SILENT /DIR="C:\MyPath"`
+The installer includes:
+- `ClaudeBeep.exe` — main application
+- `claudebeep_hook.bat` — hook wrapper for Codex integration
+
+On first launch, ClaudeBeep creates `config.json` in the installation directory.
+
+### Uninstalling
+
+Use Windows Settings > Apps to uninstall. All files in the installation directory will be removed automatically.
 
 ## Development
 

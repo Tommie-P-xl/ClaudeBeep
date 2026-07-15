@@ -43,7 +43,10 @@ def _get_hook_base_cmd() -> str:
     )
     if sys.platform == "win32":
         if getattr(sys, "frozen", False):
-            return f'"{Path(sys.executable).resolve()}"'
+            bat = script_dir / "claudebeep_hook.bat"
+            if bat.exists():
+                return f'"{str(bat).replace("/", chr(92))}"'
+            return str(Path(sys.executable).resolve())
         bat = script_dir / "notify_hook.bat"
         if bat.exists():
             return f'"{str(bat).replace("/", chr(92))}"'
@@ -104,7 +107,7 @@ def _is_known_entry(argv: list[str]) -> bool:
     first = Path(argv[0])
     first_root = _normalized_path(str(first.parent))
     first_name = first.name.casefold()
-    if first_root in roots and first_name in {"notify_hook.bat", "claudebeep.exe"}:
+    if first_root in roots and first_name in {"notify_hook.bat", "claudebeep_hook.bat", "claudebeep.exe"}:
         return True
     if len(argv) >= 2:
         script = Path(argv[1])
@@ -229,7 +232,21 @@ def sync_hooks(platform: str, enabled_events, path: Path | None = None) -> HookS
             hooks.pop(event, None)
     for event in allowed:
         if event in enabled:
-            hooks.setdefault(event, []).append({"matcher": "", "hooks": [build_hook_command(platform, event)]})
+            entries = hooks.setdefault(event, [])
+            # Check if an owned hook already exists for this event
+            already_owned = False
+            for entry in entries:
+                if not isinstance(entry, dict) or not isinstance(entry.get("hooks"), list):
+                    continue
+                for handler in entry["hooks"]:
+                    command = handler.get("command", "") if isinstance(handler, dict) else ""
+                    if isinstance(command, str) and _is_owned(command, platform):
+                        already_owned = True
+                        break
+                if already_owned:
+                    break
+            if not already_owned:
+                entries.append({"matcher": "", "hooks": [build_hook_command(platform, event)]})
     data["hooks"] = hooks
     atomic_write_json(target, data)
     return HookStatus(platform, tuple(event for event in allowed if event in enabled), removed)

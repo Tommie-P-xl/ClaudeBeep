@@ -766,17 +766,16 @@ def _check_updates() -> None:
         if not info:
             _message_box("当前已是最新版本。", APP_NAME, 0x40)
             return
+        if not info.get("url"):
+            _message_box("未找到安装包，请手动下载。", APP_NAME, 0x10)
+            return
         if _message_box(f"检测到新版本 {info['version']}，是否现在安装？", APP_NAME, 0x24) != 6:
             return
-        if info.get("url"):
-            success = updater.perform_update(info["url"], info["version"])
-            if success:
-                _quit_tray()
-            else:
-                _message_box("自动更新失败，正在打开下载页面...", APP_NAME, 0x10)
-                webbrowser.open(f"https://github.com/{updater.GITHUB_OWNER}/{updater.GITHUB_REPO}/releases/latest")
+        success = updater.perform_update(info["url"], info["version"])
+        if success:
+            _quit_tray()
         else:
-            webbrowser.open(f"https://github.com/{updater.GITHUB_OWNER}/{updater.GITHUB_REPO}/releases/latest")
+            _message_box("自动更新失败，请手动下载。", APP_NAME, 0x10)
     except Exception as exc:
         _message_box(f"检查更新失败：\n{exc}", APP_NAME, 0x10)
 

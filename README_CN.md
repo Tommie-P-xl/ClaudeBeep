@@ -127,13 +127,17 @@ iLink Bot API 采用**双层令牌架构**：
 
 ## 安装
 
-从 [GitHub Releases](https://github.com/Tommie-P-xl/ClaudeBeep/releases) 下载最新的 `ClaudeBeep-Setup-x.x.x.exe` 并运行。选择安装目录 —— 所有运行时文件（`config.json`、`notify.log`、`pending/`、`responses/`、`send_queue/`）都保存在该目录中。
+从 [Releases](https://github.com/Tommie-P-xl/ClaudeBeep/releases/tag/v1.5.0) 下载 `ClaudeBeep-Setup-1.5.0.exe` 并运行安装程序。
 
-安装程序特性：
-- 注册到"添加/删除程序"
-- 创建开始菜单和可选的桌面快捷方式
-- 通过互斥体检测正在运行的实例，覆盖安装前发出警告
-- 支持静默安装：`ClaudeBeep-Setup.exe /SILENT /DIR="C:\MyPath"`
+安装程序包含：
+- `ClaudeBeep.exe` — 主程序
+- `claudebeep_hook.bat` — Codex 集成的 hook 包装器
+
+首次启动时，ClaudeBeep 会在安装目录下创建 `config.json`。
+
+### 卸载
+
+通过 Windows 设置 > 应用 卸载。安装目录下的所有文件将被自动清除。
 
 ## 开发
 

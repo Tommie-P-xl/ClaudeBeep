@@ -17,6 +17,7 @@ python -m PyInstaller `
   --version-file version_info.txt `
   --add-data "static;static" `
   --add-data "assets;assets" `
+  --add-data "claudebeep_hook.bat;." `
   --hidden-import websockets `
   --hidden-import lark_oapi `
   --hidden-import lark_oapi.ws `
