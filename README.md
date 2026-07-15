@@ -1,4 +1,4 @@
-# ClaudeBeep v1.5.0
+# ClaudeBeep v2.0.0
 
 <p align="center">
   <img src="assets/icon.png" width="128" alt="ClaudeBeep Logo">
@@ -13,7 +13,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-v1.5.0-blue" alt="Version">
+  <img src="https://img.shields.io/badge/version-v2.0.0-blue" alt="Version">
   <img src="https://img.shields.io/badge/python-3.10+-green" alt="Python">
   <img src="https://img.shields.io/badge/platform-Windows-lightgrey" alt="Platform">
   <img src="https://img.shields.io/badge/license-MIT-brightgreen" alt="License">
@@ -127,7 +127,7 @@ The iLink Bot API uses a **dual-layer token architecture**:
 
 ## Installation
 
-Download `ClaudeBeep-Setup-1.5.0.exe` from [Releases](https://github.com/Tommie-P-xl/ClaudeBeep/releases/tag/v1.5.0) and run the installer.
+Download `ClaudeBeep-Setup-1.5.0.exe` from [Releases](https://github.com/Tommie-P-xl/ClaudeBeep/releases/tag/v2.0.0) and run the installer.
 
 The installer includes:
 - `ClaudeBeep.exe` — main application
@@ -138,6 +138,18 @@ On first launch, ClaudeBeep creates `config.json` in the installation directory.
 ### Uninstalling
 
 Use Windows Settings > Apps to uninstall. All files in the installation directory will be removed automatically.
+
+## Codex Integration Notes
+
+After installing Codex hooks from the Web UI, you must trust them in Codex:
+
+1. Open Codex terminal
+2. Type `/hooks`
+3. Review and trust the ClaudeBeep hooks
+
+If you reinstall or update ClaudeBeep, the hooks hash changes and Codex will mark them as "needs review" again. Run `/hooks` to re-trust.
+
+**Known issue:** Codex on Windows cannot directly execute `.exe` files as hooks. ClaudeBeep uses a `.bat` wrapper (`claudebeep_hook.bat`) to work around this. The wrapper is included in the installer.
 
 ## Development
 
@@ -173,8 +185,8 @@ This creates `dist/ClaudeBeep.exe` (single-file, windowed, UPX-compressed).
 Pushing a version tag triggers the GitHub Actions workflow:
 
 ```
-git tag v1.5.0
-git push origin v1.5.0
+git tag v2.0.0
+git push origin v2.0.0
 ```
 
 The workflow:

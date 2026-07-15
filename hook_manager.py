@@ -45,7 +45,7 @@ def _get_hook_base_cmd() -> str:
         if getattr(sys, "frozen", False):
             bat = script_dir / "claudebeep_hook.bat"
             if bat.exists():
-                return f'"{str(bat).replace("/", chr(92))}"'
+                return str(bat).replace("/", chr(92))
             return str(Path(sys.executable).resolve())
         bat = script_dir / "notify_hook.bat"
         if bat.exists():
@@ -252,6 +252,36 @@ def sync_hooks(platform: str, enabled_events, path: Path | None = None) -> HookS
     return HookStatus(platform, tuple(event for event in allowed if event in enabled), removed)
 
 
+def _cleanup_codex_config_toml() -> None:
+    """Remove [hooks.state] entries from ~/.codex/config.toml that reference hooks.json."""
+    config_toml = Path.home() / ".codex" / "config.toml"
+    if not config_toml.exists():
+        return
+    try:
+        lines = config_toml.read_text(encoding="utf-8").splitlines(keepends=True)
+    except OSError:
+        return
+
+    hooks_json_path = str(CODEX_HOOKS)
+    new_lines = []
+    skip_next_values = False
+    for line in lines:
+        stripped = line.strip()
+        # Detect [hooks.state.'...hooks.json...'] section headers
+        if stripped.startswith("[hooks.state.'") and hooks_json_path in stripped:
+            skip_next_values = True
+            continue
+        # Skip key-value lines belonging to a skipped section
+        if skip_next_values:
+            if stripped == "" or stripped.startswith("["):
+                skip_next_values = False
+            else:
+                continue
+        new_lines.append(line)
+
+    config_toml.write_text("".join(new_lines), encoding="utf-8")
+
+
 def uninstall_hooks(platform: str, path: Path | None = None) -> HookStatus:
     target = _path_for(platform, path)
     data = _read(target)
@@ -272,6 +302,9 @@ def uninstall_hooks(platform: str, path: Path | None = None) -> HookStatus:
     data["hooks"] = hooks
     if target.exists() and removed:
         atomic_write_json(target, data)
+    # Clean up Codex config.toml hooks.state when uninstalling Codex hooks
+    if platform == "codex" and removed:
+        _cleanup_codex_config_toml()
     remaining = inspect_hooks(platform, target).configured_events if target.exists() else ()
     return HookStatus(platform, remaining, removed)
 

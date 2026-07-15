@@ -24,7 +24,7 @@ import hook_manager
 import tray_menu
 
 APP_NAME = "ClaudeBeep"
-APP_VERSION = "1.5.0"
+APP_VERSION = "2.0.0"
 SCRIPT_DIR = Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent
 RESOURCE_DIR = Path(getattr(sys, "_MEIPASS", SCRIPT_DIR))
 CONFIG_FILE = SCRIPT_DIR / "config.json"

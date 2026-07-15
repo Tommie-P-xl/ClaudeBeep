@@ -1,4 +1,4 @@
-# ClaudeBeep v1.5.0
+# ClaudeBeep v2.0.0
 
 <p align="center">
   <img src="assets/icon.png" width="128" alt="ClaudeBeep Logo">
@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-v1.5.0-blue" alt="Version">
+  <img src="https://img.shields.io/badge/version-v2.0.0-blue" alt="Version">
   <img src="https://img.shields.io/badge/python-3.10+-green" alt="Python">
   <img src="https://img.shields.io/badge/platform-Windows-lightgrey" alt="Platform">
   <img src="https://img.shields.io/badge/license-MIT-brightgreen" alt="License">
@@ -127,7 +127,7 @@ iLink Bot API 采用**双层令牌架构**：
 
 ## 安装
 
-从 [Releases](https://github.com/Tommie-P-xl/ClaudeBeep/releases/tag/v1.5.0) 下载 `ClaudeBeep-Setup-1.5.0.exe` 并运行安装程序。
+从 [Releases](https://github.com/Tommie-P-xl/ClaudeBeep/releases/tag/v2.0.0) 下载 `ClaudeBeep-Setup-1.5.0.exe` 并运行安装程序。
 
 安装程序包含：
 - `ClaudeBeep.exe` — 主程序
@@ -138,6 +138,18 @@ iLink Bot API 采用**双层令牌架构**：
 ### 卸载
 
 通过 Windows 设置 > 应用 卸载。安装目录下的所有文件将被自动清除。
+
+## Codex 集成说明
+
+从 Web UI 安装 Codex hooks 后，需要在 Codex 中信任它们：
+
+1. 打开 Codex 终端
+2. 输入 `/hooks`
+3. 审核并信任 ClaudeBeep hooks
+
+如果重新安装或更新 ClaudeBeep，hooks 的哈希值会变化，Codex 会再次标记为"需要审核"。运行 `/hooks` 重新信任即可。
+
+**已知问题：** Codex 在 Windows 上无法直接执行 `.exe` 文件作为 hook。ClaudeBeep 使用 `.bat` 包装器（`claudebeep_hook.bat`）来解决此问题。包装器已包含在安装程序中。
 
 ## 开发
 
@@ -173,8 +185,8 @@ python notify.py --test        # 测试所有已启用渠道
 推送版本标签触发 GitHub Actions 工作流：
 
 ```
-git tag v1.5.0
-git push origin v1.5.0
+git tag v2.0.0
+git push origin v2.0.0
 ```
 
 工作流步骤：

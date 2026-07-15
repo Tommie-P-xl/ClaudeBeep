@@ -48,7 +48,7 @@ CHANNEL_SECRET_FIELDS = {
 
 DEFAULT_CONFIG = {
     "app": {
-        "version": "1.5.0",
+        "version": "2.0.0",
         "auto_start": False,
         "auto_cleanup": True,
         "cleanup_interval_hours": 12,
