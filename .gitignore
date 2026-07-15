@@ -2,31 +2,31 @@ __pycache__/
 *.pyc
 *.pyo
 *.spec
+*.tmp
+
+# 运行时文件
+config.json
 keepalive.pid
 notify.log
 updater.log
 notify_state.json
 tray_heartbeat.json
-config.json
-.omc/
-.claude/
-docs/*
-!docs/superpowers/
-docs/superpowers/*
-!docs/superpowers/specs/
-!docs/superpowers/specs/*.md
-!docs/superpowers/plans/
-!docs/superpowers/plans/*.md
+pending/
+responses/
+
+# 开发文件
+docs/
+tests/
+requirements-dev.txt
 .codegraph/
 .superpowers/
+.omc/
+.claude/
+
+# 构建产物
 build/
 dist/
 Output/
 *.exe
 *.msi
 *.zip
-
-# 交互功能运行时文件
-pending/
-responses/
-*.tmp
