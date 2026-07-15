@@ -1,5 +1,5 @@
 #define MyAppName "ClaudeBeep"
-#define MyAppVersion "1.1.0"
+#define MyAppVersion "2.0.0"
 #define MyAppExeName "ClaudeBeep.exe"
 
 [Setup]
@@ -22,6 +22,7 @@ AppMutex=Global\ClaudeBeepTray
 
 [Files]
 Source: "dist\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
+Source: "claudebeep_hook.bat"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
@@ -29,6 +30,15 @@ Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: de
 
 [Tasks]
 Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Additional shortcuts:"; Flags: unchecked
+
+[UninstallDelete]
+Type: files; Name: "{app}\config.json"
+Type: files; Name: "{app}\notify.log"
+Type: files; Name: "{app}\updater.log"
+Type: files; Name: "{app}\tray_heartbeat.json"
+Type: dirifempty; Name: "{app}\pending"
+Type: dirifempty; Name: "{app}\responses"
+Type: dirifempty; Name: "{app}\send_queue"
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "Launch {#MyAppName}"; Flags: nowait postinstall skipifsilent

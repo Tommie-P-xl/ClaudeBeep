@@ -19,8 +19,12 @@ import winreg
 from pathlib import Path
 from typing import Any
 
+import config_store
+import hook_manager
+import tray_menu
+
 APP_NAME = "ClaudeBeep"
-APP_VERSION = "1.1.0"
+APP_VERSION = "2.0.0"
 SCRIPT_DIR = Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent
 RESOURCE_DIR = Path(getattr(sys, "_MEIPASS", SCRIPT_DIR))
 CONFIG_FILE = SCRIPT_DIR / "config.json"
@@ -70,12 +74,10 @@ IDI_APPLICATION = ctypes.cast(32512, ctypes.c_wchar_p)
 
 # Menu command IDs (must be > 0)
 CMD_OPEN_UI = 1001
-CMD_INSTALL_HOOKS = 1002
-CMD_UNINSTALL_HOOKS = 1003
-CMD_STARTUP = 1004
-CMD_CHECK_UPDATE = 1005
-CMD_QUIT = 1006
-CMD_CHANNEL_BASE = 2000  # 2000+channel_index for toggles
+CMD_STARTUP = 1002
+CMD_CHECK_UPDATE = 1003
+CMD_QUIT = 1004
+CMD_CHANNEL_BASE = 2000  # retained for compatibility; peer IDs live in tray_menu
 
 # ─── Win32 structures ────────────────────────────────────────────────────────
 user32 = ctypes.windll.user32
@@ -236,7 +238,6 @@ def _set_dpi_awareness() -> None:
 _hwnd_tray = None
 _hicon_tray = None
 _nid = None
-_channel_names = list(CHANNEL_LABELS.keys())
 _wnd_proc_ref = None  # prevent GC of callback
 
 
@@ -302,7 +303,11 @@ def _add_tray_icon(hwnd: int) -> None:
     _nid.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP
     _nid.uCallbackMessage = WM_TRAYICON
     _nid.hIcon = _load_icon()
-    _nid.szTip = f"{APP_NAME} v{APP_VERSION}"
+    counts = _peer_channel_counts(_load_config())
+    _nid.szTip = (
+        f"{APP_NAME} v{APP_VERSION} "
+        f"(Claude {counts['claude_code']} / Codex {counts['codex']})"
+    )[:127]
     shell32.Shell_NotifyIconW(NIM_ADD, ctypes.byref(_nid))
 
 
@@ -320,16 +325,40 @@ def _update_tray_tooltip(text: str) -> None:
 
 
 def _build_channel_submenu() -> int:
-    """Build the notification source submenu with checkmarks."""
+    """Build notification submenus grouped by peer platform."""
     hMenu = user32.CreatePopupMenu()
-    cfg = _load_config()
-    for i, (name, label) in enumerate(CHANNEL_LABELS.items()):
-        flags = MF_STRING
-        if cfg.get(name, {}).get("enabled"):
-            flags |= MF_CHECKED
-        if not _is_channel_configured(name):
-            flags |= MF_GRAYED
-        user32.AppendMenuW(hMenu, flags, CMD_CHANNEL_BASE + i, label)
+    cfg = config_store.migrate_config(_load_config())
+    for platform in config_store.PLATFORMS:
+        platform_menu = user32.CreatePopupMenu()
+        states = tray_menu.channel_menu_state(cfg, platform)
+        for channel, label in CHANNEL_LABELS.items():
+            state = states[channel]
+            flags = MF_STRING
+            if state["checked"]:
+                flags |= MF_CHECKED
+            if not state["configured"]:
+                flags |= MF_GRAYED
+            user32.AppendMenuW(
+                platform_menu,
+                flags,
+                tray_menu.channel_command_id(platform, channel),
+                label,
+            )
+        user32.AppendMenuW(platform_menu, MF_SEPARATOR, 0, None)
+        platform_enabled = config_store.get_integration(cfg, platform).get("enabled", False)
+        platform_flags = MF_STRING | (MF_CHECKED if platform_enabled else 0)
+        user32.AppendMenuW(
+            platform_menu,
+            platform_flags,
+            tray_menu.platform_command_id(platform),
+            f"启用 {tray_menu.PLATFORM_LABELS[platform]}",
+        )
+        user32.AppendMenuW(
+            hMenu,
+            MF_STRING | MF_POPUP,
+            platform_menu,
+            tray_menu.PLATFORM_LABELS[platform],
+        )
     return hMenu
 
 
@@ -345,10 +374,6 @@ def _show_context_menu(hwnd: int) -> None:
     user32.AppendMenuW(hMenu, MF_STRING | MF_POPUP, hSubMenu, "通知源管理")
 
     user32.AppendMenuW(hMenu, MF_SEPARATOR, 0, None)
-
-    # 安装/卸载所有 Hook
-    user32.AppendMenuW(hMenu, MF_STRING, CMD_INSTALL_HOOKS, "安装所有 Hook")
-    user32.AppendMenuW(hMenu, MF_STRING, CMD_UNINSTALL_HOOKS, "卸载所有 Hook")
 
     # 开机自启动 (checkbox)
     flags_startup = MF_STRING
@@ -384,24 +409,29 @@ def _handle_command(hwnd: int, wparam: int) -> None:
     """Handle menu command selection."""
     cmd = wparam & 0xFFFF
 
+    decoded = tray_menu.decode_command(cmd)
+    if decoded is not None:
+        kind, platform, value = decoded
+        if kind == "channel":
+            _toggle_channel(platform, value)
+        elif kind == "hook":
+            _toggle_hook_event(platform, value)
+        elif kind == "platform":
+            _toggle_platform(platform)
+        elif kind == "uninstall":
+            _uninstall_platform_hooks(platform)
+        elif kind == "sync":
+            _sync_all_platform_hooks(platform)
+        return
+
     if cmd == CMD_OPEN_UI:
         _open_ui()
-    elif cmd == CMD_INSTALL_HOOKS:
-        threading.Thread(target=_install_hooks, daemon=True).start()
-    elif cmd == CMD_UNINSTALL_HOOKS:
-        threading.Thread(target=_uninstall_hooks, daemon=True).start()
     elif cmd == CMD_STARTUP:
         _toggle_startup()
     elif cmd == CMD_CHECK_UPDATE:
         threading.Thread(target=_check_updates, daemon=True).start()
     elif cmd == CMD_QUIT:
         _quit_tray()
-    elif CMD_CHANNEL_BASE <= cmd < CMD_CHANNEL_BASE + len(_channel_names):
-        idx = cmd - CMD_CHANNEL_BASE
-        name = _channel_names[idx]
-        _toggle_channel(name)
-
-
 def _run_message_loop() -> None:
     """Run the Win32 message pump."""
     msg = ctypes.wintypes.MSG()
@@ -434,14 +464,24 @@ def _run_tray() -> None:
 def _menu_refresh_loop(hwnd: int) -> None:
     """Periodically update tooltip to reflect state changes."""
     last_config_mtime = _mtime(CONFIG_FILE)
+    try:
+        last_keepalive = config_store.should_run_weixin_keepalive(_load_config())
+    except Exception:
+        last_keepalive = False
     while not _stop_event.is_set():
         _stop_event.wait(5)
         config_mtime = _mtime(CONFIG_FILE)
         if config_mtime != last_config_mtime:
             last_config_mtime = config_mtime
             cfg = _load_config()
-            enabled = sum(1 for ch in CHANNEL_LABELS if cfg.get(ch, {}).get("enabled"))
-            _update_tray_tooltip(f"{APP_NAME} v{APP_VERSION} ({enabled} 渠道)")
+            current_keepalive = config_store.should_run_weixin_keepalive(cfg)
+            if current_keepalive != last_keepalive:
+                _sync_weixin_keepalive(last_keepalive, current_keepalive)
+                last_keepalive = current_keepalive
+            counts = _peer_channel_counts(cfg)
+            _update_tray_tooltip(
+                f"{APP_NAME} v{APP_VERSION} (Claude {counts['claude_code']} / Codex {counts['codex']})"
+            )
 
 
 # ─── Utility & business logic (unchanged) ────────────────────────────────────
@@ -463,41 +503,148 @@ def _save_config(cfg: dict[str, Any]) -> None:
     notify.save_config(cfg)
 
 
-def _is_channel_enabled(name: str) -> bool:
-    return bool(_load_config().get(name, {}).get("enabled"))
+def _peer_channel_counts(cfg: dict[str, Any]) -> dict[str, int]:
+    migrated = config_store.migrate_config(cfg)
+    return {
+        platform: sum(
+            1
+            for enabled in config_store.get_integration(migrated, platform)["channels"].values()
+            if enabled
+        )
+        for platform in config_store.PLATFORMS
+    }
 
 
-def _is_channel_configured(name: str) -> bool:
-    cfg = _load_config()
-    data = cfg.get(name, {})
-    if name == "windows_toast":
-        return True
-    if name == "weixin":
-        return bool(data.get("bot_token") and data.get("to_user_id"))
-    if name == "qq":
-        return bool(data.get("app_id") and data.get("app_secret") and data.get("target_id"))
-    if name == "telegram":
-        return bool(data.get("bot_token") and data.get("chat_id"))
-    if name == "feishu":
-        return bool(data.get("app_id") and data.get("app_secret") and data.get("receive_id"))
-    if name == "dingtalk":
-        return bool(data.get("client_id") and data.get("client_secret") and data.get("user_id"))
-    return False
+def _coerce_config(raw: dict[str, Any]) -> dict[str, Any]:
+    """Migrate legacy dictionaries."""
+    migrated = config_store.migrate_config(raw)
+    raw.clear()
+    raw.update(migrated)
+    return raw
 
 
-def _toggle_channel(name: str, icon: Any = None) -> None:
-    cfg = _load_config()
-    cfg.setdefault(name, {})["enabled"] = not bool(cfg.get(name, {}).get("enabled"))
+def _sync_weixin_keepalive(previous: bool, current: bool) -> None:
+    if previous == current:
+        return
+    try:
+        from channels.weixin import start_keepalive, stop_keepalive
+        (start_keepalive if current else stop_keepalive)()
+    except Exception:
+        pass
+
+
+def _toggle_channel(platform: str, channel: str, icon: Any = None) -> None:
+    cfg = _coerce_config(_load_config())
+    previous = config_store.should_run_weixin_keepalive(cfg)
+    integration = config_store.get_integration(cfg, platform)
+    channels = integration.setdefault("channels", {})
+    channels[channel] = not bool(channels.get(channel, False))
     _save_config(cfg)
-    if name == "weixin":
+    _sync_weixin_keepalive(previous, config_store.should_run_weixin_keepalive(cfg))
+
+
+def _toggle_hook_event(platform: str, event: str) -> None:
+    cfg = _coerce_config(_load_config())
+    integration = config_store.get_integration(cfg, platform)
+    events = integration.setdefault("events", {})
+    had_event = event in events
+    old_value = events.get(event, False)
+    desired = not bool(old_value)
+    enabled_events = tuple(
+        name
+        for name, enabled in events.items()
+        if (desired if name == event else bool(enabled))
+    )
+    snapshot = hook_manager.snapshot_hooks(platform)
+    try:
+        if integration.get("enabled"):
+            hook_manager.sync_hooks(platform, enabled_events)
+        else:
+            hook_manager.uninstall_hooks(platform)
+    except Exception as exc:
+        _message_box(f"同步 {tray_menu.PLATFORM_LABELS[platform]} hooks 失败：\n{exc}", APP_NAME, 0x10)
+        return
+    events[event] = desired
+    try:
+        _save_config(cfg)
+    except Exception:
+        if had_event:
+            events[event] = old_value
+        else:
+            events.pop(event, None)
         try:
-            from channels.weixin import start_keepalive, stop_keepalive
-            if cfg[name]["enabled"]:
-                start_keepalive()
-            else:
-                stop_keepalive()
+            hook_manager.restore_hooks(snapshot)
         except Exception:
-            pass
+            _message_box("保存配置失败；回滚 hooks 失败。", APP_NAME, 0x10)
+        else:
+            _message_box("保存配置失败；hooks 已回滚。", APP_NAME, 0x10)
+
+
+def _toggle_platform(platform: str) -> None:
+    cfg = _coerce_config(_load_config())
+    previous_keepalive = config_store.should_run_weixin_keepalive(cfg)
+    integration = config_store.get_integration(cfg, platform)
+    old_enabled = bool(integration.get("enabled", False))
+    desired = not old_enabled
+    old_events = tuple(
+        name for name, enabled in integration.get("events", {}).items() if enabled
+    )
+    snapshot = hook_manager.snapshot_hooks(platform)
+    try:
+        if desired:
+            hook_manager.sync_hooks(platform, old_events)
+        else:
+            hook_manager.uninstall_hooks(platform)
+    except Exception:
+        _message_box(f"同步 {tray_menu.PLATFORM_LABELS[platform]} 状态失败。", APP_NAME, 0x10)
+        return
+
+    integration["enabled"] = desired
+    try:
+        _save_config(cfg)
+    except Exception:
+        integration["enabled"] = old_enabled
+        try:
+            hook_manager.restore_hooks(snapshot)
+        except Exception:
+            _message_box("保存配置失败；回滚 hooks 失败。", APP_NAME, 0x10)
+        else:
+            _message_box("保存配置失败；hooks 已回滚。", APP_NAME, 0x10)
+    else:
+        _sync_weixin_keepalive(
+            previous_keepalive,
+            config_store.should_run_weixin_keepalive(cfg),
+        )
+
+
+def _uninstall_platform_hooks(platform: str) -> None:
+    cfg = _coerce_config(_load_config())
+    events = config_store.get_integration(cfg, platform).setdefault("events", {})
+    old_events = dict(events)
+    snapshot = hook_manager.snapshot_hooks(platform)
+    hook_manager.uninstall_hooks(platform)
+    for event in events:
+        events[event] = False
+    try:
+        _save_config(cfg)
+    except Exception:
+        events.clear()
+        events.update(old_events)
+        hook_manager.restore_hooks(snapshot)
+        raise
+
+
+def _sync_all_platform_hooks(platform: str) -> None:
+    cfg = _coerce_config(_load_config())
+    integration = config_store.get_integration(cfg, platform)
+    events = tuple(name for name, enabled in integration.get("events", {}).items() if enabled)
+    try:
+        if integration.get("enabled"):
+            hook_manager.sync_hooks(platform, events)
+        else:
+            hook_manager.uninstall_hooks(platform)
+    except Exception as exc:
+        _message_box(f"同步 {tray_menu.PLATFORM_LABELS[platform]} hooks 失败：\n{exc}", APP_NAME, 0x10)
 
 
 def main() -> None:
@@ -519,7 +666,7 @@ def main() -> None:
 
 def _should_delegate_to_notify() -> bool:
     args = set(sys.argv[1:])
-    return bool(args & {"--type", "--install", "--uninstall", "--test", "--ui", "--from-stdin"})
+    return bool(args & {"--type", "--platform", "--claudebeep-hook", "--install", "--uninstall", "--test", "--ui", "--from-stdin"})
 
 
 def _ensure_runtime_dirs() -> None:
@@ -538,33 +685,17 @@ def _acquire_single_instance() -> bool:
 
 
 def _start_background_services() -> None:
+    _sync_startup_config()
     threading.Thread(target=_heartbeat_loop, name="tray-heartbeat", daemon=True).start()
     threading.Thread(target=_cleanup_loop, name="cleanup", daemon=True).start()
     try:
         from channels.weixin import start_keepalive
         cfg = _load_config()
-        if cfg.get("weixin", {}).get("enabled") and cfg.get("weixin", {}).get("bot_token"):
+        if config_store.should_run_weixin_keepalive(cfg):
             start_keepalive()
     except Exception:
         pass
 
-
-def _install_hooks() -> None:
-    try:
-        import notify
-        notify.install_hooks()
-        _message_box("Claude Code hooks 已安装。", APP_NAME, 0x40)
-    except Exception as exc:
-        _message_box(f"安装 hooks 失败：\n{exc}", APP_NAME, 0x10)
-
-
-def _uninstall_hooks() -> None:
-    try:
-        import notify
-        notify.uninstall_hooks()
-        _message_box("Claude Code hooks 已卸载。", APP_NAME, 0x40)
-    except Exception as exc:
-        _message_box(f"卸载 hooks 失败：\n{exc}", APP_NAME, 0x10)
 
 
 def _open_ui() -> None:
@@ -586,10 +717,8 @@ def _creationflags() -> int:
 
 
 def _is_startup_enabled() -> bool:
+    """Check if auto-start is enabled. Registry is the source of truth."""
     if sys.platform != "win32":
-        return False
-    cfg = _load_config()
-    if not cfg.get("app", {}).get("auto_start", False):
         return False
     try:
         with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Run") as key:
@@ -597,6 +726,18 @@ def _is_startup_enabled() -> bool:
         return True
     except OSError:
         return False
+
+
+def _sync_startup_config() -> None:
+    """Sync config.json auto_start with actual registry state on startup."""
+    try:
+        cfg = _load_config()
+        registry_state = _is_startup_enabled()
+        if cfg.get("app", {}).get("auto_start") != registry_state:
+            cfg.setdefault("app", {})["auto_start"] = registry_state
+            _save_config(cfg)
+    except Exception:
+        pass
 
 
 def _toggle_startup(icon: Any = None) -> None:
@@ -636,17 +777,16 @@ def _check_updates() -> None:
         if not info:
             _message_box("当前已是最新版本。", APP_NAME, 0x40)
             return
+        if not info.get("url"):
+            _message_box("未找到安装包，请手动下载。", APP_NAME, 0x10)
+            return
         if _message_box(f"检测到新版本 {info['version']}，是否现在安装？", APP_NAME, 0x24) != 6:
             return
-        if info.get("url"):
-            success = updater.perform_update(info["url"], info["version"])
-            if success:
-                _quit_tray()
-            else:
-                _message_box("自动更新失败，正在打开下载页面...", APP_NAME, 0x10)
-                webbrowser.open(f"https://github.com/{updater.GITHUB_OWNER}/{updater.GITHUB_REPO}/releases/latest")
+        success = updater.perform_update(info["url"], info["version"])
+        if success:
+            _quit_tray()
         else:
-            webbrowser.open(f"https://github.com/{updater.GITHUB_OWNER}/{updater.GITHUB_REPO}/releases/latest")
+            _message_box("自动更新失败，请手动下载。", APP_NAME, 0x10)
     except Exception as exc:
         _message_box(f"检查更新失败：\n{exc}", APP_NAME, 0x10)
 

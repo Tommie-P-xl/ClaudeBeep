@@ -1,15 +1,15 @@
-# ClaudeBeep v1.1.0
+# ClaudeBeep v2.0.0
 
 <p align="center">
   <img src="assets/icon.png" width="128" alt="ClaudeBeep Logo">
 </p>
 
 <p align="center">
-  <strong>Windows 系统托盘应用，为 Claude Code 提供多渠道通知和交互式审批回复</strong>
+  <strong>面向 Claude Code 与 Codex 的 Windows 系统托盘通知应用</strong>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-v1.1.0-blue" alt="Version">
+  <img src="https://img.shields.io/badge/version-v2.0.0-blue" alt="Version">
   <img src="https://img.shields.io/badge/python-3.10+-green" alt="Python">
   <img src="https://img.shields.io/badge/platform-Windows-lightgrey" alt="Platform">
   <img src="https://img.shields.io/badge/license-MIT-brightgreen" alt="License">
@@ -21,15 +21,14 @@
 
 ---
 
-ClaudeBeep 是一个 Windows 系统托盘应用，为 [Claude Code](https://claude.ai/code) 提供多渠道通知和交互式审批回复。它将原有的 Python hook 工作流打包为单个可安装桌面应用 —— 一次安装，所有操作从系统托盘管理，仅在需要详细配置时打开 Web UI。
+ClaudeBeep 是一个将 Claude Code 和 Codex 作为对等集成的 Windows 系统托盘应用。两个平台分别拥有独立的平台开关、hook 事件和投递渠道选择，同时共用一套渠道凭证。只需安装实际使用的平台；未安装的集成不会增加 hook 或运行时开销。
 
 ## 功能
 
 ### 系统托盘
 
 - **打开主界面** — 启动 Web UI，用于详细渠道配置、扫码登录和日志查看。
-- **通知源管理** — 可展开的子菜单。已配置的通知源启用时显示对号；未配置的通知源置灰，无法勾选。
-- **安装/卸载所有 Hooks** — 在 `~/.claude/settings.json` 中注册或移除 Claude Code hook 条目。
+- **对等平台菜单** — Claude Code 与 Codex 在托盘中分别提供独立的平台和渠道控制；未配置的渠道会置灰。
 - **开机自启动** — 通过 Windows 注册表（`HKCU\Software\Microsoft\Windows\CurrentVersion\Run`）切换开机自启。
 - **检查更新** — 查询 GitHub Releases 最新版本；如有新版，通过批处理脚本自动下载并替换 exe（带重试机制，无需卸载）。若自动更新失败，回退到打开下载页面。
 - **系统深色模式** — 自动检测 Windows 系统主题，为托盘菜单应用深色模式样式。
@@ -38,6 +37,14 @@ ClaudeBeep 是一个 Windows 系统托盘应用，为 [Claude Code](https://clau
 - **高 DPI 感知** — 通过应用清单（manifest）声明 Per-Monitor V2 DPI 感知，解决高分屏下托盘菜单文字模糊问题。
 - **SVG 图标** — 仪表盘和各配置页面使用内联 SVG 矢量图标，清晰不失真。
 - **退出** — 停止所有后台服务并退出。
+
+### 对等集成
+
+- **Claude Code** — 完成、权限和询问事件继续使用原有交互流程；审批选项和自由文本回复仍可来自终端或已配置的远程渠道。
+- **Codex** — 完成及权限/需关注事件会发送通知，但审批和回答始终留在 Codex 内完成。安装 Codex hooks 后，请在 Codex 中运行 `/hooks`，检查并确认信任提示。
+- **独立控制** — Web UI 和托盘均可分别设置 Claude Code 与 Codex 的平台开关、事件选择和投递渠道。
+- **共享投递** — 渠道凭证只配置一次，由两个集成共同使用。任一已启用平台使用微信时，托盘只维护一个共享 keepalive，而不是每个平台各建一条连接。
+- **未安装即无开销** — 未安装 hooks 的平台不会启动对应适配器，也不会为该平台增加处理工作。
 
 ### 通知渠道
 
@@ -56,7 +63,7 @@ ClaudeBeep 是一个 Windows 系统托盘应用，为 [Claude Code](https://clau
 - 终端（直接键盘输入）
 - 任意远程渠道（微信、QQ、Telegram、飞书、钉钉）
 
-先到先得。响应通过临时文件重命名原子写入，防止竞态条件。
+先到先得。响应通过临时文件重命名原子写入，防止竞态条件。Codex 的权限通知只用于提醒；审批和回答输入仍在 Codex 内完成。
 
 ### 安全与可靠性
 
@@ -68,38 +75,26 @@ ClaudeBeep 是一个 Windows 系统托盘应用，为 [Claude Code](https://clau
 ## 架构
 
 ```
-┌─────────────────────────────────────────────────────┐
-│                   Claude Code                        │
-│  hooks → notify.py --type stop|ask --from-stdin      │
-└──────────────────────┬──────────────────────────────┘
-                       │ (子进程)
-                       ▼
-┌─────────────────────────────────────────────────────┐
-│              notify.py（hook 入口）                    │
-│  • 读取 stdin 上下文                                  │
-│  • 过滤自动批准的事件                                  │
-│  • 创建待处理请求 (interaction.py)                     │
-│  • 向所有已启用渠道发送通知                             │
-│  • 等待响应（终端 + 远程监听器）                        │
-│  • 向 stdout 输出 hook 响应 JSON                      │
-└──────────────────────┬──────────────────────────────┘
-                       │
-          ┌────────────┼────────────┐
-          ▼            ▼            ▼
-   ┌──────────┐ ┌──────────┐ ┌──────────┐
-   │ 微信     │ │ QQ/      │ │ Windows  │
-   │ (队列)   │ │ TG/...   │ │ Toast    │
-   └────┬─────┘ └──────────┘ └──────────┘
-        │ IPC（文件队列）
-        ▼
-┌─────────────────────────────────────────────────────┐
-│              tray.py（系统托盘进程）                    │
-│  • 微信 keepalive 循环（getupdates 长轮询）            │
-│  • 发送队列处理器（同进程 HTTP）                        │
-│  • 心跳写入器                                        │
-│  • 定时清理器                                        │
-│  • Flask Web UI 启动器                               │
-└─────────────────────────────────────────────────────┘
+┌────────────────────────┐     ┌────────────────────────┐
+│ Claude Code            │     │ Codex                  │
+│ ~/.claude/settings.json│     │ ~/.codex/hooks.json    │
+└───────────┬────────────┘     └───────────┬────────────┘
+            ▼                              ▼
+┌────────────────────────┐     ┌────────────────────────┐
+│ Claude 适配器          │     │ Codex 适配器           │
+│ 支持交互式回复         │     │ 仅发送通知             │
+└───────────┬────────────┘     └───────────┬────────────┘
+            └──────────────┬───────────────┘
+                           ▼
+                ┌─────────────────────┐
+                │ notification_core   │
+                │ 投递边界            │
+                └──────────┬──────────┘
+                           ▼
+       Windows Toast / 微信 / QQ / Telegram / 飞书 / 钉钉
+
+两个适配器彼此隔离，仅在投递层汇合；渠道凭证、托盘管理的微信
+keepalive 和各渠道投递实现由它们共享。
 ```
 
 ### 微信 iLink 协议深度解析
@@ -132,19 +127,39 @@ iLink Bot API 采用**双层令牌架构**：
 
 ## 安装
 
-从 [GitHub Releases](https://github.com/Tommie-P-xl/ClaudeBeep/releases) 下载最新的 `ClaudeBeep-Setup-x.x.x.exe` 并运行。选择安装目录 —— 所有运行时文件（`config.json`、`notify.log`、`pending/`、`responses/`、`send_queue/`）都保存在该目录中。
+从 [Releases](https://github.com/Tommie-P-xl/ClaudeBeep/releases/tag/v2.0.0) 下载 `ClaudeBeep-Setup-1.5.0.exe` 并运行安装程序。
 
-安装程序特性：
-- 注册到"添加/删除程序"
-- 创建开始菜单和可选的桌面快捷方式
-- 通过互斥体检测正在运行的实例，覆盖安装前发出警告
-- 支持静默安装：`ClaudeBeep-Setup.exe /SILENT /DIR="C:\MyPath"`
+安装程序包含：
+- `ClaudeBeep.exe` — 主程序
+- `claudebeep_hook.bat` — Codex 集成的 hook 包装器
+
+首次启动时，ClaudeBeep 会在安装目录下创建 `config.json`。
+
+### 卸载
+
+通过 Windows 设置 > 应用 卸载。安装目录下的所有文件将被自动清除。
+
+## Codex 集成说明
+
+从 Web UI 安装 Codex hooks 后，需要在 Codex 中信任它们：
+
+1. 打开 Codex 终端
+2. 输入 `/hooks`
+3. 审核并信任 ClaudeBeep hooks
+
+如果重新安装或更新 ClaudeBeep，hooks 的哈希值会变化，Codex 会再次标记为"需要审核"。运行 `/hooks` 重新信任即可。
+
+**已知问题：** Codex 在 Windows 上无法直接执行 `.exe` 文件作为 hook。ClaudeBeep 使用 `.bat` 包装器（`claudebeep_hook.bat`）来解决此问题。包装器已包含在安装程序中。
 
 ## 开发
 
 ```powershell
-# 安装依赖
+# 安装运行时和开发依赖
 pip install -r requirements.txt
+pip install -r requirements-dev.txt
+
+# 运行完整测试套件
+python -m pytest -v
 
 # 运行托盘应用
 python tray.py
@@ -170,8 +185,8 @@ python notify.py --test        # 测试所有已启用渠道
 推送版本标签触发 GitHub Actions 工作流：
 
 ```
-git tag v1.1.0
-git push origin v1.1.0
+git tag v2.0.0
+git push origin v2.0.0
 ```
 
 工作流步骤：
@@ -187,29 +202,33 @@ git push origin v1.1.0
 ```json
 {
   "app": {
-    "version": "1.0.3",
+    "version": "1.5.0",
     "auto_cleanup": true,
     "cleanup_interval_hours": 12,
     "update_repo": "Tommie-P-xl/ClaudeBeep"
   },
-  "windows_toast": { "enabled": true, "duration_ms": 5000 },
-  "weixin": {
-    "enabled": false,
-    "bot_token": "",
-    "baseurl": "https://ilinkai.weixin.qq.com",
-    "to_user_id": "",
-    "context_token": "",
-    "sync_buf": ""
+  "channels": {
+    "windows_toast": { "duration_ms": 5000, "sound": "reminder" },
+    "weixin": { "bot_token": "", "baseurl": "https://ilinkai.weixin.qq.com" },
+    "telegram": { "bot_token": "", "chat_id": "" }
   },
-  "qq": { "enabled": false, "app_id": "", "app_secret": "", "target_id": "" },
-  "telegram": { "enabled": false, "bot_token": "", "chat_id": "" },
-  "feishu": { "enabled": false, "app_id": "", "app_secret": "", "receive_id": "" },
-  "dingtalk": { "enabled": false, "client_id": "", "client_secret": "", "user_id": "" },
-  "interaction": { "enabled": true, "timeout_seconds": 0, "show_in_terminal": true }
+  "integrations": {
+    "claude_code": {
+      "enabled": true,
+      "events": { "Stop": true, "Elicitation": true, "PermissionRequest": true },
+      "channels": { "windows_toast": true, "weixin": false, "telegram": true },
+      "interaction": { "enabled": true, "timeout_seconds": 0, "show_in_terminal": true }
+    },
+    "codex": {
+      "enabled": false,
+      "events": { "Stop": true, "PermissionRequest": true },
+      "channels": { "windows_toast": true, "weixin": false, "telegram": false }
+    }
+  }
 }
 ```
 
-敏感字段（`bot_token`、`app_secret` 等）在 API 响应中会被脱敏。
+以上为省略未变渠道字段的简化示例。敏感字段（`bot_token`、`app_secret` 等）在 API 响应中会被脱敏。
 
 ## 隐私
 

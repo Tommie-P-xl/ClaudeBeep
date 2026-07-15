@@ -217,6 +217,12 @@
     box-shadow: 0 2px 6px rgba(0,0,0,0.15);
     transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
   }
+  .toggle-sm {
+    width: 36px; height: 20px;
+  }
+  .toggle-sm-thumb {
+    width: 14px; height: 14px; top: 3px; left: 3px;
+  }
 
   /* ─── Tabs (pill segments) ─── */
   .tab-bar {
@@ -375,11 +381,6 @@
       </div>
     </div>
     <div class="flex items-center gap-3">
-      <span class="status-badge"
-            :style="status.hooks_installed ? 'background:var(--success-light);color:var(--success)' : 'background:var(--warning-light);color:var(--warning)'">
-        <span class="w-2 h-2 rounded-full breathe-dot relative" :style="status.hooks_installed ? 'background:var(--success)' : 'background:var(--warning)'"></span>
-        Hooks <span x-text="status.hooks_installed ? '已安装' : '未安装'"></span>
-      </span>
       <button @click="cycleTheme()" class="theme-btn" :title="themeLabel">
         <span x-text="themeMode==='light' ? '&#9788;' : themeMode==='dark' ? '&#9790;' : '&#9681;'"></span>
       </button>
@@ -389,13 +390,15 @@
 
 <!-- Tabs -->
 <nav class="max-w-5xl mx-auto px-6 mt-4 mb-2">
-  <div class="tab-bar overflow-x-auto">
-    <template x-for="tab in tabs" :key="tab.id">
-      <button @click="currentTab = tab.id"
-              class="tab-pill"
-              :class="currentTab === tab.id ? 'active' : ''"
-              x-text="tab.label"></button>
-    </template>
+  <div class="w-full overflow-x-auto">
+    <div class="tab-bar" style="width:max-content">
+      <template x-for="tab in tabs" :key="tab.id">
+        <button @click="currentTab = tab.id"
+                class="tab-pill"
+                :class="currentTab === tab.id ? 'active' : ''"
+                x-text="tab.label"></button>
+      </template>
+    </div>
   </div>
 </nav>
 
@@ -421,12 +424,7 @@
               <div class="text-xs" style="color:var(--text-muted)">系统原生通知</div>
             </div>
           </div>
-          <button @click="toggleChannel('windows_toast', !config.windows_toast?.enabled)"
-                  class="toggle-track"
-                  :style="config.windows_toast?.enabled ? 'background:var(--accent)' : 'background:var(--toggle-off)'">
-            <span class="toggle-thumb"
-                  :style="config.windows_toast?.enabled ? 'transform:translateX(22px)' : 'transform:translateX(0)'"></span>
-          </button>
+          <span class="status-badge" style="background:var(--bg-surface-alt);color:var(--text-muted)">共享配置</span>
         </div>
         <div class="mb-3 flex items-center justify-between">
           <span class="text-xs font-medium" style="color:var(--text-muted)">提示音</span>
@@ -468,12 +466,7 @@
               <div class="text-xs" style="color:var(--text-muted)">WeChat 通知</div>
             </div>
           </div>
-          <button @click="toggleChannel('weixin', !config.weixin?.enabled)"
-                  class="toggle-track"
-                  :style="config.weixin?.enabled ? 'background:var(--accent)' : 'background:var(--toggle-off)'">
-            <span class="toggle-thumb"
-                  :style="config.weixin?.enabled ? 'transform:translateX(22px)' : 'transform:translateX(0)'"></span>
-          </button>
+          <button @click="currentTab = 'weixin'" class="btn-pill btn-ghost px-3 py-1.5 text-xs">配置</button>
         </div>
         <div class="mb-2">
           <span class="inline-block px-2 py-0.5 rounded-full text-xs font-bold" style="background:var(--warning-light);color:var(--warning)">不推荐</span>
@@ -497,12 +490,7 @@
               <div class="text-xs" style="color:var(--text-muted)">QQ 通知</div>
             </div>
           </div>
-          <button @click="toggleChannel('qq', !config.qq?.enabled)"
-                  class="toggle-track"
-                  :style="config.qq?.enabled ? 'background:var(--accent)' : 'background:var(--toggle-off)'">
-            <span class="toggle-thumb"
-                  :style="config.qq?.enabled ? 'transform:translateX(22px)' : 'transform:translateX(0)'"></span>
-          </button>
+          <button @click="currentTab = 'qq'" class="btn-pill btn-ghost px-3 py-1.5 text-xs">配置</button>
         </div>
         <div class="flex items-center gap-2 text-xs">
           <span class="w-2 h-2 rounded-full breathe-dot relative"
@@ -523,12 +511,7 @@
               <div class="text-xs" style="color:var(--text-muted)">Bot API</div>
             </div>
           </div>
-          <button @click="toggleChannel('telegram', !config.telegram?.enabled)"
-                  class="toggle-track"
-                  :style="config.telegram?.enabled ? 'background:var(--accent)' : 'background:var(--toggle-off)'">
-            <span class="toggle-thumb"
-                  :style="config.telegram?.enabled ? 'transform:translateX(22px)' : 'transform:translateX(0)'"></span>
-          </button>
+          <button @click="currentTab = 'telegram'" class="btn-pill btn-ghost px-3 py-1.5 text-xs">配置</button>
         </div>
         <div class="flex items-center gap-2 text-xs">
           <span class="w-2 h-2 rounded-full breathe-dot relative"
@@ -549,12 +532,7 @@
               <div class="text-xs" style="color:var(--text-muted)">Open API</div>
             </div>
           </div>
-          <button @click="toggleChannel('feishu', !config.feishu?.enabled)"
-                  class="toggle-track"
-                  :style="config.feishu?.enabled ? 'background:var(--accent)' : 'background:var(--toggle-off)'">
-            <span class="toggle-thumb"
-                  :style="config.feishu?.enabled ? 'transform:translateX(22px)' : 'transform:translateX(0)'"></span>
-          </button>
+          <button @click="currentTab = 'feishu'" class="btn-pill btn-ghost px-3 py-1.5 text-xs">配置</button>
         </div>
         <div class="flex items-center gap-2 text-xs">
           <span class="w-2 h-2 rounded-full breathe-dot relative"
@@ -575,12 +553,7 @@
               <div class="text-xs" style="color:var(--text-muted)">Stream API</div>
             </div>
           </div>
-          <button @click="toggleChannel('dingtalk', !config.dingtalk?.enabled)"
-                  class="toggle-track"
-                  :style="config.dingtalk?.enabled ? 'background:var(--accent)' : 'background:var(--toggle-off)'">
-            <span class="toggle-thumb"
-                  :style="config.dingtalk?.enabled ? 'transform:translateX(22px)' : 'transform:translateX(0)'"></span>
-          </button>
+          <button @click="currentTab = 'dingtalk'" class="btn-pill btn-ghost px-3 py-1.5 text-xs">配置</button>
         </div>
         <div class="flex items-center gap-2 text-xs">
           <span class="w-2 h-2 rounded-full breathe-dot relative"
@@ -621,89 +594,68 @@
       </div>
     </div>
 
-    <!-- 交互模式卡片 -->
-    <div class="card p-6 mb-6">
-      <div class="flex items-center justify-between mb-2">
-        <div>
-          <h3 class="font-bold text-base" style="color:var(--text-ink)">交互模式</h3>
-          <p class="text-xs mt-1" style="color:var(--text-muted)">
-            开启后，审批通知可直接通过终端、微信、QQ、飞书、钉钉、Telegram 回复
-          </p>
-        </div>
-        <button
-          @click="toggleInteraction()"
-          class="toggle-track"
-          :style="interactionEnabled ? 'background:var(--accent)' : 'background:var(--toggle-off)'"
-        >
-          <span class="toggle-thumb"
-                :style="interactionEnabled ? 'transform:translateX(22px)' : 'transform:translateX(0)'"></span>
-        </button>
+    <!-- Peer integrations -->
+    <section class="mb-8">
+      <div class="section-label mb-3 px-1">编程助手集成</div>
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <!-- stable panel selectors: data-integration="claude_code" data-integration="codex" -->
+        <template x-for="platform in ['claude_code', 'codex']" :key="platform">
+          <article class="card p-6" :data-integration="platform">
+            <!-- Platform header with toggle -->
+            <div class="flex items-start justify-between gap-4 mb-5">
+              <div>
+                <h3 class="font-bold text-base" style="color:var(--text-ink)" x-text="platform === 'claude_code' ? 'Claude Code' : 'Codex'"></h3>
+                <p class="text-xs mt-1" style="color:var(--text-muted)" x-text="platform === 'claude_code' ? '本地 Hooks 与通知交互' : 'Codex 事件提醒集成'"></p>
+              </div>
+              <button @click="integrations[platform].enabled = !integrations[platform].enabled; saveIntegration(platform)" class="toggle-track" :aria-label="platform + ' enabled'"
+                      :style="integrations[platform]?.enabled ? 'background:var(--accent)' : 'background:var(--toggle-off)'">
+                <span class="toggle-thumb" :style="integrations[platform]?.enabled ? 'transform:translateX(22px)' : 'transform:translateX(0)'"></span>
+              </button>
+            </div>
+            <!-- Channel toggles -->
+            <div class="text-xs font-semibold mb-3" style="color:var(--text-body)">通知渠道</div>
+            <div class="grid grid-cols-2 gap-2 mb-4">
+              <template x-for="channel in channelOptions" :key="channel.id">
+                <div class="flex items-center justify-between gap-2 rounded-xl px-3 py-2" style="background:var(--bg-surface-alt)">
+                  <span class="text-xs truncate" style="color:var(--text-body)" x-text="channel.label"></span>
+                  <button @click="toggleIntegrationChannel(platform, channel.id, !integrations[platform]?.channels?.[channel.id])" class="toggle-track toggle-sm"
+                          :style="(integrations[platform]?.channels?.[channel.id]) ? 'background:var(--accent)' : 'background:var(--toggle-off)'">
+                    <span class="toggle-thumb toggle-sm-thumb" :style="(integrations[platform]?.channels?.[channel.id]) ? 'transform:translateX(16px)' : 'transform:translateX(0)'"></span>
+                  </button>
+                </div>
+              </template>
+            </div>
+            <!-- Claude Code interaction settings -->
+            <div x-show="platform === 'claude_code'" class="mt-4 pt-4 space-y-3" style="border-top:1px solid var(--border-primary)">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold" style="color:var(--text-body)">交互模式</span>
+                <button @click="integrations.claude_code.interaction.enabled = !integrations.claude_code.interaction.enabled; saveIntegration('claude_code')" class="toggle-track toggle-sm"
+                        :style="integrations.claude_code?.interaction?.enabled ? 'background:var(--accent)' : 'background:var(--toggle-off)'">
+                  <span class="toggle-thumb toggle-sm-thumb" :style="integrations.claude_code?.interaction?.enabled ? 'transform:translateX(16px)' : 'transform:translateX(0)'"></span>
+                </button>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-xs" style="color:var(--text-muted)">超时（秒，0=无限）</span>
+                <input type="number" min="0" class="w-20 px-2 py-1 text-xs rounded-lg" style="background:var(--input-bg);border:1px solid var(--input-border);color:var(--text-ink)" x-model.number="integrations.claude_code.interaction.timeout_seconds" @change="saveIntegration('claude_code')">
+              </div>
+            </div>
+            <!-- Codex info -->
+            <p x-show="platform === 'codex'" class="callout callout-info mt-4">远程渠道仅发送提醒，批准和回答仍在 Codex 中完成。</p>
+            <!-- Test button -->
+            <div class="mt-4 pt-3" style="border-top:1px solid var(--border-primary)">
+              <p x-show="(hookStatus[platform]?.configured_events || []).length" class="text-xs mb-2" style="color:var(--text-muted)" x-text="`${(hookStatus[platform]?.configured_events || []).length} 个事件已配置`"></p>
+              <button @click="testIntegration(platform)" class="btn-pill btn-ghost px-4 py-2 text-xs w-full">测试通知</button>
+            </div>
+          </article>
+        </template>
       </div>
-      <div x-show="interactionEnabled" x-transition class="space-y-4 mt-5 pt-5" style="border-top:1px solid var(--border-primary)">
-        <div class="flex items-center justify-between">
-          <div>
-            <label class="text-sm font-semibold" style="color:var(--text-body)">超时（秒，0=无限）</label>
-            <p class="text-xs mt-1" style="color:var(--text-muted)">等待用户回复的时间，超时后自动取消请求并继续执行</p>
-          </div>
-          <input type="number" x-model.number="interactionTimeout" @change="saveInteraction()" min="0"
-            class="w-24 px-3 py-2 text-sm rounded-xl" style="background:var(--input-bg);border:1px solid var(--input-border);color:var(--text-ink)">
-        </div>
-        <div class="flex items-center justify-between">
-          <div>
-            <label class="text-sm font-semibold" style="color:var(--text-body)">终端显示选项</label>
-            <p class="text-xs mt-1" style="color:var(--text-muted)">开启后，Claude Code 终端会显示可选选项供直接输入回复</p>
-          </div>
-          <button @click="interactionShowTerminal = !interactionShowTerminal; saveInteraction()"
-            class="toggle-track" style="width:40px;height:22px"
-            :style="interactionShowTerminal ? 'background:var(--accent)' : 'background:var(--toggle-off)'">
-            <span class="toggle-thumb" style="width:16px;height:16px;top:3px;left:3px"
-                  :style="interactionShowTerminal ? 'transform:translateX(18px)' : 'transform:translateX(0)'"></span>
-          </button>
-        </div>
-      </div>
-    </div>
+    </section>
 
-    <!-- Quick Actions -->
-    <div class="card p-6 mb-6">
-      <h3 class="font-bold text-base mb-4" style="color:var(--text-ink)">快捷操作</h3>
-      <div class="flex flex-wrap gap-3">
-        <button @click="testNotifications()" class="btn-pill btn-primary px-5 py-2.5 text-sm">
-          测试所有已启用渠道
-        </button>
-        <button @click="installHooks()" class="btn-pill btn-primary px-5 py-2.5 text-sm">
-          安装 Hooks
-        </button>
-        <button @click="uninstallHooks()" class="btn-pill btn-danger px-5 py-2.5 text-sm">
-          卸载 Hooks
-        </button>
-        <button @click="refreshAll()" class="btn-pill btn-ghost px-5 py-2.5 text-sm">
-          刷新状态
-        </button>
-      </div>
-    </div>
-
-    <!-- System Info -->
-    <div class="card p-6">
-      <h3 class="font-bold text-base mb-4" style="color:var(--text-ink)">系统信息</h3>
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-        <div>
-          <div class="section-label mb-1">Python</div>
-          <div class="font-semibold" style="color:var(--text-ink)" x-text="status.python_version?.split(' ')[0] || '-'"></div>
-        </div>
-        <div>
-          <div class="section-label mb-1">Hooks</div>
-          <div class="font-semibold" style="color:var(--text-ink)" x-text="status.hooks_installed ? '已安装' : '未安装'"></div>
-        </div>
-        <div>
-          <div class="section-label mb-1">已启用渠道</div>
-          <div class="font-semibold" style="color:var(--text-ink)" x-text="enabledChannelCount"></div>
-        </div>
-      </div>
-    </div>
   </div>
 
-  <!-- ==================== WeChat Tab ==================== -->
+  <!-- ==================== Shared channel credentials ==================== -->
   <div x-show="currentTab === 'weixin'" x-cloak>
+    <div class="section-label mb-3 px-1">共享通知渠道凭证</div>
     <div class="card p-6 mb-6">
       <h3 class="font-bold text-base mb-4 flex items-center gap-3" style="color:var(--text-ink)">
         <span class="w-9 h-9 rounded-2xl flex items-center justify-center" style="background:var(--success-light)">
@@ -803,6 +755,7 @@
 
   <!-- ==================== QQ Tab ==================== -->
   <div x-show="currentTab === 'qq'" x-cloak>
+    <div class="section-label mb-3 px-1">共享通知渠道凭证</div>
     <div class="card p-6 mb-6">
       <h3 class="font-bold text-base mb-4 flex items-center gap-3" style="color:var(--text-ink)">
         <span class="w-9 h-9 rounded-2xl flex items-center justify-center" style="background:var(--warning-light)">
@@ -872,6 +825,7 @@
 
   <!-- ==================== Telegram Tab ==================== -->
   <div x-show="currentTab === 'telegram'" x-cloak>
+    <div class="section-label mb-3 px-1">共享通知渠道凭证</div>
     <div class="card p-6 mb-6">
       <h3 class="font-bold text-base mb-4 flex items-center gap-3" style="color:var(--text-ink)">
         <span class="w-9 h-9 rounded-2xl flex items-center justify-center" style="background:var(--info-light)">
@@ -934,6 +888,7 @@
 
   <!-- ==================== 飞书 Tab ==================== -->
   <div x-show="currentTab === 'feishu'" x-cloak>
+    <div class="section-label mb-3 px-1">共享通知渠道凭证</div>
     <div class="card p-6 mb-6">
       <h3 class="font-bold text-base mb-4 flex items-center gap-3" style="color:var(--text-ink)">
         <span class="w-9 h-9 rounded-2xl flex items-center justify-center" style="background:var(--lavender-light)">
@@ -1013,6 +968,7 @@
 
   <!-- ==================== 钉钉 Tab ==================== -->
   <div x-show="currentTab === 'dingtalk'" x-cloak>
+    <div class="section-label mb-3 px-1">共享通知渠道凭证</div>
     <div class="card p-6 mb-6">
       <h3 class="font-bold text-base mb-4 flex items-center gap-3" style="color:var(--text-ink)">
         <span class="w-9 h-9 rounded-2xl flex items-center justify-center" style="background:var(--info-light)">
@@ -1092,51 +1048,68 @@
 
   <!-- ==================== Hooks Tab ==================== -->
   <div x-show="currentTab === 'hooks'" x-cloak>
+    <!-- Claude Code Hooks -->
     <div class="card p-6 mb-6">
-      <h3 class="font-bold text-base mb-2" style="color:var(--text-ink)">Hook 管理</h3>
+      <h3 class="font-bold text-base mb-2" style="color:var(--text-ink)">Claude Code Hooks</h3>
       <p class="text-xs mb-5" style="color:var(--text-muted)">
         Claude Code 通过 hooks 机制在特定事件触发时调用通知脚本。安装后，Claude 的各种操作（完成、询问、编辑文件、执行命令等）都会自动发送通知。
       </p>
-
-      <div class="space-y-3 mb-6">
-        <template x-for="(installed, event) in hooksInfo.events" :key="event">
-          <div class="flex items-center justify-between p-4 rounded-2xl" style="background:var(--bg-surface-alt)">
-            <div class="flex items-center gap-3">
-              <span class="w-2.5 h-2.5 rounded-full breathe-dot relative" :style="installed ? 'background:var(--success)' : 'background:var(--text-faint)'"></span>
-              <div>
-                <div class="text-sm font-bold" style="color:var(--text-ink)" x-text="event"></div>
-                <div class="text-xs" style="color:var(--text-muted)" x-text="hookDescriptions[event] || ''"></div>
+      <div class="space-y-2 mb-5">
+        <template x-for="(enabled, event) in integrations.claude_code.events" :key="event">
+          <div class="flex items-center justify-between gap-3 rounded-xl px-3 py-2" style="background:var(--bg-surface-alt)">
+            <div class="flex items-center gap-2 min-w-0">
+              <span class="w-2 h-2 rounded-full flex-shrink-0" :style="(hookStatus.claude_code?.configured_events || []).includes(event) ? 'background:var(--success)' : 'background:var(--text-faint)'"></span>
+              <div class="min-w-0">
+                <div class="text-xs font-semibold truncate" style="color:var(--text-body)" x-text="event"></div>
+                <div class="text-xs truncate" style="color:var(--text-muted)" x-text="hookDescriptions[event] || ''"></div>
               </div>
             </div>
-            <span class="px-3 py-1 rounded-full text-xs font-bold"
-                  :style="installed ? 'background:var(--success-light);color:var(--success)' : 'background:var(--bg-surface);color:var(--text-muted)'"
-                  x-text="installed ? '已安装' : '未安装'"></span>
+            <button @click="integrations.claude_code.events[event] = !enabled; saveIntegration('claude_code')" class="toggle-track toggle-sm"
+                    :style="enabled ? 'background:var(--accent)' : 'background:var(--toggle-off)'">
+              <span class="toggle-thumb toggle-sm-thumb" :style="enabled ? 'transform:translateX(16px)' : 'transform:translateX(0)'"></span>
+            </button>
           </div>
         </template>
       </div>
-
-      <div x-show="hooksInfo.tool_matchers?.length" class="mb-6">
-        <h4 class="text-sm font-bold mb-3" style="color:var(--text-body)">PreToolUse 监控的工具类型</h4>
-        <div class="flex flex-wrap gap-2">
-          <template x-for="m in hooksInfo.tool_matchers" :key="m">
-            <span class="px-3 py-1.5 text-xs rounded-full font-semibold" style="background:var(--accent-light);color:var(--accent);border:1px solid var(--border-primary)" x-text="m"></span>
-          </template>
-        </div>
+      <div class="flex gap-3 mb-4">
+        <button @click="syncIntegrationHooks('claude_code')" class="btn-pill btn-primary px-6 py-2.5 text-sm">安装 Hooks</button>
+        <button @click="uninstallIntegrationHooks('claude_code')" class="btn-pill btn-danger px-6 py-2.5 text-sm">卸载</button>
       </div>
-
-      <div class="flex gap-3">
-        <button @click="installHooks()" class="btn-pill btn-primary px-6 py-2.5 text-sm">
-          安装全部 Hooks
-        </button>
-        <button @click="uninstallHooks()" class="btn-pill btn-danger px-6 py-2.5 text-sm">
-          卸载全部 Hooks
-        </button>
+      <div>
+        <span class="text-xs" style="color:var(--text-muted)">配置文件：</span>
+        <code class="text-xs px-3 py-1 rounded-lg inline-block font-bold" style="background:var(--accent-light);color:var(--accent)">~/.claude/settings.json</code>
       </div>
     </div>
 
+    <!-- Codex Hooks -->
     <div class="card p-6">
-      <h3 class="font-bold text-base mb-3" style="color:var(--text-ink)">settings.json 路径</h3>
-      <code class="text-xs px-4 py-2 rounded-xl inline-block font-bold" style="background:var(--accent-light);color:var(--accent)">~/.claude/settings.json</code>
+      <h3 class="font-bold text-base mb-2" style="color:var(--text-ink)">Codex Hooks</h3>
+      <p class="text-xs mb-5" style="color:var(--text-muted)">
+        Codex 通过 hooks 机制在事件触发时调用通知脚本。安装后请在 Codex 中运行 <code>/hooks</code> 确认信任状态。
+      </p>
+      <div class="space-y-2 mb-5">
+        <template x-for="(enabled, event) in integrations.codex.events" :key="event">
+          <div class="flex items-center justify-between gap-3 rounded-xl px-3 py-2" style="background:var(--bg-surface-alt)">
+            <div class="flex items-center gap-2 min-w-0">
+              <span class="w-2 h-2 rounded-full flex-shrink-0" :style="(hookStatus.codex?.configured_events || []).includes(event) ? 'background:var(--success)' : 'background:var(--text-faint)'"></span>
+              <span class="text-xs font-semibold truncate" style="color:var(--text-body)" x-text="event"></span>
+            </div>
+            <button @click="integrations.codex.events[event] = !enabled; saveIntegration('codex')" class="toggle-track toggle-sm"
+                    :style="enabled ? 'background:var(--accent)' : 'background:var(--toggle-off)'">
+              <span class="toggle-thumb toggle-sm-thumb" :style="enabled ? 'transform:translateX(16px)' : 'transform:translateX(0)'"></span>
+            </button>
+          </div>
+        </template>
+      </div>
+      <div class="flex gap-3 mb-4">
+        <button @click="syncIntegrationHooks('codex')" class="btn-pill btn-primary px-6 py-2.5 text-sm">安装 Hooks</button>
+        <button @click="uninstallIntegrationHooks('codex')" class="btn-pill btn-danger px-6 py-2.5 text-sm">卸载</button>
+      </div>
+      <p x-show="hookStatus.codex?.trust_review_required" class="text-xs mb-3" style="color:var(--warning)">请在 Codex 中运行 /hooks 查看并确认信任状态。</p>
+      <div>
+        <span class="text-xs" style="color:var(--text-muted)">配置文件：</span>
+        <code class="text-xs px-3 py-1 rounded-lg inline-block font-bold" style="background:var(--accent-light);color:var(--accent)">~/.codex/hooks.json</code>
+      </div>
     </div>
   </div>
 
@@ -1186,7 +1159,19 @@ function app() {
     status: {},
     weixinStatus: {},
     qqStatus: {},
-    hooksInfo: { installed: false, events: {}, tool_matchers: [] },
+    integrations: {
+      claude_code: { enabled: true, events: {}, channels: {}, interaction: {} },
+      codex: { enabled: false, events: {}, channels: {} },
+    },
+    hookStatus: {
+      claude_code: { configured_events: [], trust_review_required: false, trust_command: '/hooks' },
+      codex: { configured_events: [], trust_review_required: false, trust_command: '/hooks' },
+    },
+    channelOptions: [
+      { id: 'windows_toast', label: 'Windows Toast' }, { id: 'weixin', label: '微信' },
+      { id: 'qq', label: 'QQ Bot' }, { id: 'telegram', label: 'Telegram' },
+      { id: 'feishu', label: '飞书' }, { id: 'dingtalk', label: '钉钉' },
+    ],
     logLines: [],
     toasts: [],
     toastId: 0,
@@ -1232,9 +1217,6 @@ function app() {
     qqValidating: false,
     qqWaitingOpenId: false,
     permMode: 'default',
-    interactionEnabled: false,
-    interactionTimeout: 0,
-    interactionShowTerminal: true,
     soundEnabled: true,
     soundType: 'reminder',
     _qqPollTimer: null,
@@ -1249,7 +1231,6 @@ function app() {
         this._syncTheme();
       });
       await this.refreshAll();
-      await this.loadInteraction();
       this._sseSource = new EventSource('/api/stream');
       this._sseSource.onmessage = () => {};
       this._sseSource.onerror = () => {};
@@ -1292,15 +1273,19 @@ function app() {
     async refreshAll() {
       try {
         const safe = async (fn) => { try { return await fn(); } catch (e) { return {}; } };
-        const [cfg, st, wx, qq, tg, fs, dt, hk, lg, pm] = await Promise.all([
+        const [cfg, st, ints] = await Promise.all([
           safe(() => this.api('GET', '/api/config')),
           safe(() => this.api('GET', '/api/status')),
-          safe(() => this.api('GET', '/api/weixin/status')),
-          safe(() => this.api('GET', '/api/qq/status')),
-          safe(() => this.api('GET', '/api/telegram/status')),
-          safe(() => this.api('GET', '/api/feishu/status')),
-          safe(() => this.api('GET', '/api/dingtalk/status')),
-          safe(() => this.api('GET', '/api/hooks')),
+          safe(() => this.api('GET', '/api/integrations')),
+        ]);
+        // Channel adapters import optional SDKs on first use; serialize these
+        // requests so concurrent imports cannot deadlock on a fresh server.
+        const wx = await safe(() => this.api('GET', '/api/weixin/status'));
+        const qq = await safe(() => this.api('GET', '/api/qq/status'));
+        const tg = await safe(() => this.api('GET', '/api/telegram/status'));
+        const fs = await safe(() => this.api('GET', '/api/feishu/status'));
+        const dt = await safe(() => this.api('GET', '/api/dingtalk/status'));
+        const [lg, pm] = await Promise.all([
           safe(() => this.api('GET', '/api/logs?lines=50')),
           safe(() => this.api('GET', '/api/permission-mode')),
         ]);
@@ -1311,34 +1296,24 @@ function app() {
         this.tgStatus = tg || {};
         this.fsStatus = fs || {};
         this.dtStatus = dt || {};
-        this.hooksInfo = hk || { installed: false, events: {}, tool_matchers: [] };
+        this.integrations = (ints && ints.integrations) || this.integrations;
+        this.hookStatus = Object.fromEntries(Object.entries(this.integrations).map(([platform, integration]) => [platform, integration.hooks || {}]));
         this.logLines = (lg && lg.lines) || [];
         this.permMode = (pm && pm.mode) || 'default';
-        const wtSound = cfg.windows_toast?.sound || 'reminder';
+        const wtSound = cfg?.windows_toast?.sound || 'reminder';
         this.soundEnabled = wtSound !== 'silent';
         this.soundType = wtSound === 'silent' ? 'reminder' : wtSound;
-        if (cfg.weixin) {
+        if (cfg?.weixin) {
           this.wxForm.baseurl = cfg.weixin.baseurl || 'https://ilinkai.weixin.qq.com';
           if (cfg.weixin.to_user_id) this.wxForm.to_user_id = cfg.weixin.to_user_id;
           if (cfg.weixin.bot_token) this.wxForm.bot_token = cfg.weixin.bot_token;
         }
-        if (cfg.qq) {
+        if (cfg?.qq) {
           this.qqForm.app_id = cfg.qq.app_id || '';
           this.qqForm.target_id = cfg.qq.target_id || '';
         }
       } catch (e) {
         this.toast('error', '刷新失败', e.message);
-      }
-    },
-
-    async toggleChannel(name, enabled) {
-      try {
-        await this.api('POST', `/api/channel/${name}/toggle`, { enabled });
-        this.config[name].enabled = enabled;
-        this.toast('success', `${name} ${enabled ? '已启用' : '已禁用'}`);
-      } catch (e) {
-        this.toast('error', '操作失败', e.message);
-        this.config[name].enabled = !enabled;
       }
     },
 
@@ -1367,33 +1342,53 @@ function app() {
       } catch (e) { this.toast('error', '保存失败', e.message); }
     },
 
-    async testNotifications() {
+    async testIntegration(platform) {
       try {
-        const r = await this.api('POST', '/api/test');
+        const r = await this.api('POST', `/api/integrations/${platform}/test`);
         if (r.results?.length) {
           for (const res of r.results) {
-            this.toast(res.success ? 'success' : 'error', `${res.channel}: ${res.success ? '发送成功' : '发送失败'}`);
+            this.toast(res.success ? 'success' : 'error', `${platform} / ${res.channel}: ${res.success ? '发送成功' : '发送失败'}`);
           }
         } else {
-          this.toast('info', '没有已启用的渠道');
+          this.toast('info', `${platform} 没有已启用的渠道`);
         }
-      } catch (e) { this.toast('error', '测试失败', e.message); }
+      } catch (e) { this.toast('error', `${platform} 测试失败`, e.message); }
     },
 
-    async installHooks() {
-      try {
-        await this.api('POST', '/api/hooks/install');
-        this.toast('success', 'Hooks 已安装', '重启 Claude Code 后生效');
-        await this.refreshAll();
-      } catch (e) { this.toast('error', '安装失败', e.message); }
+    async loadIntegrations() {
+      const data = await this.api('GET', '/api/integrations');
+      this.integrations = data.integrations;
+      this.hookStatus = Object.fromEntries(Object.entries(this.integrations).map(([platform, integration]) => [platform, integration.hooks || {}]));
     },
-
-    async uninstallHooks() {
+    async toggleIntegrationChannel(platform, channel, enabled) {
       try {
-        await this.api('POST', '/api/hooks/uninstall');
-        this.toast('success', 'Hooks 已卸载');
-        await this.refreshAll();
-      } catch (e) { this.toast('error', '卸载失败', e.message); }
+        await this.api('POST', `/api/integrations/${platform}/channels/${channel}/toggle`, { enabled });
+        this.integrations[platform].channels[channel] = enabled;
+      } catch (e) { this.toast('error', '渠道切换失败', e.message); }
+    },
+    async saveIntegration(platform) {
+      try {
+        const integration = this.integrations[platform];
+        const payload = { enabled: integration.enabled, events: integration.events };
+        if (platform === 'claude_code') payload.interaction = integration.interaction;
+        await this.api('PUT', `/api/integrations/${platform}`, payload);
+        await this.loadIntegrations();
+      } catch (e) { this.toast('error', '集成保存失败', e.message); }
+    },
+    async syncIntegrationHooks(platform) {
+      try {
+        const r = await this.api('POST', `/api/integrations/${platform}/hooks/sync`);
+        await this.loadIntegrations();
+        const count = r.hooks?.configured_events?.length || 0;
+        this.toast('success', `${platform === 'claude_code' ? 'Claude Code' : 'Codex'} Hooks 安装成功`, `${count} 个事件已配置`);
+      } catch (e) { this.toast('error', 'Hooks 安装失败', e.message); }
+    },
+    async uninstallIntegrationHooks(platform) {
+      try {
+        await this.api('POST', `/api/integrations/${platform}/hooks/uninstall`);
+        await this.loadIntegrations();
+        this.toast('success', `${platform === 'claude_code' ? 'Claude Code' : 'Codex'} Hooks 已卸载`);
+      } catch (e) { this.toast('error', 'Hooks 卸载失败', e.message); }
     },
 
     _renderQR(url) {
@@ -1861,33 +1856,6 @@ function app() {
         this.dtStatus = {};
         this.toast('success', '钉钉已清除');
       } catch (e) { this.toast('error', '清除失败', e.message); }
-    },
-
-    async loadInteraction() {
-      try {
-        const resp = await fetch('/api/interaction');
-        const data = await resp.json();
-        this.interactionEnabled = data.enabled || false;
-        this.interactionTimeout = data.timeout_seconds || 0;
-        this.interactionShowTerminal = data.show_in_terminal !== false;
-      } catch (e) { console.error('load interaction failed', e); }
-    },
-    async toggleInteraction() {
-      this.interactionEnabled = !this.interactionEnabled;
-      await this.saveInteraction();
-    },
-    async saveInteraction() {
-      try {
-        await fetch('/api/interaction', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({
-            enabled: this.interactionEnabled,
-            timeout_seconds: this.interactionTimeout,
-            show_in_terminal: this.interactionShowTerminal,
-          }),
-        });
-      } catch (e) { console.error('save interaction failed', e); }
     },
 
     async loadLogs() {
