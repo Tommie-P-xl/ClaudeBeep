@@ -45,11 +45,11 @@ def _get_hook_base_cmd() -> str:
         if getattr(sys, "frozen", False):
             bat = script_dir / "claudebeep_hook.bat"
             if bat.exists():
-                return str(bat).replace("/", chr(92))
-            return str(Path(sys.executable).resolve())
+                return str(bat).replace("\\", "/")
+            return str(Path(sys.executable).resolve()).replace("\\", "/")
         bat = script_dir / "notify_hook.bat"
         if bat.exists():
-            return f'"{str(bat).replace("/", chr(92))}"'
+            return str(bat).replace("\\", "/")
         py = shutil.which("python") or shutil.which("python3")
         return f'"{py}" "{script_dir / "notify.py"}"' if py else f'"{script_dir / "notify.py"}"'
     return f'"{sys.executable}" "{script_dir / "notify.py"}"'
