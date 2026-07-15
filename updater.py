@@ -174,9 +174,10 @@ def perform_update(download_url: str, new_version: str) -> bool:
 
     _log(f"Downloaded {setup_exe.stat().st_size} bytes")
 
-    # Launch the Setup.exe silently
+    # Launch the Setup.exe silently, install to current directory
+    install_dir = str(Path(sys.executable).resolve().parent)
     try:
-        _log("Launching Setup.exe silently...")
+        _log(f"Launching Setup.exe silently (install to {install_dir})...")
         subprocess.Popen(
             [
                 str(setup_exe),
@@ -185,6 +186,7 @@ def perform_update(download_url: str, new_version: str) -> bool:
                 "/NORESTART",
                 "/CLOSEAPPLICATIONS",
                 "/RESTARTAPPLICATIONS",
+                f"/DIR={install_dir}",
             ],
             cwd=str(temp_dir),
             creationflags=subprocess.DETACHED_PROCESS,
