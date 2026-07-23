@@ -1,4 +1,4 @@
-# ClaudeBeep v2.0.0
+# ClaudeBeep v2.1.0
 
 <p align="center">
   <img src="assets/icon.png" width="128" alt="ClaudeBeep Logo">
@@ -13,7 +13,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-v2.0.0-blue" alt="Version">
+  <img src="https://img.shields.io/badge/version-v2.1.0-blue" alt="Version">
   <img src="https://img.shields.io/badge/python-3.10+-green" alt="Python">
   <img src="https://img.shields.io/badge/platform-Windows-lightgrey" alt="Platform">
   <img src="https://img.shields.io/badge/license-MIT-brightgreen" alt="License">
@@ -127,7 +127,7 @@ The iLink Bot API uses a **dual-layer token architecture**:
 
 ## Installation
 
-Download `ClaudeBeep-Setup-1.5.0.exe` from [Releases](https://github.com/Tommie-P-xl/ClaudeBeep/releases/tag/v2.0.0) and run the installer.
+Download `ClaudeBeep-Setup-1.5.0.exe` from [Releases](https://github.com/Tommie-P-xl/ClaudeBeep/releases/tag/v2.1.0) and run the installer.
 
 The installer includes:
 - `ClaudeBeep.exe` — main application
@@ -185,8 +185,8 @@ This creates `dist/ClaudeBeep.exe` (single-file, windowed, UPX-compressed).
 Pushing a version tag triggers the GitHub Actions workflow:
 
 ```
-git tag v2.0.0
-git push origin v2.0.0
+git tag v2.1.0
+git push origin v2.1.0
 ```
 
 The workflow:
@@ -229,6 +229,30 @@ The workflow:
 ```
 
 The shortened example omits unchanged channel fields. Sensitive fields (`bot_token`, `app_secret`, etc.) are masked in API responses.
+
+## Changelog
+
+### v2.1.0
+
+- **Bug fix**: All channel credential endpoints (QR login, validate, logout) now correctly persist to canonical config path — fixes silent data loss introduced in v2.0.0
+- **Config caching**: `load_config()` now uses mtime-based caching to avoid redundant disk reads and deep copies on every API call
+- **Concurrency**: Added file locking to `atomic_write_json()` to prevent concurrent writer data loss
+- **Telegram default**: Telegram channel notifications are now disabled by default for new installations
+- **SSE shutdown race**: Fixed race condition where rapid tab open/close could cause premature app exit
+- **Codex adapter**: Fixed `str(None)` producing literal "None" in notifications when payload fields are null
+- **TOML cleanup**: Fixed path separator mismatch on Windows that prevented Codex hook state cleanup
+- **Atomic TOML write**: `~/.codex/config.toml` cleanup now uses atomic write to prevent corruption
+- **Hook deduplication**: Improved shlex handling to prevent hook duplication on malformed commands
+- **Code cleanup**: Removed dead wrapper functions in notify.py, unused imports, and redundant config indirection layers
+- **Type safety**: Replaced `type(x) is not bool` with `isinstance()` throughout the codebase
+
+### v2.0.0
+
+- Codex peer integration with independent platform controls
+- Centralized config management (config_store.py)
+- Hook ownership tracking (hook_manager.py)
+- Notification delivery boundary (notification_core.py)
+- Native Win32 tray menus with dark mode support
 
 ## Privacy
 

@@ -23,15 +23,7 @@ _sse_lock = threading.Lock()
 _SSE_SHUTDOWN_DELAY = 2  # 秒，所有连接断开后等待时间
 
 
-def _shutdown_after_all_disconnect():
-    """所有 SSE 连接断开后延迟退出"""
-    time.sleep(_SSE_SHUTDOWN_DELAY)
-    with _sse_lock:
-        if len(_sse_connections) > 0:
-            return  # 有新连接，不退出
-    print(f"\n[INFO] 所有浏览器标签页已关闭，自动退出。")
-    import os
-    os._exit(0)
+_sse_shutdown_event = threading.Event()
 
 
 def create_app() -> Flask:
@@ -146,7 +138,7 @@ def create_app() -> Flask:
             allowed_events = set(CLAUDE_EVENTS if platform == "claude_code" else CODEX_EVENTS)
             if set(events) - allowed_events:
                 return jsonify({"ok": False, "error": "不支持的事件名称"}), 400
-            if any(type(value) is not bool for value in events.values()):
+            if any(not isinstance(value, bool) for value in events.values()):
                 return jsonify({"ok": False, "error": "事件值必须是布尔值"}), 400
             integration["events"].update(events)
         if "interaction" in data:
@@ -156,16 +148,16 @@ def create_app() -> Flask:
             if set(data["interaction"]) - allowed_interaction:
                 return jsonify({"ok": False, "error": "不支持的 interaction 字段"}), 400
             for key in ("enabled", "show_in_terminal"):
-                if key in data["interaction"] and type(data["interaction"][key]) is not bool:
+                if key in data["interaction"] and not isinstance(data["interaction"][key], bool):
                     return jsonify({"ok": False, "error": f"{key} 必须是布尔值"}), 400
             if "timeout_seconds" in data["interaction"] and (
-                type(data["interaction"]["timeout_seconds"]) is not int
+                not isinstance(data["interaction"]["timeout_seconds"], int)
                 or data["interaction"]["timeout_seconds"] < 0
             ):
                 return jsonify({"ok": False, "error": "timeout_seconds 必须是非负整数"}), 400
             integration["interaction"].update(data["interaction"])
         if "enabled" in data:
-            if type(data["enabled"]) is not bool:
+            if not isinstance(data["enabled"], bool):
                 return jsonify({"ok": False, "error": "enabled 必须是布尔值"}), 400
             integration["enabled"] = data["enabled"]
         hook_snapshot = hook_manager.snapshot_hooks(platform)
@@ -187,7 +179,7 @@ def create_app() -> Flask:
     @app.route("/api/integrations/<platform>/channels/<name>/toggle", methods=["POST"])
     def integration_channel_toggle(platform: str, name: str):
         body = request.get_json(silent=True)
-        if not isinstance(body, dict) or type(body.get("enabled")) is not bool:
+        if not isinstance(body, dict) or not isinstance(body.get("enabled"), bool):
             return jsonify({"ok": False, "error": "enabled 必须是布尔值"}), 400
         return set_channel(require_platform(platform), require_channel(name), body["enabled"])
 
@@ -239,10 +231,7 @@ def create_app() -> Flask:
                 with _sse_lock:
                     _sse_connections.discard(conn_id)
                 if len(_sse_connections) == 0:
-                    try:
-                        threading.Thread(target=_shutdown_after_all_disconnect, daemon=True).start()
-                    except RuntimeError:
-                        pass
+                    _sse_shutdown_event.set()
 
         return Response(generate(), mimetype="text/event-stream",
                         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
@@ -250,7 +239,6 @@ def create_app() -> Flask:
     # --- 配置 API ---
     @app.route("/api/config", methods=["GET"])
     def get_config():
-        from notify import load_config
         cfg = load_config()
         safe = json.loads(json.dumps(cfg))
         for container_name in (None, "channels"):
@@ -271,12 +259,14 @@ def create_app() -> Flask:
 
     @app.route("/api/config", methods=["PUT"])
     def update_config():
-        from notify import load_config, save_config
         data = request.get_json(force=True)
         cfg = load_config()
         # 敏感字段：空值不覆盖已有值
         SENSITIVE_KEYS = {key for fields in CHANNEL_SECRET_FIELDS.values() for key in fields}
+        ALLOWED_CHANNEL_KEYS = {"windows_toast", "weixin", "qq", "telegram", "feishu", "dingtalk"}
         for channel_name, channel_conf in data.items():
+            if channel_name not in ALLOWED_CHANNEL_KEYS:
+                continue
             if channel_name in cfg and isinstance(cfg[channel_name], dict):
                 for k, v in channel_conf.items():
                     if k == "configured_secrets":
@@ -298,7 +288,7 @@ def create_app() -> Flask:
         if name not in CHANNEL_NAMES:
             return jsonify({"ok": False, "error": f"未知渠道: {name}"}), 400
         body = request.get_json(silent=True)
-        if not isinstance(body, dict) or type(body.get("enabled")) is not bool:
+        if not isinstance(body, dict) or not isinstance(body.get("enabled"), bool):
             return jsonify({"ok": False, "error": "enabled 必须是布尔值"}), 400
         return set_channel("claude_code", name, body["enabled"])
 
@@ -319,18 +309,17 @@ def create_app() -> Flask:
     @app.route("/api/weixin/qr/status", methods=["GET"])
     def weixin_qr_status():
         from channels.weixin import WeixinChannel
-        from notify import load_config, save_config
         status = WeixinChannel.get_qr_status()
 
         # 登录成功后自动更新 config.json
         if status.get("status") == "confirmed" and status.get("bot_token"):
             cfg = load_config()
-            cfg["weixin"]["bot_token"] = status["bot_token"]
-            cfg["weixin"]["baseurl"] = status.get("baseurl", "https://ilinkai.weixin.qq.com")
-            cfg["weixin"]["ilink_bot_id"] = status.get("ilink_bot_id", "")
-            cfg["weixin"]["ilink_user_id"] = status.get("ilink_user_id", "")
-            cfg["weixin"].setdefault("to_user_id", "")
-            cfg["weixin"]["session_expired"] = False
+            cfg["channels"]["weixin"]["bot_token"] = status["bot_token"]
+            cfg["channels"]["weixin"]["baseurl"] = status.get("baseurl", "https://ilinkai.weixin.qq.com")
+            cfg["channels"]["weixin"]["ilink_bot_id"] = status.get("ilink_bot_id", "")
+            cfg["channels"]["weixin"]["ilink_user_id"] = status.get("ilink_user_id", "")
+            cfg["channels"]["weixin"].setdefault("to_user_id", "")
+            cfg["channels"]["weixin"]["session_expired"] = False
             save_config(cfg)
 
         return jsonify(status)
@@ -338,22 +327,20 @@ def create_app() -> Flask:
     @app.route("/api/weixin/status", methods=["GET"])
     def weixin_status():
         from channels.weixin import WeixinChannel
-        from notify import load_config
         cfg = load_config()
         return jsonify(WeixinChannel.get_login_status(cfg))
 
     @app.route("/api/weixin/logout", methods=["POST"])
     def weixin_logout():
         from channels.weixin import WeixinChannel
-        from notify import load_config, save_config
         WeixinChannel.clear_login()
         cfg = load_config()
-        cfg["weixin"]["bot_token"] = ""
-        cfg["weixin"]["baseurl"] = "https://ilinkai.weixin.qq.com"
-        cfg["weixin"]["ilink_bot_id"] = ""
-        cfg["weixin"]["ilink_user_id"] = ""
-        cfg["weixin"]["to_user_id"] = ""
-        cfg["weixin"]["enabled"] = False
+        cfg["channels"]["weixin"]["bot_token"] = ""
+        cfg["channels"]["weixin"]["baseurl"] = "https://ilinkai.weixin.qq.com"
+        cfg["channels"]["weixin"]["ilink_bot_id"] = ""
+        cfg["channels"]["weixin"]["ilink_user_id"] = ""
+        cfg["channels"]["weixin"]["to_user_id"] = ""
+        cfg["channels"]["weixin"]["enabled"] = False
         save_config(cfg)
         return jsonify({"ok": True, "message": "微信登录信息已清除"})
 
@@ -361,7 +348,6 @@ def create_app() -> Flask:
     @app.route("/api/qq/validate", methods=["POST"])
     def qq_validate():
         from channels.qq import QQBotChannel
-        from notify import load_config, save_config
         data = request.get_json(force=True)
         app_id = data.get("app_id", "").strip()
         app_secret = data.get("app_secret", "").strip()
@@ -373,46 +359,42 @@ def create_app() -> Flask:
         result = QQBotChannel.validate_credentials(app_id, app_secret)
         if result.get("ok"):
             cfg = load_config()
-            cfg["qq"]["app_id"] = app_id
-            cfg["qq"]["app_secret"] = app_secret
+            cfg["channels"]["qq"]["app_id"] = app_id
+            cfg["channels"]["qq"]["app_secret"] = app_secret
             if target_id:
-                cfg["qq"]["target_id"] = target_id
+                cfg["channels"]["qq"]["target_id"] = target_id
             save_config(cfg)
         return jsonify(result)
 
     @app.route("/api/qq/status", methods=["GET"])
     def qq_status():
         from channels.qq import QQBotChannel
-        from notify import load_config
         cfg = load_config()
         return jsonify(QQBotChannel.get_login_status(cfg))
 
     @app.route("/api/qq/save_target", methods=["POST"])
     def qq_save_target():
-        from notify import load_config, save_config
         data = request.get_json(force=True)
         target_id = data.get("target_id", "").strip()
         if not target_id:
             return jsonify({"ok": False, "error": "Target ID 不能为空"}), 400
         cfg = load_config()
-        cfg["qq"]["target_id"] = target_id
+        cfg["channels"]["qq"]["target_id"] = target_id
         save_config(cfg)
         return jsonify({"ok": True, "message": "Target ID 已保存"})
 
     @app.route("/api/qq/logout", methods=["POST"])
     def qq_logout():
-        from notify import load_config, save_config
         cfg = load_config()
-        cfg["qq"]["app_id"] = ""
-        cfg["qq"]["app_secret"] = ""
-        cfg["qq"]["target_id"] = ""
-        cfg["qq"]["enabled"] = False
+        cfg["channels"]["qq"]["app_id"] = ""
+        cfg["channels"]["qq"]["app_secret"] = ""
+        cfg["channels"]["qq"]["target_id"] = ""
+        cfg["channels"]["qq"]["enabled"] = False
         save_config(cfg)
         return jsonify({"ok": True, "message": "QQ Bot 信息已清除"})
 
     @app.route("/api/qq/capture_openid", methods=["POST"])
     def qq_capture_openid():
-        from notify import load_config
         from listener import start_qq_openid_capture
         cfg = load_config()
         app_id = cfg.get("qq", {}).get("app_id", "")
@@ -431,7 +413,6 @@ def create_app() -> Flask:
     @app.route("/api/telegram/validate", methods=["POST"])
     def telegram_validate():
         from channels.telegram import TelegramChannel
-        from notify import load_config, save_config
         data = request.get_json(force=True)
         bot_token = data.get("bot_token", "").strip()
         if not bot_token:
@@ -440,30 +421,27 @@ def create_app() -> Flask:
         result = TelegramChannel.validate_credentials(bot_token)
         if result.get("ok"):
             cfg = load_config()
-            cfg["telegram"]["bot_token"] = bot_token
+            cfg["channels"]["telegram"]["bot_token"] = bot_token
             save_config(cfg)
         return jsonify(result)
 
     @app.route("/api/telegram/status", methods=["GET"])
     def telegram_status():
         from channels.telegram import TelegramChannel
-        from notify import load_config
         cfg = load_config()
         return jsonify(TelegramChannel.get_login_status(cfg))
 
     @app.route("/api/telegram/logout", methods=["POST"])
     def telegram_logout():
-        from notify import load_config, save_config
         cfg = load_config()
-        cfg["telegram"]["bot_token"] = ""
-        cfg["telegram"]["chat_id"] = ""
-        cfg["telegram"]["enabled"] = False
+        cfg["channels"]["telegram"]["bot_token"] = ""
+        cfg["channels"]["telegram"]["chat_id"] = ""
+        cfg["channels"]["telegram"]["enabled"] = False
         save_config(cfg)
         return jsonify({"ok": True, "message": "Telegram 信息已清除"})
 
     @app.route("/api/telegram/capture_chatid", methods=["POST"])
     def telegram_capture_chatid():
-        from notify import load_config
         from listener import start_tg_chatid_capture
         cfg = load_config()
         bot_token = cfg.get("telegram", {}).get("bot_token", "")
@@ -481,7 +459,6 @@ def create_app() -> Flask:
     @app.route("/api/feishu/validate", methods=["POST"])
     def feishu_validate():
         from channels.feishu import FeishuChannel
-        from notify import load_config, save_config
         data = request.get_json(force=True)
         app_id = data.get("app_id", "").strip()
         app_secret = data.get("app_secret", "").strip()
@@ -491,32 +468,29 @@ def create_app() -> Flask:
         result = FeishuChannel.validate_credentials(app_id, app_secret)
         if result.get("ok"):
             cfg = load_config()
-            cfg["feishu"]["app_id"] = app_id
-            cfg["feishu"]["app_secret"] = app_secret
+            cfg["channels"]["feishu"]["app_id"] = app_id
+            cfg["channels"]["feishu"]["app_secret"] = app_secret
             save_config(cfg)
         return jsonify(result)
 
     @app.route("/api/feishu/status", methods=["GET"])
     def feishu_status():
         from channels.feishu import FeishuChannel
-        from notify import load_config
         cfg = load_config()
         return jsonify(FeishuChannel.get_login_status(cfg))
 
     @app.route("/api/feishu/logout", methods=["POST"])
     def feishu_logout():
-        from notify import load_config, save_config
         cfg = load_config()
-        cfg["feishu"]["app_id"] = ""
-        cfg["feishu"]["app_secret"] = ""
-        cfg["feishu"]["receive_id"] = ""
-        cfg["feishu"]["enabled"] = False
+        cfg["channels"]["feishu"]["app_id"] = ""
+        cfg["channels"]["feishu"]["app_secret"] = ""
+        cfg["channels"]["feishu"]["receive_id"] = ""
+        cfg["channels"]["feishu"]["enabled"] = False
         save_config(cfg)
         return jsonify({"ok": True, "message": "飞书信息已清除"})
 
     @app.route("/api/feishu/capture_openid", methods=["POST"])
     def feishu_capture_openid():
-        from notify import load_config
         from listener import start_fs_openid_capture
         cfg = load_config()
         app_id = cfg.get("feishu", {}).get("app_id", "")
@@ -535,7 +509,6 @@ def create_app() -> Flask:
     @app.route("/api/dingtalk/validate", methods=["POST"])
     def dingtalk_validate():
         from channels.dingtalk import DingTalkChannel
-        from notify import load_config, save_config
         data = request.get_json(force=True)
         client_id = data.get("client_id", "").strip()
         client_secret = data.get("client_secret", "").strip()
@@ -545,32 +518,29 @@ def create_app() -> Flask:
         result = DingTalkChannel.validate_credentials(client_id, client_secret)
         if result.get("ok"):
             cfg = load_config()
-            cfg["dingtalk"]["client_id"] = client_id
-            cfg["dingtalk"]["client_secret"] = client_secret
+            cfg["channels"]["dingtalk"]["client_id"] = client_id
+            cfg["channels"]["dingtalk"]["client_secret"] = client_secret
             save_config(cfg)
         return jsonify(result)
 
     @app.route("/api/dingtalk/status", methods=["GET"])
     def dingtalk_status():
         from channels.dingtalk import DingTalkChannel
-        from notify import load_config
         cfg = load_config()
         return jsonify(DingTalkChannel.get_login_status(cfg))
 
     @app.route("/api/dingtalk/logout", methods=["POST"])
     def dingtalk_logout():
-        from notify import load_config, save_config
         cfg = load_config()
-        cfg["dingtalk"]["client_id"] = ""
-        cfg["dingtalk"]["client_secret"] = ""
-        cfg["dingtalk"]["user_id"] = ""
-        cfg["dingtalk"]["enabled"] = False
+        cfg["channels"]["dingtalk"]["client_id"] = ""
+        cfg["channels"]["dingtalk"]["client_secret"] = ""
+        cfg["channels"]["dingtalk"]["user_id"] = ""
+        cfg["channels"]["dingtalk"]["enabled"] = False
         save_config(cfg)
         return jsonify({"ok": True, "message": "钉钉信息已清除"})
 
     @app.route("/api/dingtalk/capture_userid", methods=["POST"])
     def dingtalk_capture_userid():
-        from notify import load_config
         from listener import start_dt_userid_capture
         cfg = load_config()
         client_id = cfg.get("dingtalk", {}).get("client_id", "")
@@ -670,15 +640,15 @@ def create_app() -> Flask:
         cfg = load_config()
         interaction = cfg["integrations"]["claude_code"].get("interaction", {})
         if "enabled" in data:
-            if type(data["enabled"]) is not bool:
+            if not isinstance(data["enabled"], bool):
                 return jsonify({"ok": False, "error": "enabled 必须是布尔值"}), 400
             interaction["enabled"] = data["enabled"]
         if "timeout_seconds" in data:
-            if type(data["timeout_seconds"]) is not int or data["timeout_seconds"] < 0:
+            if not isinstance(data["timeout_seconds"], int) or data["timeout_seconds"] < 0:
                 return jsonify({"ok": False, "error": "timeout_seconds 必须是非负整数"}), 400
             interaction["timeout_seconds"] = data["timeout_seconds"]
         if "show_in_terminal" in data:
-            if type(data["show_in_terminal"]) is not bool:
+            if not isinstance(data["show_in_terminal"], bool):
                 return jsonify({"ok": False, "error": "show_in_terminal 必须是布尔值"}), 400
             interaction["show_in_terminal"] = data["show_in_terminal"]
         cfg["integrations"]["claude_code"]["interaction"] = interaction
@@ -688,7 +658,6 @@ def create_app() -> Flask:
     # --- 系统状态 ---
     @app.route("/api/status", methods=["GET"])
     def system_status():
-        from notify import load_config
         cfg = load_config()
 
         return jsonify({
@@ -718,6 +687,23 @@ def create_app() -> Flask:
         except Exception as e:
             return jsonify({"ok": False, "error": str(e)}), 500
 
+    # SSE shutdown watcher: waits for _sse_shutdown_event, then exits after delay
+    def _watch_sse_shutdown():
+        while True:
+            _sse_shutdown_event.wait()
+            time.sleep(_SSE_SHUTDOWN_DELAY)
+            with _sse_lock:
+                if len(_sse_connections) > 0:
+                    _sse_shutdown_event.clear()
+                    continue
+            print(f"\n[INFO] 所有浏览器标签页已关闭，自动退出。")
+            import os
+            sys.stdout.flush()
+            sys.stderr.flush()
+            os._exit(0)
+
+    threading.Thread(target=_watch_sse_shutdown, daemon=True).start()
+
     return app
 
 
@@ -736,7 +722,7 @@ def _check_hooks_installed() -> bool:
         with open(CLAUDECODE_SETTINGS, "r", encoding="utf-8") as f:
             settings = json.load(f)
         hooks = settings.get("hooks", {})
-        from notify import NOTIFY_HOOK_EVENTS
+        from config_store import CLAUDE_EVENTS as NOTIFY_HOOK_EVENTS
         for event in NOTIFY_HOOK_EVENTS:
             for entry in hooks.get(event, []):
                 cmds = _extract_commands(entry)

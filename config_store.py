@@ -7,6 +7,33 @@ import sys
 import tempfile
 from pathlib import Path
 
+# ── platform-specific file locking ──────────────────────────────────────────
+if sys.platform == "win32":
+    import msvcrt
+
+    def _lock_file(f) -> None:  # type: ignore[no-untyped-def]
+        msvcrt.locking(f.fileno(), msvcrt.LK_LOCK, 1)
+
+    def _unlock_file(f) -> None:  # type: ignore[no-untyped-def]
+        try:
+            msvcrt.locking(f.fileno(), msvcrt.LK_UNLCK, 1)
+        except OSError:
+            pass
+else:
+    import fcntl
+
+    def _lock_file(f) -> None:  # type: ignore[no-untyped-def]
+        fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+
+    def _unlock_file(f) -> None:  # type: ignore[no-untyped-def]
+        fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+
+
+# ── load_config mtime cache ─────────────────────────────────────────────────
+_config_cache: dict | None = None
+_config_mtime: float = 0.0
+_config_path_cached: Path | None = None
+
 
 SCRIPT_DIR = (
     Path(sys.executable).resolve().parent
@@ -48,7 +75,7 @@ CHANNEL_SECRET_FIELDS = {
 
 DEFAULT_CONFIG = {
     "app": {
-        "version": "2.0.0",
+        "version": "2.1.0",
         "auto_start": False,
         "auto_cleanup": True,
         "cleanup_interval_hours": 12,
@@ -79,7 +106,7 @@ DEFAULT_CONFIG = {
                 "windows_toast": True,
                 "weixin": False,
                 "qq": False,
-                "telegram": True,
+                "telegram": False,
                 "feishu": False,
                 "dingtalk": False,
             },
@@ -173,7 +200,14 @@ def set_channel_enabled(
 
 
 def runtime_channel_config(config: dict, platform: str) -> dict:
-    migrated = migrate_config(config)
+    # Skip redundant migration if config already has canonical structure
+    # (i.e. it came from load_config or was already migrated)
+    if isinstance(config.get("integrations"), dict) and isinstance(
+        config.get("channels"), dict
+    ):
+        migrated = config
+    else:
+        migrated = migrate_config(config)
     result = copy.deepcopy(migrated)
     selected = get_integration(migrated, platform)["channels"]
     for name in CHANNEL_NAMES:
@@ -186,7 +220,13 @@ def is_channel_configured(config: dict, channel: str) -> bool:
     """Return the single effective credential predicate used by API and tray."""
     if channel not in CHANNEL_NAMES:
         raise ValueError(f"Unsupported channel: {channel}")
-    migrated = migrate_config(config)
+    # Use already-migrated config if available, avoiding redundant deepcopy
+    if isinstance(config.get("integrations"), dict) and isinstance(
+        config.get("channels"), dict
+    ):
+        migrated = config
+    else:
+        migrated = migrate_config(config)
     credentials = migrated["channels"].get(channel, {})
     return all(bool(credentials.get(field)) for field in CHANNEL_CREDENTIAL_FIELDS[channel])
 
@@ -217,38 +257,86 @@ def _refresh_legacy_mirrors(config: dict) -> dict:
 
 def atomic_write_json(path: Path, data: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    fd, temp_name = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as handle:
-            json.dump(data, handle, ensure_ascii=False, indent=2)
-            handle.write("\n")
-            handle.flush()
-            os.fsync(handle.fileno())
-        os.replace(temp_name, path)
-    except Exception:
+    lock_path = path.parent / f".{path.name}.lock"
+    lock_path.touch(exist_ok=True)
+    with lock_path.open("r+") as lock_f:
+        _lock_file(lock_f)
         try:
-            os.unlink(temp_name)
-        except OSError:
-            pass
-        raise
+            fd, temp_name = tempfile.mkstemp(
+                prefix=f".{path.name}.", suffix=".tmp", dir=path.parent
+            )
+            try:
+                with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as handle:
+                    json.dump(data, handle, ensure_ascii=False, indent=2)
+                    handle.write("\n")
+                    handle.flush()
+                    os.fsync(handle.fileno())
+                os.replace(temp_name, path)
+            except Exception:
+                try:
+                    os.unlink(temp_name)
+                except OSError:
+                    pass
+                raise
+        finally:
+            _unlock_file(lock_f)
 
 
 def load_config(path: Path | None = None) -> dict:
+    global _config_cache, _config_mtime, _config_path_cached
+
     config_path = Path(path) if path is not None else CONFIG_FILE
+
+    # Return cached copy if file unchanged (mtime-based)
+    if (
+        _config_cache is not None
+        and _config_path_cached == config_path
+        and config_path.exists()
+    ):
+        try:
+            current_mtime = config_path.stat().st_mtime
+        except OSError:
+            current_mtime = 0.0
+        if current_mtime == _config_mtime:
+            return copy.deepcopy(_config_cache)
+
     if not config_path.exists():
         config = copy.deepcopy(DEFAULT_CONFIG)
         save_config(config, config_path)
-        return _refresh_legacy_mirrors(config)
+        # save_config already updates cache
+        return copy.deepcopy(_config_cache) if _config_cache is not None else _refresh_legacy_mirrors(config)
+
     try:
         with config_path.open("r", encoding="utf-8") as handle:
             raw = json.load(handle)
     except (json.JSONDecodeError, OSError) as exc:
         raise ConfigFileError(f"Unable to read configuration: {config_path}") from exc
-    return _refresh_legacy_mirrors(migrate_config(raw))
+
+    result = _refresh_legacy_mirrors(migrate_config(raw))
+
+    # Update cache
+    try:
+        _config_mtime = config_path.stat().st_mtime
+    except OSError:
+        _config_mtime = 0.0
+    _config_cache = result
+    _config_path_cached = config_path
+
+    return copy.deepcopy(result)
 
 
 def save_config(config: dict, path: Path | None = None) -> None:
+    global _config_cache, _config_mtime, _config_path_cached
+
     config_path = Path(path) if path is not None else CONFIG_FILE
     migrated = migrate_config(config)
     persisted = _refresh_legacy_mirrors(migrated)
     atomic_write_json(config_path, persisted)
+
+    # Update cache to reflect newly written data
+    try:
+        _config_mtime = config_path.stat().st_mtime
+    except OSError:
+        _config_mtime = 0.0
+    _config_cache = persisted
+    _config_path_cached = config_path

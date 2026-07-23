@@ -24,7 +24,7 @@ import hook_manager
 import tray_menu
 
 APP_NAME = "ClaudeBeep"
-APP_VERSION = "2.0.0"
+APP_VERSION = "2.1.0"
 SCRIPT_DIR = Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent
 RESOURCE_DIR = Path(getattr(sys, "_MEIPASS", SCRIPT_DIR))
 CONFIG_FILE = SCRIPT_DIR / "config.json"
@@ -494,13 +494,11 @@ def _mtime(path: Path) -> float:
 
 
 def _load_config() -> dict[str, Any]:
-    import notify
-    return notify.load_config()
+    return config_store.load_config()
 
 
 def _save_config(cfg: dict[str, Any]) -> None:
-    import notify
-    notify.save_config(cfg)
+    config_store.save_config(cfg)
 
 
 def _peer_channel_counts(cfg: dict[str, Any]) -> dict[str, int]:
@@ -797,6 +795,9 @@ def _quit_tray() -> None:
         user32.PostMessageW(_hwnd_tray, WM_DESTROY, 0, 0)
         # 给消息循环一点时间处理 WM_DESTROY，然后强制退出兜底
         time.sleep(0.5)
+    import sys
+    sys.stdout.flush()
+    sys.stderr.flush()
     os._exit(0)
 
 

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import os
-import re
 import shlex
 import shutil
 import sys
@@ -84,9 +83,10 @@ def _command_argv(command: str) -> list[str]:
         lexer = shlex.shlex(command, posix=False)
         lexer.whitespace_split = True
         lexer.commenters = ""
-        return [token[1:-1] if len(token) >= 2 and token[0] == token[-1] == '"' else token for token in lexer]
+        tokens = list(lexer)
     except ValueError:
         return []
+    return [token[1:-1] if len(token) >= 2 and token[0] == token[-1] == '"' else token for token in tokens]
 
 
 def _normalized_path(value: str) -> str:
@@ -262,13 +262,14 @@ def _cleanup_codex_config_toml() -> None:
     except OSError:
         return
 
-    hooks_json_path = str(CODEX_HOOKS)
+    hooks_json_path = str(CODEX_HOOKS).replace("\\", "/")
     new_lines = []
     skip_next_values = False
     for line in lines:
         stripped = line.strip()
         # Detect [hooks.state.'...hooks.json...'] section headers
-        if stripped.startswith("[hooks.state.'") and hooks_json_path in stripped:
+        normalized_stripped = stripped.replace("\\", "/")
+        if normalized_stripped.startswith("[hooks.state.'") and hooks_json_path in normalized_stripped:
             skip_next_values = True
             continue
         # Skip key-value lines belonging to a skipped section
@@ -279,7 +280,19 @@ def _cleanup_codex_config_toml() -> None:
                 continue
         new_lines.append(line)
 
-    config_toml.write_text("".join(new_lines), encoding="utf-8")
+    fd, tmp = tempfile.mkstemp(prefix=".config.toml.", suffix=".tmp", dir=config_toml.parent)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write("".join(new_lines))
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp, config_toml)
+    except BaseException:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
 
 
 def uninstall_hooks(platform: str, path: Path | None = None) -> HookStatus:

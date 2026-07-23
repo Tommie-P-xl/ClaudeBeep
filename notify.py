@@ -47,41 +47,6 @@ NOTIFY_HOOK_EVENTS = [
 ]
 
 
-def _hook_bat_path() -> str:
-    """返回 notify_hook.bat 的路径（Windows）或 notify.py 的路径（其他平台）"""
-    if getattr(sys, "frozen", False):
-        return str(Path(sys.executable).resolve())
-    bat = SCRIPT_DIR / "notify_hook.bat"
-    if sys.platform == "win32" and bat.exists():
-        return str(bat).replace("/", "\\")
-    return (SCRIPT_DIR / "notify.py").as_posix()
-
-
-def _get_hook_base_cmd() -> str:
-    """Compatibility wrapper for the centralized hook command discovery."""
-    return hook_manager._get_hook_base_cmd()
-
-
-def hook_command(notify_type: str = "stop", extra_msg: str = "") -> str:
-    """生成 hook 命令"""
-    cmd = f'{_get_hook_base_cmd()} --type {notify_type}'
-    if extra_msg:
-        cmd += f' --message "{extra_msg}"'
-    return cmd
-
-
-def stdin_hook_command(notify_type: str = "stop") -> str:
-    """生成从 stdin 读取上下文的 hook 命令（适用于 PreToolUse 等）"""
-    return f'{_get_hook_base_cmd()} --type {notify_type} --from-stdin'
-
-
-def stdin_hook_env() -> dict:
-    """返回 hook 命令的环境变量（非 Windows 时使用）"""
-    if sys.platform == "win32":
-        return {"PYTHONUTF8": "1"}
-    return {"PYTHONUTF8": "1"}
-
-
 def log(msg: str) -> None:
     """记录日志到文件"""
     from datetime import datetime

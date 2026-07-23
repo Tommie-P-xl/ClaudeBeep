@@ -1,4 +1,4 @@
-# ClaudeBeep v2.0.0
+# ClaudeBeep v2.1.0
 
 <p align="center">
   <img src="assets/icon.png" width="128" alt="ClaudeBeep Logo">
@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-v2.0.0-blue" alt="Version">
+  <img src="https://img.shields.io/badge/version-v2.1.0-blue" alt="Version">
   <img src="https://img.shields.io/badge/python-3.10+-green" alt="Python">
   <img src="https://img.shields.io/badge/platform-Windows-lightgrey" alt="Platform">
   <img src="https://img.shields.io/badge/license-MIT-brightgreen" alt="License">
@@ -127,7 +127,7 @@ iLink Bot API 采用**双层令牌架构**：
 
 ## 安装
 
-从 [Releases](https://github.com/Tommie-P-xl/ClaudeBeep/releases/tag/v2.0.0) 下载 `ClaudeBeep-Setup-1.5.0.exe` 并运行安装程序。
+从 [Releases](https://github.com/Tommie-P-xl/ClaudeBeep/releases/tag/v2.1.0) 下载 `ClaudeBeep-Setup-1.5.0.exe` 并运行安装程序。
 
 安装程序包含：
 - `ClaudeBeep.exe` — 主程序
@@ -185,8 +185,8 @@ python notify.py --test        # 测试所有已启用渠道
 推送版本标签触发 GitHub Actions 工作流：
 
 ```
-git tag v2.0.0
-git push origin v2.0.0
+git tag v2.1.0
+git push origin v2.1.0
 ```
 
 工作流步骤：
@@ -229,6 +229,30 @@ git push origin v2.0.0
 ```
 
 以上为省略未变渠道字段的简化示例。敏感字段（`bot_token`、`app_secret` 等）在 API 响应中会被脱敏。
+
+## 更新日志
+
+### v2.1.0
+
+- **修复**：所有渠道凭证端点（扫码登录、验证、登出）现在正确持久化到规范配置路径 — 修复了 v2.1.0 中引入的静默数据丢失问题
+- **配置缓存**：`load_config()` 现在使用基于 mtime 的缓存，避免每次 API 调用时的冗余磁盘读取和深拷贝
+- **并发安全**：`atomic_write_json()` 添加了文件锁，防止并发写入导致的数据丢失
+- **Telegram 默认关闭**：新安装时 Telegram 渠道通知默认禁用
+- **SSE 关闭竞态**：修复了快速开关标签页可能导致应用提前退出的竞态条件
+- **Codex 适配器**：修复了当 payload 字段为 null 时 `str(None)` 在通知中显示 "None" 的问题
+- **TOML 清理**：修复了 Windows 上路径分隔符不匹配导致 Codex hook 状态清理失败的问题
+- **原子 TOML 写入**：`~/.codex/config.toml` 清理现在使用原子写入防止损坏
+- **Hook 去重**：改进了 shlex 处理，防止在格式错误的命令上重复创建 hook
+- **代码清理**：删除了 notify.py 中的死代码包装函数、未使用的导入和冗余的配置间接层
+- **类型安全**：全项目将 `type(x) is not bool` 替换为 `isinstance()`
+
+### v2.0.0
+
+- Codex 对等集成，独立平台控制
+- 集中配置管理（config_store.py）
+- Hook 所有权追踪（hook_manager.py）
+- 通知投递边界（notification_core.py）
+- 原生 Win32 托盘菜单，支持深色模式
 
 ## 隐私
 

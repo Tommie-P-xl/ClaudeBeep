@@ -16,11 +16,11 @@ def parse_codex_event(payload: dict) -> NotificationEvent | None:
     event_name = str(payload.get("hook_event_name", ""))
     if event_name not in SUPPORTED_EVENTS:
         return None
-    cwd = str(payload.get("cwd", ""))
-    tool_name = str(payload.get("tool_name", ""))
+    cwd = str(payload.get("cwd", "")) if payload.get("cwd") is not None else ""
+    tool_name = str(payload.get("tool_name", "")) if payload.get("tool_name") is not None else ""
     raw_tool_input = payload.get("tool_input")
     tool_input = raw_tool_input if isinstance(raw_tool_input, dict) else {}
-    command = str(tool_input.get("command", ""))[:500]
+    command = str(tool_input.get("command", ""))[:500] if tool_input.get("command") is not None else ""
     if event_name == "Stop":
         title = "Codex - 完成"
         detail = "Codex 已完成当前任务。"
@@ -37,7 +37,7 @@ def parse_codex_event(payload: dict) -> NotificationEvent | None:
         title=title,
         message="\n".join(parts),
         cwd=cwd,
-        session_id=str(payload.get("session_id", "")),
+        session_id=str(payload.get("session_id", "")) if payload.get("session_id") is not None else "",
     )
 
 
