@@ -133,16 +133,25 @@ def _download_file_with_progress(url: str, dest: Path, progress_callback=None, t
         return False
 
 
+def _is_installer(filename: str) -> bool:
+    """Check if the filename looks like an Inno Setup installer."""
+    return "setup" in filename.lower() or "installer" in filename.lower()
+
+
 def perform_update(download_url: str, new_version: str) -> bool:
-    """Download Setup.exe and run it silently to update."""
+    """Download and apply update. Handles both Setup installer and standalone exe."""
     if not download_url:
         _log("No download URL provided")
         return False
 
     temp_dir = Path(tempfile.mkdtemp(prefix="claudebeep_update_"))
-    setup_exe = temp_dir / f"ClaudeBeep-Setup-{new_version.lstrip('v')}.exe"
+    filename = download_url.split("/")[-1].split("?")[0]  # Get filename from URL
+    if not filename.endswith(".exe"):
+        filename = f"ClaudeBeep-Setup-{new_version.lstrip('v')}.exe"
+    downloaded_file = temp_dir / filename
 
     _log(f"Downloading update from: {download_url}")
+    _log(f"File type: {'installer' if _is_installer(filename) else 'standalone exe'}")
 
     # Show info message
     try:
@@ -156,9 +165,9 @@ def perform_update(download_url: str, new_version: str) -> bool:
     except Exception:
         pass
 
-    # Download the Setup.exe
-    success = _download_file_with_progress(download_url, setup_exe)
-    if not success or not setup_exe.exists():
+    # Download the file
+    success = _download_file_with_progress(download_url, downloaded_file)
+    if not success or not downloaded_file.exists():
         _log("Download failed or file is empty")
         try:
             import ctypes
@@ -172,36 +181,83 @@ def perform_update(download_url: str, new_version: str) -> bool:
             pass
         return False
 
-    _log(f"Downloaded {setup_exe.stat().st_size} bytes")
+    _log(f"Downloaded {downloaded_file.stat().st_size} bytes")
 
-    # Launch the Setup.exe silently, install to current directory
-    install_dir = str(Path(sys.executable).resolve().parent)
-    try:
-        _log(f"Launching Setup.exe silently (install to {install_dir})...")
-        subprocess.Popen(
-            [
-                str(setup_exe),
-                "/VERYSILENT",
-                "/SUPPRESSMSGBOXES",
-                "/NORESTART",
-                "/CLOSEAPPLICATIONS",
-                "/RESTARTAPPLICATIONS",
-                f"/DIR={install_dir}",
-            ],
-            cwd=str(temp_dir),
-            creationflags=subprocess.DETACHED_PROCESS,
-        )
-        return True
-    except Exception as e:
-        _log(f"Failed to launch Setup.exe: {e}")
+    install_dir = Path(sys.executable).resolve().parent
+
+    if _is_installer(filename):
+        # It's an Inno Setup installer - launch silently
         try:
-            import ctypes
-            ctypes.windll.user32.MessageBoxW(
-                None,
-                f"启动安装程序失败: {e}\n请手动运行: {setup_exe}",
-                "ClaudeBeep 更新",
-                0x10
+            _log(f"Launching Setup.exe silently (install to {install_dir})...")
+            subprocess.Popen(
+                [
+                    str(downloaded_file),
+                    "/VERYSILENT",
+                    "/SUPPRESSMSGBOXES",
+                    "/NORESTART",
+                    "/CLOSEAPPLICATIONS",
+                    "/RESTARTAPPLICATIONS",
+                    f"/DIR={install_dir}",
+                ],
+                cwd=str(temp_dir),
+                creationflags=subprocess.DETACHED_PROCESS,
             )
-        except Exception:
-            pass
-        return False
+            return True
+        except Exception as e:
+            _log(f"Failed to launch Setup.exe: {e}")
+            try:
+                import ctypes
+                ctypes.windll.user32.MessageBoxW(
+                    None,
+                    f"启动安装程序失败: {e}\n请手动运行: {downloaded_file}",
+                    "ClaudeBeep 更新",
+                    0x10
+                )
+            except Exception:
+                pass
+            return False
+    else:
+        # It's a standalone exe - copy to replace current exe
+        try:
+            current_exe = Path(sys.executable).resolve()
+            backup_exe = current_exe.with_suffix(".exe.bak")
+
+            _log(f"Replacing standalone exe: {current_exe}")
+
+            # Create backup of current exe
+            if backup_exe.exists():
+                backup_exe.unlink()
+            current_exe.rename(backup_exe)
+
+            # Copy new exe to install location
+            import shutil
+            shutil.copy2(str(downloaded_file), str(current_exe))
+
+            _log(f"Successfully replaced exe. Restarting...")
+
+            # Launch new version
+            subprocess.Popen(
+                [str(current_exe)],
+                cwd=str(install_dir),
+                creationflags=subprocess.DETACHED_PROCESS,
+            )
+            return True
+        except Exception as e:
+            _log(f"Failed to replace exe: {e}")
+            # Try to restore backup
+            try:
+                if backup_exe.exists() and not current_exe.exists():
+                    backup_exe.rename(current_exe)
+            except Exception:
+                pass
+            try:
+                import ctypes
+                ctypes.windll.user32.MessageBoxW(
+                    None,
+                    f"更新失败: {e}\n请手动替换: {downloaded_file}",
+                    "ClaudeBeep 更新",
+                    0x10
+                )
+            except Exception:
+                pass
+            return False
