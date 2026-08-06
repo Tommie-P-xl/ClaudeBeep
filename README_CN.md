@@ -1,4 +1,4 @@
-# ClaudeBeep v2.1.0
+# ClaudeBeep v2.2.0
 
 <p align="center">
   <img src="assets/icon.png" width="128" alt="ClaudeBeep Logo">
@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-v2.1.0-blue" alt="Version">
+  <img src="https://img.shields.io/badge/version-v2.2.0-blue" alt="Version">
   <img src="https://img.shields.io/badge/python-3.10+-green" alt="Python">
   <img src="https://img.shields.io/badge/platform-Windows-lightgrey" alt="Platform">
   <img src="https://img.shields.io/badge/license-MIT-brightgreen" alt="License">
@@ -30,7 +30,7 @@ ClaudeBeep 是一个将 Claude Code 和 Codex 作为对等集成的 Windows 系�
 - **打开主界面** — 启动 Web UI，用于详细渠道配置、扫码登录和日志查看。
 - **对等平台菜单** — Claude Code 与 Codex 在托盘中分别提供独立的平台和渠道控制；未配置的渠道会置灰。
 - **开机自启动** — 通过 Windows 注册表（`HKCU\Software\Microsoft\Windows\CurrentVersion\Run`）切换开机自启。
-- **检查更新** — 查询 GitHub Releases 最新版本；如有新版，通过批处理脚本自动下载并替换 exe（带重试机制，无需卸载）。若自动更新失败，回退到打开下载页面。
+- **检查更新** — 查询 GitHub Releases 最新版本；如有新版，下载后先按 `latest.json` 发布的 SHA256 校验，通过后再应用。Setup 安装包静默安装；独立 exe 通过延迟替换脚本完成（无需卸载）。若自动更新失败，回退到打开下载页面。
 - **系统深色模式** — 自动检测 Windows 系统主题，为托盘菜单应用深色模式样式。
 - **Web UI 主题** — 支持明亮 / 暗夜 / 跟随系统三种主题模式，默认跟随系统。主题偏好自动保存。
 - **高清托盘图标** — 256×256 高分辨率图标，在高 DPI 屏幕上清晰显示。
@@ -50,12 +50,12 @@ ClaudeBeep 是一个将 Claude Code 和 Codex 作为对等集成的 Windows 系�
 
 | 渠道 | 协议 | 保活机制 | 回复监听 |
 |------|------|----------|----------|
-| Windows Toast | WinRT / `winotify`（带应用图标） | 无（发后即忘） | 不适用 |
+| Windows Toast | WinRT（带应用图标） | 无（发后即忘） | 不适用 |
 | 微信 ⚠️ 不推荐 | iLink Bot API | 托盘进程管理的 `getupdates` 长轮询 | keepalive 循环中直接分发 |
-| QQ Bot | QQ 开放平台（OAuth2 + c2c/群） | 无（token 缓存） | `listener.py` WebSocket |
-| Telegram | Telegram Bot API | 无 | `listener.py` 长轮询 |
-| 飞书/Lark | 飞书开放平台（OAuth2） | 无（token 缓存） | `lark_oapi` WebSocket |
-| 钉钉 | 钉钉开放平台（OAuth2） | 无（token 缓存） | `dingtalk_stream` |
+| QQ Bot | QQ 开放平台（OAuth2 + c2c/群） | 托盘进程管理 WebSocket | `listeners/` WebSocket |
+| Telegram | Telegram Bot API | 托盘进程管理长轮询 | `listeners/` 长轮询 |
+| 飞书/Lark | 飞书开放平台（OAuth2） | 托盘进程管理 WebSocket | `lark_oapi` WebSocket |
+| 钉钉 | 钉钉开放平台（OAuth2） | 托盘进程管理 Stream | `dingtalk_stream` |
 
 ### 交互式回复
 
@@ -63,10 +63,13 @@ ClaudeBeep 是一个将 Claude Code 和 Codex 作为对等集成的 Windows 系�
 - 终端（直接键盘输入）
 - 任意远程渠道（微信、QQ、Telegram、飞书、钉钉）
 
-先到先得。响应通过临时文件重命名原子写入，防止竞态条件。Codex 的权限通知只用于提醒；审批和回答输入仍在 Codex 内完成。
+先到先得。响应通过硬链接原子创建（`O_EXCL` 语义）写入，跨平台保证“先到先生效”。渠道监听由托盘进程常驻持有（`listeners/` 包），hook 进程直接复用，不再每次临时建连。Codex 的权限通知只用于提醒；审批和回答输入仍在 Codex 内完成。
 
 ### 安全与可靠性
 
+- **Web UI 本地防护** — 管理界面绑定 `127.0.0.1`，拒绝非回环 Host 请求（阻断 DNS Rebinding）；写接口要求 `X-Requested-With` 头，阻断跨站请求。
+- **日志脱敏** — 凭据与 hook 载荷值在 `notify.log` 中自动打码，只记录字段名与长度。
+- **更新完整性校验** — 下载的安装包先按 SHA256 校验再安装。
 - **多实例防护** — Windows 全局互斥体（`Global\ClaudeBeepTray`）防止重复启动托盘进程。
 - **自动清理** — 后台循环每 12 小时（可配置）运行一次，清理日志、过期的 pending/response 文件和队列残留。删除前检查文件是否仍被使用。
 - **心跳监控** — 每 15 秒写入 `tray_heartbeat.json`，包含 PID 和渠道状态，支持跨进程协调。
@@ -127,13 +130,13 @@ iLink Bot API 采用**双层令牌架构**：
 
 ## 安装
 
-从 [Releases](https://github.com/Tommie-P-xl/ClaudeBeep/releases/tag/v2.1.0) 下载 `ClaudeBeep-Setup-1.5.0.exe` 并运行安装程序。
+从 [Releases](https://github.com/Tommie-P-xl/ClaudeBeep/releases/tag/v2.2.0) 下载最新的 `ClaudeBeep-Setup-*.exe` 并运行安装程序。
 
 安装程序包含：
 - `ClaudeBeep.exe` — 主程序
 - `claudebeep_hook.bat` — Codex 集成的 hook 包装器
 
-首次启动时，ClaudeBeep 会在安装目录下创建 `config.json`。
+首次启动时，ClaudeBeep 会在 `%APPDATA%\ClaudeBeep` 下创建 `config.json`（以及其他运行时数据：`notify.log`、`pending/`、`responses/`、`send_queue/`）——安装版不会写入 Program Files。开发模式数据仍留在项目目录。安装目录中的旧配置会在首次启动时自动迁移。
 
 ### 卸载
 
@@ -159,7 +162,7 @@ pip install -r requirements.txt
 pip install -r requirements-dev.txt
 
 # 运行完整测试套件
-python -m pytest -v
+python -m unittest discover tests -v
 
 # 运行托盘应用
 python tray.py
@@ -185,8 +188,8 @@ python notify.py --test        # 测试所有已启用渠道
 推送版本标签触发 GitHub Actions 工作流：
 
 ```
-git tag v2.1.0
-git push origin v2.1.0
+git tag v2.2.0
+git push origin v2.2.0
 ```
 
 工作流步骤：
@@ -202,7 +205,7 @@ git push origin v2.1.0
 ```json
 {
   "app": {
-    "version": "1.5.0",
+    "version": "2.2.0",
     "auto_cleanup": true,
     "cleanup_interval_hours": 12,
     "update_repo": "Tommie-P-xl/ClaudeBeep"
@@ -232,27 +235,7 @@ git push origin v2.1.0
 
 ## 更新日志
 
-### v2.1.0
-
-- **修复**：所有渠道凭证端点（扫码登录、验证、登出）现在正确持久化到规范配置路径 — 修复了 v2.1.0 中引入的静默数据丢失问题
-- **配置缓存**：`load_config()` 现在使用基于 mtime 的缓存，避免每次 API 调用时的冗余磁盘读取和深拷贝
-- **并发安全**：`atomic_write_json()` 添加了文件锁，防止并发写入导致的数据丢失
-- **Telegram 默认关闭**：新安装时 Telegram 渠道通知默认禁用
-- **SSE 关闭竞态**：修复了快速开关标签页可能导致应用提前退出的竞态条件
-- **Codex 适配器**：修复了当 payload 字段为 null 时 `str(None)` 在通知中显示 "None" 的问题
-- **TOML 清理**：修复了 Windows 上路径分隔符不匹配导致 Codex hook 状态清理失败的问题
-- **原子 TOML 写入**：`~/.codex/config.toml` 清理现在使用原子写入防止损坏
-- **Hook 去重**：改进了 shlex 处理，防止在格式错误的命令上重复创建 hook
-- **代码清理**：删除了 notify.py 中的死代码包装函数、未使用的导入和冗余的配置间接层
-- **类型安全**：全项目将 `type(x) is not bool` 替换为 `isinstance()`
-
-### v2.0.0
-
-- Codex 对等集成，独立平台控制
-- 集中配置管理（config_store.py）
-- Hook 所有权追踪（hook_manager.py）
-- 通知投递边界（notification_core.py）
-- 原生 Win32 托盘菜单，支持深色模式
+完整版本历史见 [CHANGELOG_CN.md](CHANGELOG_CN.md)（中文）或 [CHANGELOG.md](CHANGELOG.md)（English）。
 
 ## 隐私
 

@@ -3,20 +3,22 @@ __pycache__/
 *.pyo
 *.spec
 *.tmp
+*.lock
+token_cache_*.json
 
-# 运行时文件
+# 运行时文件（frozen 模式实际位于 %APPDATA%\ClaudeBeep，此处防御开发模式残留）
 config.json
 keepalive.pid
 notify.log
 updater.log
-notify_state.json
 tray_heartbeat.json
 pending/
 responses/
+send_queue/
+version_info.txt
 
 # 开发文件
 docs/
-tests/
 requirements-dev.txt
 .codegraph/
 .superpowers/

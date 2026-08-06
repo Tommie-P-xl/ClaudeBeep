@@ -14,17 +14,8 @@ DINGTALK_MSG_URL = "https://api.dingtalk.com/v1.0/robot/oToMessages/batchSend"
 
 
 def _log(msg: str):
-    from pathlib import Path
-    from datetime import datetime
-    base_dir = Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent.parent
-    log_file = base_dir / "notify.log"
-    ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    try:
-        with open(log_file, "a", encoding="utf-8") as f:
-            f.write(f"[{ts}] {msg}\n")
-    except Exception:
-        pass
-
+    from common.log import log as _log_impl
+    _log_impl("dingtalk", msg)
 
 class DingTalkChannel(NotificationChannel):
     """通过钉钉 Open API 发送消息"""
@@ -44,9 +35,17 @@ class DingTalkChannel(NotificationChannel):
 
     def _get_access_token(self) -> Optional[str]:
         """获取 access_token（自动缓存）"""
+        from common.token_cache import get_cached_token, set_cached_token
         now = time.time()
         if self._access_token and now < self._token_expires_at:
             return self._access_token
+
+        # 跨进程文件缓存（P1）
+        cached = get_cached_token("dingtalk")
+        if cached:
+            self._access_token = cached
+            self._token_expires_at = now + 3600
+            return cached
 
         client_id = self._dt_config.get("client_id", "")
         client_secret = self._dt_config.get("client_secret", "")
@@ -68,6 +67,8 @@ class DingTalkChannel(NotificationChannel):
             self._access_token = data.get("accessToken", "")
             expires_in = int(data.get("expireIn", 7200))
             self._token_expires_at = now + expires_in - 300
+            if self._access_token:
+                set_cached_token("dingtalk", self._access_token)
             _log(f"[dingtalk] 获取 access_token 成功")
             return self._access_token
         except Exception as e:

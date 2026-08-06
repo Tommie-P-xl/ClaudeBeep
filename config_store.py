@@ -3,9 +3,13 @@ from __future__ import annotations
 import copy
 import json
 import os
+import shutil
 import sys
 import tempfile
 from pathlib import Path
+
+from common.paths import RUNTIME_DIR, SCRIPT_DIR as _PROGRAM_DIR
+from version import APP_VERSION, GITHUB_OWNER, GITHUB_REPO
 
 # ── platform-specific file locking ──────────────────────────────────────────
 if sys.platform == "win32":
@@ -35,12 +39,25 @@ _config_mtime: float = 0.0
 _config_path_cached: Path | None = None
 
 
-SCRIPT_DIR = (
-    Path(sys.executable).resolve().parent
-    if getattr(sys, "frozen", False)
-    else Path(__file__).resolve().parent
-)
-CONFIG_FILE = SCRIPT_DIR / "config.json"
+CONFIG_FILE = RUNTIME_DIR / "config.json"
+
+
+def _migrate_legacy_runtime_files() -> None:
+    """frozen 模式：把旧位置（程序目录）的 config.json 复制到 %APPDATA%\\ClaudeBeep。
+
+    仅在新位置不存在且旧位置存在时执行一次，旧文件保留（不删除）。
+    """
+    if not getattr(sys, "frozen", False):
+        return
+    legacy = _PROGRAM_DIR / "config.json"
+    if legacy.exists() and not CONFIG_FILE.exists():
+        try:
+            RUNTIME_DIR.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(legacy, CONFIG_FILE)
+        except Exception:
+            pass
+
+
 PLATFORMS = ("claude_code", "codex")
 CHANNEL_NAMES = ("windows_toast", "weixin", "qq", "telegram", "feishu", "dingtalk")
 CLAUDE_EVENTS = ("Stop", "Elicitation", "PermissionRequest")
@@ -75,11 +92,11 @@ CHANNEL_SECRET_FIELDS = {
 
 DEFAULT_CONFIG = {
     "app": {
-        "version": "2.1.0",
+        "version": APP_VERSION,
         "auto_start": False,
         "auto_cleanup": True,
         "cleanup_interval_hours": 12,
-        "update_repo": "Tommie-P-xl/ClaudeBeep",
+        "update_repo": f"{GITHUB_OWNER}/{GITHUB_REPO}",
     },
     "channels": {
         "windows_toast": {"duration_ms": 5000, "sound": "reminder"},
@@ -285,6 +302,9 @@ def atomic_write_json(path: Path, data: dict) -> None:
 def load_config(path: Path | None = None) -> dict:
     global _config_cache, _config_mtime, _config_path_cached
 
+    # frozen 模式下首次启动把旧位置配置迁移到 %APPDATA%\ClaudeBeep
+    if path is None:
+        _migrate_legacy_runtime_files()
     config_path = Path(path) if path is not None else CONFIG_FILE
 
     # Return cached copy if file unchanged (mtime-based)

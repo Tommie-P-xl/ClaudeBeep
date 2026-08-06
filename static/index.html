@@ -1262,7 +1262,7 @@ function app() {
     removeToast(id) { this.toasts = this.toasts.filter(t => t.id !== id); },
 
     async api(method, path, body = null) {
-      const opts = { method, headers: { 'Content-Type': 'application/json' } };
+      const opts = { method, headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } };
       if (body) opts.body = JSON.stringify(body);
       const r = await fetch(path, opts);
       const data = await r.json();

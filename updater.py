@@ -3,9 +3,13 @@
 Update flow:
 1. Check for updates via latest.json or GitHub API
 2. Download Setup.exe from the release assets
-3. Launch Setup.exe silently (Inno Setup flags)
+3. Verify SHA256 (when metadata provides it)
+4. Launch Setup.exe silently (Inno Setup flags), or for standalone exe:
+   schedule a delayed replacement script (running exe cannot rename itself)
 """
+import hashlib
 import json
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -13,10 +17,9 @@ import time
 import urllib.request
 from pathlib import Path
 
+from version import APP_NAME, GITHUB_OWNER, GITHUB_REPO
 
-APP_NAME = "ClaudeBeep"
-GITHUB_OWNER = "Tommie-P-xl"
-GITHUB_REPO = "ClaudeBeep"
+
 UPDATE_CHECK_URL = f"https://api.github.com/repos/{GITHUB_OWNER}/{GITHUB_REPO}/releases/latest"
 LATEST_JSON_URL = (
     f"https://github.com/{GITHUB_OWNER}/{GITHUB_REPO}"
@@ -26,7 +29,9 @@ LATEST_JSON_URL = (
 
 def _log(msg: str):
     try:
-        _log_file = Path(sys.executable).resolve().parent / "updater.log" if getattr(sys, "frozen", False) else Path(__file__).resolve().parent / "updater.log"
+        from common.paths import RUNTIME_DIR
+        RUNTIME_DIR.mkdir(parents=True, exist_ok=True)
+        _log_file = RUNTIME_DIR / "updater.log"
         ts = time.strftime("%H:%M:%S")
         with open(_log_file, "a", encoding="utf-8") as f:
             f.write(f"[{ts}] {msg}\n")
@@ -84,6 +89,7 @@ def check_for_update(current_version: str) -> dict | None:
                 "version": data["version"],
                 "url": exe_url,
                 "body": data.get("notes", data.get("body", "")),
+                "sha256": str(data.get("sha256", "") or "").strip(),
             }
 
     # Strategy 2: Fall back to GitHub API
@@ -105,6 +111,7 @@ def check_for_update(current_version: str) -> dict | None:
             "version": remote_tag,
             "url": exe_url,
             "body": data.get("body", ""),
+            "sha256": "",
         }
 
     _log(f"No update available (local={current_version}, remote={remote_tag})")
@@ -133,12 +140,42 @@ def _download_file_with_progress(url: str, dest: Path, progress_callback=None, t
         return False
 
 
+def _verify_sha256(path: Path, expected: str) -> bool:
+    """校验下载文件哈希（S4）。expected 为空时跳过（元数据未提供）。"""
+    expected = (expected or "").strip().lower()
+    if not expected:
+        _log("No SHA256 metadata provided, skipping verification")
+        return True
+    try:
+        digest = hashlib.sha256()
+        with open(path, "rb") as f:
+            for chunk in iter(lambda: f.read(65536), b""):
+                digest.update(chunk)
+        actual = digest.hexdigest()
+        if actual != expected:
+            _log(f"SHA256 mismatch: expected {expected}, got {actual}")
+            return False
+        _log("SHA256 verification passed")
+        return True
+    except Exception as e:
+        _log(f"SHA256 verification failed: {e}")
+        return False
+
+
 def _is_installer(filename: str) -> bool:
     """Check if the filename looks like an Inno Setup installer."""
     return "setup" in filename.lower() or "installer" in filename.lower()
 
 
-def perform_update(download_url: str, new_version: str) -> bool:
+def _message_box(text: str, flags: int) -> None:
+    try:
+        import ctypes
+        ctypes.windll.user32.MessageBoxW(None, text, "ClaudeBeep 更新", flags)
+    except Exception:
+        pass
+
+
+def perform_update(download_url: str, new_version: str, sha256: str = "") -> bool:
     """Download and apply update. Handles both Setup installer and standalone exe."""
     if not download_url:
         _log("No download URL provided")
@@ -154,34 +191,26 @@ def perform_update(download_url: str, new_version: str) -> bool:
     _log(f"File type: {'installer' if _is_installer(filename) else 'standalone exe'}")
 
     # Show info message
-    try:
-        import ctypes
-        ctypes.windll.user32.MessageBoxW(
-            None,
-            f"正在下载 ClaudeBeep {new_version}...\n下载完成后将自动安装并重启。",
-            "ClaudeBeep 更新",
-            0x40  # MB_ICONINFORMATION
-        )
-    except Exception:
-        pass
+    _message_box(
+        f"正在下载 ClaudeBeep {new_version}...\n下载完成后将自动安装并重启。",
+        0x40,  # MB_ICONINFORMATION
+    )
 
     # Download the file
     success = _download_file_with_progress(download_url, downloaded_file)
     if not success or not downloaded_file.exists():
         _log("Download failed or file is empty")
-        try:
-            import ctypes
-            ctypes.windll.user32.MessageBoxW(
-                None,
-                "下载失败，请手动下载更新。",
-                "ClaudeBeep 更新",
-                0x10  # MB_ICONERROR
-            )
-        except Exception:
-            pass
+        _message_box("下载失败，请手动下载更新。", 0x10)
+        shutil.rmtree(temp_dir, ignore_errors=True)
         return False
 
     _log(f"Downloaded {downloaded_file.stat().st_size} bytes")
+
+    # 哈希校验（S4）：元数据提供 SHA256 时强制比对，失败即中止
+    if not _verify_sha256(downloaded_file, sha256):
+        _message_box("下载文件校验失败（SHA256 不匹配），为安全起见已取消更新。", 0x10)
+        shutil.rmtree(temp_dir, ignore_errors=True)
+        return False
 
     install_dir = Path(sys.executable).resolve().parent
 
@@ -205,59 +234,42 @@ def perform_update(download_url: str, new_version: str) -> bool:
             return True
         except Exception as e:
             _log(f"Failed to launch Setup.exe: {e}")
-            try:
-                import ctypes
-                ctypes.windll.user32.MessageBoxW(
-                    None,
-                    f"启动安装程序失败: {e}\n请手动运行: {downloaded_file}",
-                    "ClaudeBeep 更新",
-                    0x10
-                )
-            except Exception:
-                pass
+            _message_box(f"启动安装程序失败: {e}\n请手动运行: {downloaded_file}", 0x10)
+            shutil.rmtree(temp_dir, ignore_errors=True)
             return False
-    else:
-        # It's a standalone exe - copy to replace current exe
-        try:
-            current_exe = Path(sys.executable).resolve()
-            backup_exe = current_exe.with_suffix(".exe.bak")
 
-            _log(f"Replacing standalone exe: {current_exe}")
+    # ── standalone exe：运行中的程序无法 rename 自身（S4）────
+    # 生成延迟替换脚本，在进程退出后由独立 cmd 完成替换并重启
+    try:
+        current_exe = Path(sys.executable).resolve()
+        backup_exe = current_exe.with_suffix(".exe.bak")
+        script = temp_dir / "apply_update.bat"
 
-            # Create backup of current exe
-            if backup_exe.exists():
-                backup_exe.unlink()
-            current_exe.rename(backup_exe)
+        _log(f"Replacing standalone exe via delayed script: {current_exe}")
 
-            # Copy new exe to install location
-            import shutil
-            shutil.copy2(str(downloaded_file), str(current_exe))
+        # 用相对引用规避路径转义问题：脚本放在 temp_dir，直接用绝对路径
+        script.write_text(
+            "@echo off\r\n"
+            "timeout /t 3 /nobreak >nul\r\n"
+            f'if exist "{backup_exe}" del /q "{backup_exe}"\r\n'
+            f'rename "{current_exe}" "{backup_exe.name}"\r\n'
+            f'if exist "{current_exe}" del /q "{current_exe}"\r\n'
+            f'copy /y "{downloaded_file}" "{current_exe}" >nul\r\n'
+            f'start "" "{current_exe}"\r\n'
+            f'del /q "{downloaded_file}"\r\n'
+            f'del /q "%~f0"\r\n'
+            f'rmdir /q "{temp_dir}" 2>nul\r\n',
+            encoding="utf-8",
+        )
 
-            _log(f"Successfully replaced exe. Restarting...")
-
-            # Launch new version
-            subprocess.Popen(
-                [str(current_exe)],
-                cwd=str(install_dir),
-                creationflags=subprocess.DETACHED_PROCESS,
-            )
-            return True
-        except Exception as e:
-            _log(f"Failed to replace exe: {e}")
-            # Try to restore backup
-            try:
-                if backup_exe.exists() and not current_exe.exists():
-                    backup_exe.rename(current_exe)
-            except Exception:
-                pass
-            try:
-                import ctypes
-                ctypes.windll.user32.MessageBoxW(
-                    None,
-                    f"更新失败: {e}\n请手动替换: {downloaded_file}",
-                    "ClaudeBeep 更新",
-                    0x10
-                )
-            except Exception:
-                pass
-            return False
+        subprocess.Popen(
+            ["cmd", "/c", str(script)],
+            cwd=str(temp_dir),
+            creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NO_WINDOW,
+        )
+        return True
+    except Exception as e:
+        _log(f"Failed to schedule standalone replacement: {e}")
+        _message_box(f"更新失败: {e}\n请手动替换: {downloaded_file}", 0x10)
+        shutil.rmtree(temp_dir, ignore_errors=True)
+        return False

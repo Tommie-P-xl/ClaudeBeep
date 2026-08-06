@@ -13,17 +13,8 @@ FEISHU_MSG_URL = "https://open.feishu.cn/open-apis/im/v1/messages"
 
 
 def _log(msg: str):
-    from pathlib import Path
-    from datetime import datetime
-    base_dir = Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent.parent
-    log_file = base_dir / "notify.log"
-    ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    try:
-        with open(log_file, "a", encoding="utf-8") as f:
-            f.write(f"[{ts}] {msg}\n")
-    except Exception:
-        pass
-
+    from common.log import log as _log_impl
+    _log_impl("feishu", msg)
 
 class FeishuChannel(NotificationChannel):
     """通过飞书 Open API 发送消息"""
@@ -44,9 +35,17 @@ class FeishuChannel(NotificationChannel):
     def _get_tenant_token(self) -> Optional[str]:
         """获取 tenant_access_token（自动缓存）"""
         import time
+        from common.token_cache import get_cached_token, set_cached_token
         now = time.time()
         if self._tenant_token and now < self._token_expires_at:
             return self._tenant_token
+
+        # 跨进程文件缓存（P1）
+        cached = get_cached_token("feishu")
+        if cached:
+            self._tenant_token = cached
+            self._token_expires_at = now + 3600
+            return cached
 
         app_id = self._fs_config.get("app_id", "")
         app_secret = self._fs_config.get("app_secret", "")
@@ -69,6 +68,8 @@ class FeishuChannel(NotificationChannel):
                 self._tenant_token = data.get("tenant_access_token", "")
                 expires_in = int(data.get("expire", 7200))
                 self._token_expires_at = now + expires_in - 300
+                if self._tenant_token:
+                    set_cached_token("feishu", self._tenant_token)
                 _log(f"[feishu] 获取 tenant_access_token 成功")
                 return self._tenant_token
             _log(f"[feishu] 获取 token 失败: {data.get('msg', '')}")

@@ -57,10 +57,14 @@ jobs:
           $version = $tag.TrimStart("v")
           $owner = "${{ github.repository_owner }}"
           $repo = "ClaudeBeep"
+          # 计算 ClaudeBeep.exe 的 SHA256（S4：供客户端校验下载完整性）
+          $exePath = "dist/ClaudeBeep.exe"
+          $sha256 = (Get-FileHash -Path $exePath -Algorithm SHA256).Hash.ToLower()
           $json = @{
             version = $version
             notes   = "Release $tag"
             url     = "https://github.com/$owner/$repo/releases/download/$tag/ClaudeBeep.exe"
+            sha256  = $sha256
           } | ConvertTo-Json -Depth 3
           Set-Content -Path "latest.json" -Value $json -Encoding UTF8
           gh release upload $tag latest.json --clobber

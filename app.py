@@ -1,6 +1,7 @@
 """Flask 后端 — ClaudeBeep Web UI。"""
 
 import json
+import secrets
 import sys
 import time
 import threading
@@ -11,8 +12,9 @@ from flask import Flask, jsonify, request, send_from_directory, Response, abort
 
 SCRIPT_DIR = Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent
 RESOURCE_DIR = Path(getattr(sys, "_MEIPASS", SCRIPT_DIR))
-CONFIG_FILE = SCRIPT_DIR / "config.json"
-LOG_FILE = SCRIPT_DIR / "notify.log"
+from common.paths import RUNTIME_DIR
+CONFIG_FILE = RUNTIME_DIR / "config.json"
+LOG_FILE = RUNTIME_DIR / "notify.log"
 CLAUDECODE_SETTINGS = Path.home() / ".claude" / "settings.json"
 
 sys.path.insert(0, str(SCRIPT_DIR))
@@ -25,9 +27,30 @@ _SSE_SHUTDOWN_DELAY = 2  # 秒，所有连接断开后等待时间
 
 _sse_shutdown_event = threading.Event()
 
+# ── 本地访问防护（S2）────────────────────────────────────
+# Web UI 仅监听 127.0.0.1，但仍需防止 DNS Rebinding 与跨站请求：
+# 1. Host 校验：拒绝任何非回环 Host 的请求（阻断 rebinding）；
+# 2. 写方法要求自定义头 X-Requested-With（浏览器跨站 simple request 无法携带，
+#    JSON 请求还会触发 CORS preflight，本服务不返回 CORS 头，天然拦截）。
+_ALLOWED_HOSTS = {"127.0.0.1:5100", "localhost:5100", "127.0.0.1", "localhost"}
+_WRITE_METHODS = ("POST", "PUT", "DELETE", "PATCH")
+
+
+def _guard_local_only():
+    """before_request：仅允许本机回环访问 API，阻断跨站与 rebinding。"""
+    if not request.path.startswith("/api/"):
+        return None
+    if request.host not in _ALLOWED_HOSTS:
+        return jsonify({"ok": False, "error": "Forbidden: 仅允许本机访问"}), 403
+    if request.method in _WRITE_METHODS and request.headers.get("X-Requested-With") != "XMLHttpRequest":
+        return jsonify({"ok": False, "error": "Forbidden: 缺少来源校验头"}), 403
+    return None
+
 
 def create_app() -> Flask:
     app = Flask(__name__, static_folder=str(RESOURCE_DIR / "static"))
+    app.secret_key = secrets.token_hex(16)
+    app.before_request(_guard_local_only)
 
     from config_store import (
         CHANNEL_NAMES, CLAUDE_EVENTS, CODEX_EVENTS, PLATFORMS,
@@ -263,22 +286,21 @@ def create_app() -> Flask:
         cfg = load_config()
         # 敏感字段：空值不覆盖已有值
         SENSITIVE_KEYS = {key for fields in CHANNEL_SECRET_FIELDS.values() for key in fields}
-        ALLOWED_CHANNEL_KEYS = {"windows_toast", "weixin", "qq", "telegram", "feishu", "dingtalk"}
         for channel_name, channel_conf in data.items():
-            if channel_name not in ALLOWED_CHANNEL_KEYS:
+            if channel_name not in CHANNEL_NAMES or not isinstance(channel_conf, dict):
                 continue
-            if channel_name in cfg and isinstance(cfg[channel_name], dict):
-                for k, v in channel_conf.items():
-                    if k == "configured_secrets":
-                        continue
-                    if k in SENSITIVE_KEYS and (v is None or v == "" or v == "***"):
-                        continue  # 跳过空值，保留已有配置
-                    cfg[channel_name][k] = v
-                    canonical = cfg.get("channels", {}).get(channel_name)
-                    if isinstance(canonical, dict):
-                        canonical[k] = v
-            else:
-                cfg[channel_name] = channel_conf
+            # 新渠道（不在现有配置中）也走同一套逐字段过滤，避免绕过敏感字段保护
+            if channel_name not in cfg or not isinstance(cfg[channel_name], dict):
+                cfg[channel_name] = {}
+            for k, v in channel_conf.items():
+                if k == "configured_secrets":
+                    continue  # 前端回传的元字段，不写入配置
+                if k in SENSITIVE_KEYS and (v is None or v == "" or v == "***"):
+                    continue  # 跳过空值，保留已有配置
+                cfg[channel_name][k] = v
+                canonical = cfg.get("channels", {}).get(channel_name)
+                if isinstance(canonical, dict):
+                    canonical[k] = v
         save_config(cfg)
         return jsonify({"ok": True, "message": "配置已保存"})
 
@@ -668,7 +690,11 @@ def create_app() -> Flask:
     # --- 日志 ---
     @app.route("/api/logs", methods=["GET"])
     def get_logs():
-        lines = int(request.args.get("lines", 50))
+        try:
+            lines = int(request.args.get("lines", 50))
+        except (TypeError, ValueError):
+            lines = 50
+        lines = max(1, min(lines, 500))  # 限制读取行数，防止全量日志被拉取
         if not LOG_FILE.exists():
             return jsonify({"lines": []})
         try:

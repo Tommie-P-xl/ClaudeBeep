@@ -9,6 +9,11 @@ class NotificationChannel(ABC):
 
     def __init__(self, config: Dict[str, Any]):
         self.config = config
+        self.platform = ""  # 事件来源平台（claude_code / codex），由发送方注入
+
+    def set_platform(self, platform: str) -> None:
+        """记录事件来源平台，供需要平台感知的渠道（如 Toast 应用名）使用。"""
+        self.platform = platform or ""
 
     @property
     @abstractmethod

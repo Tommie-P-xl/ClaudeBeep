@@ -1,4 +1,4 @@
-# ClaudeBeep v2.1.0
+# ClaudeBeep v2.2.0
 
 <p align="center">
   <img src="assets/icon.png" width="128" alt="ClaudeBeep Logo">
@@ -13,7 +13,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-v2.1.0-blue" alt="Version">
+  <img src="https://img.shields.io/badge/version-v2.2.0-blue" alt="Version">
   <img src="https://img.shields.io/badge/python-3.10+-green" alt="Python">
   <img src="https://img.shields.io/badge/platform-Windows-lightgrey" alt="Platform">
   <img src="https://img.shields.io/badge/license-MIT-brightgreen" alt="License">
@@ -30,7 +30,7 @@ ClaudeBeep is a Windows system tray application that treats Claude Code and Code
 - **Open Dashboard** — launches the Web UI for detailed channel configuration, QR login, and log viewing.
 - **Peer platform menus** — Claude Code and Codex each expose independent platform and channel controls in the tray. Unconfigured channels are greyed out.
 - **Start with Windows** — toggles per-user auto-start via the Windows registry (`HKCU\Software\Microsoft\Windows\CurrentVersion\Run`).
-- **Check for Updates** — queries GitHub Releases for the latest version; if newer, downloads and replaces the exe in-place via a batch script with retry logic (no uninstall required). Falls back to opening the download page if auto-update fails.
+- **Check for Updates** — queries GitHub Releases for the latest version; if newer, downloads the package and verifies its SHA256 against `latest.json` before applying. Setup installers run silently; standalone exes are replaced by a delayed apply script (no uninstall required). Falls back to opening the download page if auto-update fails.
 - **System Dark Mode** — automatically detects the Windows system theme and applies dark mode styling to the tray menu.
 - **Web UI Themes** — supports Light / Dark / Follow System theme modes, with Follow System as default. Theme preference is persisted automatically.
 - **High-Res Tray Icon** — 256×256 high-resolution icon for crisp display on high-DPI screens.
@@ -50,12 +50,12 @@ ClaudeBeep is a Windows system tray application that treats Claude Code and Code
 
 | Channel | Protocol | Keepalive | Reply Listening |
 |---------|----------|-----------|-----------------|
-| Windows Toast | WinRT / `winotify` (with app icon) | None (fire-and-forget) | N/A |
+| Windows Toast | WinRT (with app icon) | None (fire-and-forget) | N/A |
 | WeChat ⚠️ Not Recommended | iLink Bot API | Tray-managed `getupdates` long-poll | Direct dispatch in keepalive loop |
-| QQ Bot | QQ Open API (OAuth2 + c2c/group) | None (token cached) | WebSocket via `listener.py` |
-| Telegram | Telegram Bot API | None | Long-polling via `listener.py` |
-| Feishu/Lark | Feishu Open API (OAuth2) | None (token cached) | WebSocket via `lark_oapi` |
-| DingTalk | DingTalk Open API (OAuth2) | None (token cached) | Stream via `dingtalk_stream` |
+| QQ Bot | QQ Open API (OAuth2 + c2c/group) | Tray-managed WebSocket | WebSocket via `listeners/` |
+| Telegram | Telegram Bot API | Tray-managed long-poll | Long-polling via `listeners/` |
+| Feishu/Lark | Feishu Open API (OAuth2) | Tray-managed WebSocket | WebSocket via `lark_oapi` |
+| DingTalk | DingTalk Open API (OAuth2) | Tray-managed Stream | Stream via `dingtalk_stream` |
 
 ### Interactive Replies
 
@@ -63,10 +63,13 @@ When Claude Code asks a question (PermissionRequest / Elicitation), ClaudeBeep s
 - The terminal (direct keyboard input)
 - Any remote channel (WeChat, QQ, Telegram, Feishu, DingTalk)
 
-The first reply wins. Responses are written atomically via temp-file rename to prevent race conditions. Codex permission notifications are informational: approval and answer input stays in Codex.
+The first reply wins. Responses are written atomically via hard-link creation (`O_EXCL` semantics) so the guarantee holds across platforms. Channel listeners live in the tray process (via the `listeners/` package); hook processes reuse them instead of opening temporary connections. Codex permission notifications are informational: approval and answer input stays in Codex.
 
 ### Safety & Reliability
 
+- **Local Web UI guard** — the dashboard binds to `127.0.0.1` and rejects non-loopback `Host` headers (DNS-rebinding protection); write APIs require an `X-Requested-With` header, so cross-site requests are blocked.
+- **Log redaction** — credentials and hook payload values are masked in `notify.log`; only field names and lengths are recorded.
+- **Update integrity** — downloaded packages are verified against a SHA256 hash before installation.
 - **Multi-instance protection** — a Windows global mutex (`Global\ClaudeBeepTray`) prevents duplicate tray processes.
 - **Automatic cleanup** — a background loop runs every 12 hours (configurable) to trim logs, remove stale pending/response files, and clean up queue artifacts. Files are checked for active handles before deletion.
 - **Heartbeat monitoring** — `tray_heartbeat.json` is written every 15 seconds with PID and channel status, enabling cross-process coordination.
@@ -127,13 +130,13 @@ The iLink Bot API uses a **dual-layer token architecture**:
 
 ## Installation
 
-Download `ClaudeBeep-Setup-1.5.0.exe` from [Releases](https://github.com/Tommie-P-xl/ClaudeBeep/releases/tag/v2.1.0) and run the installer.
+Download the latest `ClaudeBeep-Setup-*.exe` from [Releases](https://github.com/Tommie-P-xl/ClaudeBeep/releases/tag/v2.2.0) and run the installer.
 
 The installer includes:
 - `ClaudeBeep.exe` — main application
 - `claudebeep_hook.bat` — hook wrapper for Codex integration
 
-On first launch, ClaudeBeep creates `config.json` in the installation directory.
+On first launch, ClaudeBeep creates `config.json` (and other runtime data: `notify.log`, `pending/`, `responses/`, `send_queue/`) under `%APPDATA%\ClaudeBeep` for installed builds — not under Program Files. Development runs keep everything in the project directory. Legacy configs from the install directory are migrated automatically on first launch.
 
 ### Uninstalling
 
@@ -159,7 +162,7 @@ pip install -r requirements.txt
 pip install -r requirements-dev.txt
 
 # Run the complete test suite
-python -m pytest -v
+python -m unittest discover tests -v
 
 # Run the tray application
 python tray.py
@@ -185,8 +188,8 @@ This creates `dist/ClaudeBeep.exe` (single-file, windowed, UPX-compressed).
 Pushing a version tag triggers the GitHub Actions workflow:
 
 ```
-git tag v2.1.0
-git push origin v2.1.0
+git tag v2.2.0
+git push origin v2.2.0
 ```
 
 The workflow:
@@ -202,7 +205,7 @@ The workflow:
 ```json
 {
   "app": {
-    "version": "1.5.0",
+    "version": "2.2.0",
     "auto_cleanup": true,
     "cleanup_interval_hours": 12,
     "update_repo": "Tommie-P-xl/ClaudeBeep"
@@ -232,27 +235,7 @@ The shortened example omits unchanged channel fields. Sensitive fields (`bot_tok
 
 ## Changelog
 
-### v2.1.0
-
-- **Bug fix**: All channel credential endpoints (QR login, validate, logout) now correctly persist to canonical config path — fixes silent data loss introduced in v2.0.0
-- **Config caching**: `load_config()` now uses mtime-based caching to avoid redundant disk reads and deep copies on every API call
-- **Concurrency**: Added file locking to `atomic_write_json()` to prevent concurrent writer data loss
-- **Telegram default**: Telegram channel notifications are now disabled by default for new installations
-- **SSE shutdown race**: Fixed race condition where rapid tab open/close could cause premature app exit
-- **Codex adapter**: Fixed `str(None)` producing literal "None" in notifications when payload fields are null
-- **TOML cleanup**: Fixed path separator mismatch on Windows that prevented Codex hook state cleanup
-- **Atomic TOML write**: `~/.codex/config.toml` cleanup now uses atomic write to prevent corruption
-- **Hook deduplication**: Improved shlex handling to prevent hook duplication on malformed commands
-- **Code cleanup**: Removed dead wrapper functions in notify.py, unused imports, and redundant config indirection layers
-- **Type safety**: Replaced `type(x) is not bool` with `isinstance()` throughout the codebase
-
-### v2.0.0
-
-- Codex peer integration with independent platform controls
-- Centralized config management (config_store.py)
-- Hook ownership tracking (hook_manager.py)
-- Notification delivery boundary (notification_core.py)
-- Native Win32 tray menus with dark mode support
+See [CHANGELOG.md](CHANGELOG.md) for the full version history (English) or [CHANGELOG_CN.md](CHANGELOG_CN.md) (中文).
 
 ## Privacy
 

@@ -8,9 +8,8 @@ from pathlib import Path
 import sys
 
 from config_store import runtime_channel_config
-
-SCRIPT_DIR = Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent
-LOG_FILE = SCRIPT_DIR / "notify.log"
+from common.channels_registry import CHANNEL_META
+from common.log import LOG_FILE
 
 
 @dataclass(frozen=True)
@@ -31,16 +30,10 @@ class DeliveryResult:
 
 
 def _default_factories() -> dict[str, Callable[[dict], object]]:
+    # 从渠道注册表生成工厂，新增渠道无需改动本函数
     return {
-        name: (lambda cfg, module=module, cls=cls: getattr(importlib.import_module(module), cls)(cfg))
-        for name, module, cls in (
-            ("windows_toast", "channels.windows_toast", "WindowsToastChannel"),
-            ("weixin", "channels.weixin", "WeixinChannel"),
-            ("qq", "channels.qq", "QQBotChannel"),
-            ("telegram", "channels.telegram", "TelegramChannel"),
-            ("feishu", "channels.feishu", "FeishuChannel"),
-            ("dingtalk", "channels.dingtalk", "DingTalkChannel"),
-        )
+        name: (lambda cfg, module=meta["module"], cls=meta["class"]: getattr(importlib.import_module(module), cls)(cfg))
+        for name, meta in CHANNEL_META.items()
     }
 
 
@@ -119,6 +112,10 @@ def send_event(
 
     results = []
     for channel in selected_channels:
+        # 注入事件来源平台（Q5：Toast 等渠道按平台显示不同应用名）
+        set_platform = getattr(channel, "set_platform", None)
+        if set_platform is not None:
+            set_platform(event.platform)
         try:
             enabled = channel.is_enabled()
         except Exception as exc:

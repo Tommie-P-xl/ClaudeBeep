@@ -13,19 +13,14 @@ from pathlib import Path
 from typing import Dict, Any
 from .base import NotificationChannel
 from .text import sanitize_text
+from common.log import log as _log_impl, redact
+from common.paths import RUNTIME_DIR
 
 SCRIPT_DIR = Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent.parent
 
 
 def _log(msg: str):
-    from datetime import datetime
-    log_file = SCRIPT_DIR / "notify.log"
-    ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    try:
-        with open(log_file, "a", encoding="utf-8") as f:
-            f.write(f"[{ts}] {msg}\n")
-    except Exception:
-        pass
+    _log_impl("weixin", msg)
 
 ILINK_BASE = "https://ilinkai.weixin.qq.com"
 
@@ -33,7 +28,7 @@ ILINK_BASE = "https://ilinkai.weixin.qq.com"
 CHANNEL_VERSION = "2.2.0"
 
 # 发送队列目录（用于跨进程 IPC，解决 iLink 协议会话绑定问题）
-SEND_QUEUE_DIR = SCRIPT_DIR / "send_queue"
+SEND_QUEUE_DIR = RUNTIME_DIR / "send_queue"
 
 
 # 全局登录状态（线程安全）
@@ -169,7 +164,7 @@ def _is_stale_context_error(ret: Any, errcode: Any, errmsg: Any) -> bool:
 def _load_config_file() -> dict:
     try:
         import config_store
-        return config_store.load_config(SCRIPT_DIR / "config.json")
+        return config_store.load_config()
     except Exception:
         pass
     return {}
@@ -177,7 +172,7 @@ def _load_config_file() -> dict:
 
 def _save_config_file(cfg: dict) -> None:
     import config_store
-    config_store.save_config(cfg, SCRIPT_DIR / "config.json")
+    config_store.save_config(cfg)
 
 
 def _update_config_field(key: str, value: Any) -> None:
@@ -260,7 +255,7 @@ def _is_keepalive_running() -> bool:
             return True
     # 跨进程检查：通过 heartbeat 文件判断托盘进程是否存活
     try:
-        hb_file = SCRIPT_DIR / "tray_heartbeat.json"
+        hb_file = RUNTIME_DIR / "tray_heartbeat.json"
         if hb_file.exists():
             hb = json.loads(hb_file.read_text(encoding="utf-8"))
             if hb.get("weixin_keepalive") and time.time() - hb.get("ts", 0) < 30:
@@ -308,7 +303,7 @@ def _direct_send(wx_config: dict, title: str, message: str) -> bool:
             "iLink-App-ClientVersion": str((2 << 16) | (2 << 8) | 0),
             "Content-Length": str(len(body)),
         }
-        _log(f"[weixin] 请求头: {json.dumps({k: v for k, v in headers.items() if k != 'Authorization'}, ensure_ascii=False)}")
+        _log(f"[weixin] 请求头 keys: {sorted(k for k in headers if k != 'Authorization')}")
         req = urllib.request.Request(url, data=body, headers=headers, method="POST")
         try:
             resp = urllib.request.urlopen(req, timeout=15)
@@ -343,8 +338,8 @@ def _direct_send(wx_config: dict, title: str, message: str) -> bool:
 
     # 第一次发送（带 context_token）
     body = _build_body(with_ctx=True)
-    _log(f"[weixin] POST {url} to_user={to_user_id} ctx={'yes' if context_token else 'no'}")
-    _log(f"[weixin] 请求体: {body.decode('utf-8', errors='replace')[:500]}")
+    _log(f"[weixin] POST {url} to_user={redact(to_user_id)} ctx={'yes' if context_token else 'no'}")
+    _log(f"[weixin] 请求体长度: {len(body)}")
     result = _do_send(body)
 
     if result["ok"]:
@@ -363,7 +358,7 @@ def _direct_send(wx_config: dict, title: str, message: str) -> bool:
         else:
             _log("[weixin] 发送失败，尝试不带 context_token 重试")
         body = _build_body(with_ctx=False)
-        _log(f"[weixin] 重试请求体: {body.decode('utf-8', errors='replace')[:500]}")
+        _log(f"[weixin] 重试请求体长度: {len(body)}")
         result = _do_send(body)
         return result["ok"]
 
@@ -476,7 +471,7 @@ def _init_session_after_login(token: str, baseurl: str):
         if ret == 0:
             _log("[weixin] getupdates 初始化成功")
             import config_store
-            cfg = config_store.load_config(SCRIPT_DIR / "config.json")
+            cfg = config_store.load_config()
             wx = cfg.setdefault("channels", {}).setdefault("weixin", {})
             for msg in data.get("msgs", []):
                 # 提取 context_token
@@ -488,8 +483,8 @@ def _init_session_after_login(token: str, baseurl: str):
                 from_user = msg.get("from_user_id", "")
                 if from_user and not wx.get("to_user_id"):
                     wx["to_user_id"] = from_user
-                    _log(f"[weixin] 获取到 to_user_id: {from_user}")
-            config_store.save_config(cfg, SCRIPT_DIR / "config.json")
+                    _log(f"[weixin] 获取到 to_user_id: {redact(from_user)}")
+            config_store.save_config(cfg)
         else:
             _log(f"[weixin] getupdates 初始化失败 ret={ret}")
     except Exception as e:

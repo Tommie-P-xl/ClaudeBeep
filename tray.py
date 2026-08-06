@@ -23,22 +23,15 @@ import config_store
 import hook_manager
 import tray_menu
 
-APP_NAME = "ClaudeBeep"
-APP_VERSION = "2.1.0"
+from version import APP_NAME, APP_VERSION
 SCRIPT_DIR = Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent
 RESOURCE_DIR = Path(getattr(sys, "_MEIPASS", SCRIPT_DIR))
-CONFIG_FILE = SCRIPT_DIR / "config.json"
-HEARTBEAT_FILE = SCRIPT_DIR / "tray_heartbeat.json"
+from common.paths import RUNTIME_DIR
+CONFIG_FILE = RUNTIME_DIR / "config.json"
+HEARTBEAT_FILE = RUNTIME_DIR / "tray_heartbeat.json"
 ICON_FILE = RESOURCE_DIR / "assets" / "icon.ico"
 
-CHANNEL_LABELS = {
-    "windows_toast": "Windows 通知",
-    "weixin": "WeChat ⚠️",
-    "qq": "QQ Bot",
-    "telegram": "Telegram",
-    "feishu": "Feishu",
-    "dingtalk": "DingTalk",
-}
+from common.channels_registry import CHANNEL_LABELS  # 渠道标签统一来自注册表（M4）
 
 _mutex_handle = None
 _ui_process: subprocess.Popen | None = None
@@ -668,9 +661,10 @@ def _should_delegate_to_notify() -> bool:
 
 
 def _ensure_runtime_dirs() -> None:
-    (SCRIPT_DIR / "pending").mkdir(exist_ok=True)
-    (SCRIPT_DIR / "responses").mkdir(exist_ok=True)
-    (SCRIPT_DIR / "send_queue").mkdir(exist_ok=True)
+    RUNTIME_DIR.mkdir(parents=True, exist_ok=True)
+    (RUNTIME_DIR / "pending").mkdir(exist_ok=True)
+    (RUNTIME_DIR / "responses").mkdir(exist_ok=True)
+    (RUNTIME_DIR / "send_queue").mkdir(exist_ok=True)
 
 
 def _acquire_single_instance() -> bool:
@@ -691,6 +685,13 @@ def _start_background_services() -> None:
         cfg = _load_config()
         if config_store.should_run_weixin_keepalive(cfg):
             start_keepalive()
+    except Exception:
+        pass
+    # P1：托盘统一持有各远程渠道的常驻监听（微信已由 keepalive 持有），
+    # hook 进程通过 heartbeat 检测到托管后不再重复建立临时连接
+    try:
+        import listener
+        listener.start_managed_listeners(_load_config(), _stop_event)
     except Exception:
         pass
 
@@ -780,7 +781,7 @@ def _check_updates() -> None:
             return
         if _message_box(f"检测到新版本 {info['version']}，是否现在安装？", APP_NAME, 0x24) != 6:
             return
-        success = updater.perform_update(info["url"], info["version"])
+        success = updater.perform_update(info["url"], info["version"], info.get("sha256", ""))
         if success:
             _quit_tray()
         else:
@@ -806,10 +807,16 @@ def _heartbeat_loop() -> None:
         try:
             from channels.weixin import get_keepalive_status
             status = get_keepalive_status()
+            try:
+                import listener
+                managed = listener.managed_channel_names(_load_config())
+            except Exception:
+                managed = []
             HEARTBEAT_FILE.write_text(json.dumps({
                 "ts": time.time(),
                 "pid": os.getpid(),
                 "weixin_keepalive": bool(status.get("running")),
+                "managed_channels": managed,
             }), encoding="utf-8")
         except Exception:
             pass
@@ -831,7 +838,7 @@ def _cleanup_runtime_files() -> None:
     import interaction
     interaction.cleanup_stale()
     now = time.time()
-    for folder, max_age in ((SCRIPT_DIR, 24 * 3600), (SCRIPT_DIR / "responses", 7 * 24 * 3600)):
+    for folder, max_age in ((RUNTIME_DIR, 24 * 3600), (RUNTIME_DIR / "responses", 7 * 24 * 3600)):
         if not folder.exists():
             continue
         for path in folder.glob("*.tmp"):
@@ -839,7 +846,7 @@ def _cleanup_runtime_files() -> None:
         if folder.name == "responses":
             for path in folder.glob("*.json"):
                 _safe_unlink(path, now, max_age)
-    send_queue = SCRIPT_DIR / "send_queue"
+    send_queue = RUNTIME_DIR / "send_queue"
     if send_queue.exists():
         for path in send_queue.glob("*"):
             _safe_unlink(path, now, 120)
@@ -848,7 +855,7 @@ def _cleanup_runtime_files() -> None:
                 send_queue.rmdir()
         except Exception:
             pass
-    _trim_log(SCRIPT_DIR / "notify.log", max_lines=1200)
+    _trim_log(RUNTIME_DIR / "notify.log", max_lines=1200)
 
 
 def _safe_unlink(path: Path, now: float, max_age: int) -> None:

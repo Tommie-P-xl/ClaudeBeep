@@ -13,21 +13,14 @@ import tempfile
 import threading
 from pathlib import Path
 from typing import Optional
-
-SCRIPT_DIR = Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent
+from common.log import log as _log_impl
+from common.paths import RUNTIME_DIR
 
 
 def _log(msg: str):
-    from datetime import datetime
-    log_file = SCRIPT_DIR / "notify.log"
-    ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    try:
-        with open(log_file, "a", encoding="utf-8") as f:
-            f.write(f"[{ts}] [interaction] {msg}\n")
-    except Exception:
-        pass
-PENDING_DIR = SCRIPT_DIR / "pending"
-RESPONSE_DIR = SCRIPT_DIR / "responses"
+    _log_impl("interaction", msg)
+PENDING_DIR = RUNTIME_DIR / "pending"
+RESPONSE_DIR = RUNTIME_DIR / "responses"
 _LABEL_SEQ_FILE = PENDING_DIR / ".label_seq"
 
 # ── 纯工具函数 ──────────────────────────────────────────
@@ -110,7 +103,8 @@ def parse_reply(reply: str, pending: dict) -> str:
     # 检查是否为多问题（含 | 。 . 分隔符）
     tool_input = pending.get("tool_input", {})
     questions = tool_input.get("questions", []) if isinstance(tool_input, dict) else []
-    if len(questions) > 1 and any(c in reply for c in ("|", "。", ".")):
+    # 多问题仅以 "|" 为分隔符触发/拆分（R3：句号/小数点会误判，已移除）
+    if len(questions) > 1 and "|" in reply:
         return _parse_multi_question_reply(reply, questions)
 
     if option_type in ("single_select", ""):
@@ -184,8 +178,7 @@ def _parse_multi_question_reply(reply: str, questions: list) -> str:
     返回 JSON dict 字符串，key 为 field_name，value 为答案文本。
     例: "1,3|2" 或 "1,3。2" 或 "1,3.2" → '{"q1": "Python,Rust", "q2": "Git"}'
     """
-    import re
-    parts = [p.strip() for p in re.split(r'[|。.]', reply) if p.strip()]
+    parts = [p.strip() for p in reply.split("|") if p.strip()]
     result = {}
     for i, q in enumerate(questions):
         field = q.get("field", f"q{i}")
@@ -393,14 +386,30 @@ def write_response(request_id: str, reply: str, channel: str, label: str = "") -
     try:
         with os.fdopen(tmp_fd, "w", encoding="utf-8") as f:
             json.dump(response, f, ensure_ascii=False)
-        os.rename(tmp_path, str(resp_file))
-        return True
-    except FileExistsError:
+            f.flush()
+            os.fsync(f.fileno())
         try:
+            # 硬链接原子创建：目标已存在时抛 FileExistsError，跨平台一致，绝不覆盖
+            # （POSIX 下 os.rename 会静默覆盖，破坏"先到先生效"约束，故改用 link）
+            os.link(tmp_path, str(resp_file))
             os.unlink(tmp_path)
-        except Exception:
-            pass
-        return False
+            return True
+        except FileExistsError:
+            try:
+                os.unlink(tmp_path)
+            except Exception:
+                pass
+            return False
+        except OSError:
+            # 文件系统不支持硬链接（如 FAT32）时回退：显式判空后 rename
+            if resp_file.exists():
+                try:
+                    os.unlink(tmp_path)
+                except Exception:
+                    pass
+                return False
+            os.rename(tmp_path, str(resp_file))
+            return True
     except Exception:
         try:
             os.unlink(tmp_path)

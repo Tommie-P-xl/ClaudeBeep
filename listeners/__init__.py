@@ -1,18 +1,13 @@
-"""
-临时/常驻消息监听器（M2）。
+"""监听器包（M2）：协调层 + 各渠道监听器 + 捕获流程。"""
 
-实现已拆分至 listeners/ 包（协调层 listeners/base.py、各渠道监听器
-listeners/{telegram,qq,feishu,dingtalk,weixin}.py、捕获流程 listeners/capture.py）。
-本模块保留为兼容入口，外部代码（app.py / interaction.py / tray.py）继续
-通过 `from listener import ...` 或 `import listener` 引用。
-"""
-
-from listeners import (
+from .base import (
     start_listeners,
     start_managed_listeners,
     managed_channel_names,
     _tray_manages_channel,
     _tray_is_managing_weixin,
+)
+from .capture import (
     start_qq_openid_capture,
     get_qq_capture_status,
     start_tg_chatid_capture,

@@ -13,17 +13,8 @@ BOT_API_BASE = "https://api.telegram.org"
 
 
 def _log(msg: str):
-    from pathlib import Path
-    from datetime import datetime
-    base_dir = Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent.parent
-    log_file = base_dir / "notify.log"
-    ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    try:
-        with open(log_file, "a", encoding="utf-8") as f:
-            f.write(f"[{ts}] {msg}\n")
-    except Exception:
-        pass
-
+    from common.log import log as _log_impl
+    _log_impl("telegram", msg)
 
 class TelegramChannel(NotificationChannel):
     """通过 Telegram Bot API 发送消息"""

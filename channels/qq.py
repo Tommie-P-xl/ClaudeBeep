@@ -15,17 +15,8 @@ API_BASE = "https://api.sgroup.qq.com"
 
 
 def _log(msg: str):
-    from pathlib import Path
-    from datetime import datetime
-    base_dir = Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent.parent
-    log_file = base_dir / "notify.log"
-    ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    try:
-        with open(log_file, "a", encoding="utf-8") as f:
-            f.write(f"[{ts}] {msg}\n")
-    except Exception:
-        pass
-
+    from common.log import log as _log_impl
+    _log_impl("qq", msg)
 
 class QQBotChannel(NotificationChannel):
     """通过 QQ Bot API 直接发送消息"""
@@ -45,9 +36,17 @@ class QQBotChannel(NotificationChannel):
 
     def _get_access_token(self) -> Optional[str]:
         """获取 access_token（自动缓存和刷新）"""
+        from common.token_cache import get_cached_token, set_cached_token
         now = time.time()
         if self._access_token and now < self._token_expires_at:
             return self._access_token
+
+        # 跨进程文件缓存（P1）：hook 冷启动时复用，避免重复换取 token
+        cached = get_cached_token("qq")
+        if cached:
+            self._access_token = cached
+            self._token_expires_at = now + 3600  # 缓存命中时保守设置 1 小时有效期
+            return cached
 
         app_id = self._qq_config.get("app_id", "")
         app_secret = self._qq_config.get("app_secret", "")
@@ -71,6 +70,8 @@ class QQBotChannel(NotificationChannel):
             expires_in = int(data.get("expires_in", 7200))
             # 提前 5 分钟刷新
             self._token_expires_at = now + expires_in - 300
+            if self._access_token:
+                set_cached_token("qq", self._access_token)
             _log(f"[qq] 获取 access_token 成功，有效期 {expires_in}s")
             return self._access_token
         except Exception as e:

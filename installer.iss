@@ -1,5 +1,8 @@
 #define MyAppName "ClaudeBeep"
-#define MyAppVersion "2.1.0"
+; 版本号默认值，构建时由 build.ps1 通过 /DMyAppVersion= 注入（M1）
+#ifndef MyAppVersion
+#define MyAppVersion "2.2.0"
+#endif
 #define MyAppExeName "ClaudeBeep.exe"
 
 [Setup]
@@ -31,11 +34,9 @@ Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: de
 [Tasks]
 Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Additional shortcuts:"; Flags: unchecked
 
+; M7/S3：运行时数据（config.json/notify.log/pending 等）已迁移到 %APPDATA%\ClaudeBeep，
+; 卸载时不再删除用户配置与日志（保留在用户数据目录，重装后配置自动沿用）。
 [UninstallDelete]
-Type: files; Name: "{app}\config.json"
-Type: files; Name: "{app}\notify.log"
-Type: files; Name: "{app}\updater.log"
-Type: files; Name: "{app}\tray_heartbeat.json"
 Type: dirifempty; Name: "{app}\pending"
 Type: dirifempty; Name: "{app}\responses"
 Type: dirifempty; Name: "{app}\send_queue"
