@@ -805,6 +805,18 @@ def _check_updates() -> None:
 
 def _quit_tray() -> None:
     _stop_event.set()
+    # 终止托盘启动的 Web UI 子进程：它也是 ClaudeBeep.exe（onefile），
+    # 若仍持有 exe 文件句柄，更新时的 rename/copy 会被 Windows 锁定而失败。
+    global _ui_process
+    if _ui_process and _ui_process.poll() is None:
+        try:
+            _ui_process.terminate()
+            _ui_process.wait(timeout=3)
+        except Exception:
+            try:
+                _ui_process.kill()
+            except Exception:
+                pass
     if _hwnd_tray:
         user32.PostMessageW(_hwnd_tray, WM_DESTROY, 0, 0)
         # 给消息循环一点时间处理 WM_DESTROY，然后强制退出兜底

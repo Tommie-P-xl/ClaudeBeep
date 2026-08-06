@@ -247,19 +247,40 @@ def perform_update(download_url: str, new_version: str, sha256: str = "") -> boo
 
         _log(f"Replacing standalone exe via delayed script: {current_exe}")
 
-        # 用相对引用规避路径转义问题：脚本放在 temp_dir，直接用绝对路径
+        # 延迟替换脚本：等待旧进程退出 → 备份/替换 → 延迟启动新 exe。
+        # 竞态防护（修复 _MEI python311.dll 加载失败）：
+        #   1) Web UI 子进程等仍持有 exe 句柄，rename/copy 会被锁 → 先循环等待全部退出（最长 20s），超时中止；
+        #   2) 替换后立即启动时，Defender 实时扫描会锁定刚写入的 exe，引导器解压失败 → 延迟 3s 再启动。
         script.write_text(
             "@echo off\r\n"
-            "timeout /t 3 /nobreak >nul\r\n"
+            "rem Wait for all old ClaudeBeep processes to exit (max 20s)\r\n"
+            "set /a waited=0\r\n"
+            ":wait_loop\r\n"
+            'tasklist /fi "imagename eq ClaudeBeep.exe" 2>nul | find /i "ClaudeBeep.exe" >nul\r\n'
+            "if errorlevel 1 goto proceed\r\n"
+            "timeout /t 1 /nobreak >nul\r\n"
+            "set /a waited+=1\r\n"
+            "if %waited% lss 20 goto wait_loop\r\n"
+            f'echo [ClaudeBeep] Timed out waiting for old processes, update aborted > "{temp_dir}\\update_aborted.txt"\r\n'
+            "exit /b 1\r\n"
+            ":proceed\r\n"
+            "timeout /t 1 /nobreak >nul\r\n"
             f'if exist "{backup_exe}" del /q "{backup_exe}"\r\n'
             f'rename "{current_exe}" "{backup_exe.name}"\r\n'
             f'if exist "{current_exe}" del /q "{current_exe}"\r\n'
             f'copy /y "{downloaded_file}" "{current_exe}" >nul\r\n'
+            f'if not exist "{current_exe}" (\r\n'
+            f'  echo [ClaudeBeep] Replace failed, restoring backup > "{temp_dir}\\update_failed.txt"\r\n'
+            f'  if exist "{backup_exe}" rename "{backup_exe}" "{current_exe.name}"\r\n'
+            "  exit /b 1\r\n"
+            ")\r\n"
+            "rem Let antivirus finish scanning the new exe before launching\r\n"
+            "timeout /t 3 /nobreak >nul\r\n"
             f'start "" "{current_exe}"\r\n'
             f'del /q "{downloaded_file}"\r\n'
             f'del /q "%~f0"\r\n'
             f'rmdir /q "{temp_dir}" 2>nul\r\n',
-            encoding="utf-8",
+            encoding="ascii",
         )
 
         subprocess.Popen(

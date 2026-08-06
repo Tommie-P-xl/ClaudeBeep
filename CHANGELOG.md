@@ -2,10 +2,11 @@
 
 All notable changes to ClaudeBeep are documented in this file.
 
-## [Unreleased]
+## [v2.2.1] - 2026-08-06
 
 ### Fixed
 - **Strict single-instance enforcement**: The tray process now takes a per-user file lock (`%APPDATA%\ClaudeBeep\tray.lock`) in addition to the Windows mutex, so multiple tray instances can no longer coexist even when the global-namespace mutex is unavailable (permissions / session isolation). The Web UI (`--ui`, tray menu, `app.py`) now probes `127.0.0.1:5100` before starting: if a ClaudeBeep UI service is already running, it reuses it and opens the browser instead of launching a duplicate Flask process; port-bind races fall back to reuse as well. Hook / install / test short-lived processes are intentionally exempt (they must run concurrently).
+- **Auto-update replacement races** (fixes the "Failed to load Python DLL" popup after an update): the delayed replace script now waits for **all** old ClaudeBeep processes to exit (including the Web UI child process, which keeps the EXE handle open) before renaming/copying — it aborts safely after a 20s timeout and restores the backup on failure. It also pauses 3s after copying before launching the new EXE so antivirus real-time scanning no longer locks the freshly written binary and breaks the onefile bootloader extraction. The tray now terminates its own Web UI subprocess on quit so updates proceed even when the dashboard is open.
 
 ## [v2.2.0] - 2026-08-06
 
@@ -59,7 +60,7 @@ All notable changes to ClaudeBeep are documented in this file.
 - Notification delivery boundary (notification_core.py)
 - Native Win32 tray menus with dark mode support
 
-[Unreleased]: #
+[v2.2.1]: https://github.com/Tommie-P-xl/ClaudeBeep/releases/tag/v2.2.1
 [v2.2.0]: https://github.com/Tommie-P-xl/ClaudeBeep/releases/tag/v2.2.0
 [v2.1.0]: https://github.com/Tommie-P-xl/ClaudeBeep/releases/tag/v2.1.0
 [v2.0.0]: https://github.com/Tommie-P-xl/ClaudeBeep/releases/tag/v2.0.0

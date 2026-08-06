@@ -2,10 +2,11 @@
 
 本文件记录 ClaudeBeep 的历次版本更新内容。
 
-## [Unreleased]
+## [v2.2.1] - 2026-08-06
 
 ### 修复
 - **严格单实例**：托盘进程在原有 Windows 互斥体之外，新增按用户目录的文件独占锁（`%APPDATA%\ClaudeBeep\tray.lock`），即使全局互斥体因权限/会话隔离失效，多个托盘实例也无法并存。Web UI（`--ui`、托盘菜单、`app.py`）启动前先探测 `127.0.0.1:5100`：已有本应用 UI 服务则直接复用并打开浏览器，不再重复启动 Flask 进程；端口绑定竞态时同样回退复用。hook / install / test 短生命周期进程有意豁免（必须允许并发）。
+- **自动更新替换竞态**（修复更新后偶发的 "Failed to load Python DLL" 弹窗）：延迟替换脚本现在会先等待**所有**旧 ClaudeBeep 进程退出（包括持有 exe 句柄的 Web UI 子进程），再进行重命名/复制——等待超 20 秒则安全中止并保留现场，替换失败时自动从备份恢复；复制完成后额外等待 3 秒再启动新 exe，避免杀软实时扫描锁定刚写入的二进制导致 onefile 引导器解压失败（`_MEI\python311.dll`）。托盘退出时也会主动终止自己启动的 Web UI 子进程，确保开着管理面板也能正常更新。
 
 ## [v2.2.0] - 2026-08-06
 
@@ -59,7 +60,7 @@
 - 通知投递边界（notification_core.py）
 - 原生 Win32 托盘菜单，支持深色模式
 
-[Unreleased]: #
+[v2.2.1]: https://github.com/Tommie-P-xl/ClaudeBeep/releases/tag/v2.2.1
 [v2.2.0]: https://github.com/Tommie-P-xl/ClaudeBeep/releases/tag/v2.2.0
 [v2.1.0]: https://github.com/Tommie-P-xl/ClaudeBeep/releases/tag/v2.1.0
 [v2.0.0]: https://github.com/Tommie-P-xl/ClaudeBeep/releases/tag/v2.0.0
