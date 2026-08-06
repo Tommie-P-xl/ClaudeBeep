@@ -761,6 +761,15 @@ def _check_hooks_installed() -> bool:
 
 if __name__ == "__main__":
     import webbrowser
-    app = create_app()
-    webbrowser.open("http://localhost:5100")
-    app.run(host="127.0.0.1", port=5100, debug=False)
+    from common.single_instance import is_ui_running
+    if is_ui_running():
+        # 已有本应用 UI 服务 → 直接复用，不重复启动
+        webbrowser.open("http://localhost:5100")
+    else:
+        app = create_app()
+        webbrowser.open("http://localhost:5100")
+        try:
+            app.run(host="127.0.0.1", port=5100, debug=False)
+        except OSError:
+            # 端口被占用（启动竞态）：已有实例在服务，直接复用
+            webbrowser.open("http://localhost:5100")

@@ -34,6 +34,7 @@ ICON_FILE = RESOURCE_DIR / "assets" / "icon.ico"
 from common.channels_registry import CHANNEL_LABELS  # 渠道标签统一来自注册表（M4）
 
 _mutex_handle = None
+_tray_lock_handle = None  # 单实例文件锁句柄（持有到进程结束，自动释放）
 _ui_process: subprocess.Popen | None = None
 _stop_event = threading.Event()
 
@@ -668,12 +669,18 @@ def _ensure_runtime_dirs() -> None:
 
 
 def _acquire_single_instance() -> bool:
-    global _mutex_handle
-    if sys.platform != "win32":
-        return True
-    kernel32 = ctypes.windll.kernel32
-    _mutex_handle = kernel32.CreateMutexW(None, False, "Global\\ClaudeBeepTray")
-    return kernel32.GetLastError() != 183
+    global _mutex_handle, _tray_lock_handle
+    # 第一道：Windows 全局互斥体（尽力而为，某些权限/会话下可能失效）
+    mutex_ok = True
+    if sys.platform == "win32":
+        kernel32 = ctypes.windll.kernel32
+        _mutex_handle = kernel32.CreateMutexW(None, False, "Global\\ClaudeBeepTray")
+        if kernel32.GetLastError() == 183:
+            mutex_ok = False  # 已有实例持有互斥体
+    # 第二道：文件独占锁兜底（不依赖互斥体权限），从根上杜绝多托盘并存
+    from common.single_instance import acquire_file_lock
+    _tray_lock_handle = acquire_file_lock("tray")
+    return mutex_ok and _tray_lock_handle is not None
 
 
 def _start_background_services() -> None:
@@ -699,6 +706,12 @@ def _start_background_services() -> None:
 
 def _open_ui() -> None:
     global _ui_process
+    # 复用：端口探测确认已有本应用 UI 服务（含外部直接启动的 --ui 实例），
+    # 直接打开浏览器，不重复启动 Flask 进程（根治多实例）
+    from common.single_instance import is_ui_running
+    if is_ui_running():
+        webbrowser.open("http://localhost:5100")
+        return
     if _ui_process and _ui_process.poll() is None:
         webbrowser.open("http://localhost:5100")
         return

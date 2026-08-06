@@ -2,6 +2,11 @@
 
 All notable changes to ClaudeBeep are documented in this file.
 
+## [Unreleased]
+
+### Fixed
+- **Strict single-instance enforcement**: The tray process now takes a per-user file lock (`%APPDATA%\ClaudeBeep\tray.lock`) in addition to the Windows mutex, so multiple tray instances can no longer coexist even when the global-namespace mutex is unavailable (permissions / session isolation). The Web UI (`--ui`, tray menu, `app.py`) now probes `127.0.0.1:5100` before starting: if a ClaudeBeep UI service is already running, it reuses it and opens the browser instead of launching a duplicate Flask process; port-bind races fall back to reuse as well. Hook / install / test short-lived processes are intentionally exempt (they must run concurrently).
+
 ## [v2.2.0] - 2026-08-06
 
 ### Security
