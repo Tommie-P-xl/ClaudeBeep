@@ -1,8 +1,5 @@
 # 核心依赖
 flask>=2.3
-winotify>=1.1              # Windows Toast 通知（仅 Windows）
-pystray>=0.19              # Windows system tray
-pillow>=10.0               # Tray icon and .ico generation
 
 # 消息渠道 SDK（按需保留，仅在 hook 等待期间临时加载）
 websockets>=12.0           # QQ Bot WebSocket 临时监听

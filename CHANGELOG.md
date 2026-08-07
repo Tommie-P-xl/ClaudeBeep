@@ -2,6 +2,34 @@
 
 All notable changes to ClaudeBeep are documented in this file.
 
+## [v2.3.0] - 2026-08-07
+
+### Fixed
+- **Captured channel IDs no longer silently lost** (critical): listener auto-capture (QQ `target_id`, Telegram `chat_id`, Feishu `receive_id`, DingTalk `user_id`, WeChat `context_token`/`to_user_id`) previously wrote to the legacy top-level mirror of `config.json`, which was rebuilt from canonical `channels.*` on the next load — the captured values vanished on the next read. All capture paths now go through the new transactional `config_store.update_channel_fields()` writing to canonical storage under a file lock.
+- **WeChat QR login no longer hangs forever**: the status polling loop now has a 3-minute overall deadline per QR code; previously, if the user never scanned, the login thread spun indefinitely and every subsequent login attempt was rejected with "login already in progress".
+- **WeChat keepalive hot loop**: a persistent `ret=-2` (stale context token) response now counts toward the failure backoff instead of looping at full speed against the iLink API.
+- **Auto-update on non-ASCII Windows profiles**: the delayed replace batch script is written in the system ANSI code page (`mbcs`) instead of ASCII, which used to raise `UnicodeEncodeError` for users whose profile path contains e.g. Chinese characters; unencodable paths now fall back to a manual-update prompt.
+- **Single-instance false positives**: the tray's mutex check now uses `WinDLL(use_last_error=True)` semantics and the file lock is the sole authoritative gate — a clobbered `GetLastError()` can no longer block startup.
+- **Interaction robustness**: request labels are now allocated under a file lock (concurrent hooks could get duplicate labels and cross-deliver replies); channel reply listeners start *before* notifications are sent so slow sends no longer shrink the reply window; stale pending requests are also reaped after 24h (Windows PID reuse could previously keep them forever); response polling interval lowered 2s → 0.5s.
+- **Hook sync hardening**: malformed non-list `hooks.<event>` entries in `settings.json` are reset instead of crashing with `AttributeError`; Codex `config.toml` cleanup no longer ends a skipped section at blank lines (stray keys could attach to the previous section) and now leaves a `.bak` backup.
+- **Smaller fixes**: QQ listener aborts when the gateway handshake isn't `READY`; token-cache temp files use unique names (concurrent refreshes could truncate each other); `/api/config` PUT rejects non-object JSON with 400 instead of 500; `/api/weixin/qr/status` only persists when the token actually changed (was rewriting the whole config on every 2s poll); Flask `secret_key` persists across restarts; stale/outdated docstring for multi-question reply separators corrected.
+
+### Security
+- **Toast script injection surface closed**: `windows_toast.duration_ms` is coerced to a clamped integer before interpolation into the PowerShell script.
+- **Update integrity**: when release metadata lacks a SHA256 hash, the updater now requires explicit user confirmation before downloading/installing.
+- **Log hygiene**: channel HTTP response bodies are redacted for tokens before being written to the log; short IDs (≤5 chars) are no longer blanket-replaced in error messages (avoided mangling).
+- Request IDs now use `secrets` instead of `random`.
+
+### Performance
+- **Parallel multi-channel delivery**: `notification_core.send_event` now dispatches enabled channels concurrently — a slow channel (network timeout, PowerShell cold start) no longer delays the others.
+- **Log rotation built in**: `notify.log` self-rolls at ~1MB (keeping the last ~512KB) inside `common.log`, independent of the tray's periodic cleanup; `/api/logs` reads from the file tail instead of loading the whole file.
+- WeChat `sync_buf` persists only when changed; `should_run_weixin_keepalive` and legacy-migration checks skip redundant deep copies when the config is already migrated.
+
+### Maintenance
+- New transactional config APIs: `config_store.update_config(mutator)` and `update_channel_fields()` hold the file lock across the whole read-modify-write cycle (previously only the write itself was locked).
+- Removed dead code: seven unused `hook_flow` imports in `notify.py`, the `_load_permissions_allow` / `_load_project_settings` / `_find_claude_dir` chain, and unused dependencies (`winotify`, `pystray`, `pillow`) dropped from `requirements.txt`.
+- 4 new unit tests (44 total) covering canonical-write persistence (H1 regression) and concurrent-writer lost-update (M4 regression).
+
 ## [v2.2.1] - 2026-08-06
 
 ### Fixed
@@ -60,6 +88,7 @@ All notable changes to ClaudeBeep are documented in this file.
 - Notification delivery boundary (notification_core.py)
 - Native Win32 tray menus with dark mode support
 
+[v2.3.0]: https://github.com/Tommie-P-xl/ClaudeBeep/releases/tag/v2.3.0
 [v2.2.1]: https://github.com/Tommie-P-xl/ClaudeBeep/releases/tag/v2.2.1
 [v2.2.0]: https://github.com/Tommie-P-xl/ClaudeBeep/releases/tag/v2.2.0
 [v2.1.0]: https://github.com/Tommie-P-xl/ClaudeBeep/releases/tag/v2.1.0

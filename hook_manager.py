@@ -233,6 +233,10 @@ def sync_hooks(platform: str, enabled_events, path: Path | None = None) -> HookS
     for event in allowed:
         if event in enabled:
             entries = hooks.setdefault(event, [])
+            if not isinstance(entries, list):
+                # M8 修复：手工编辑过的畸形条目（非 list）直接重置，避免 append 崩溃
+                entries = []
+                hooks[event] = entries
             # Check if an owned hook already exists for this event
             already_owned = False
             for entry in entries:
@@ -274,11 +278,19 @@ def _cleanup_codex_config_toml() -> None:
             continue
         # Skip key-value lines belonging to a skipped section
         if skip_next_values:
-            if stripped == "" or stripped.startswith("["):
+            # M10 修复：仅在遇到下一个段头时结束跳过；
+            # TOML 段内允许空行，空行不再提前结束跳过（否则残留键会挂靠到前一个段）
+            if stripped.startswith("["):
                 skip_next_values = False
             else:
                 continue
         new_lines.append(line)
+
+    # 写前备份，行级处理出错时可人工恢复
+    try:
+        shutil.copy2(config_toml, config_toml.with_suffix(".toml.bak"))
+    except OSError:
+        pass
 
     fd, tmp = tempfile.mkstemp(prefix=".config.toml.", suffix=".tmp", dir=config_toml.parent)
     try:

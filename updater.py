@@ -167,12 +167,13 @@ def _is_installer(filename: str) -> bool:
     return "setup" in filename.lower() or "installer" in filename.lower()
 
 
-def _message_box(text: str, flags: int) -> None:
+def _message_box(text: str, flags: int) -> int:
+    """显示更新相关消息框，返回用户选择（如 IDYES=6）；失败返回 0。"""
     try:
         import ctypes
-        ctypes.windll.user32.MessageBoxW(None, text, "ClaudeBeep 更新", flags)
+        return ctypes.windll.user32.MessageBoxW(None, text, "ClaudeBeep 更新", flags)
     except Exception:
-        pass
+        return 0
 
 
 def perform_update(download_url: str, new_version: str, sha256: str = "") -> bool:
@@ -189,6 +190,18 @@ def perform_update(download_url: str, new_version: str, sha256: str = "") -> boo
 
     _log(f"Downloading update from: {download_url}")
     _log(f"File type: {'installer' if _is_installer(filename) else 'standalone exe'}")
+
+    # L15：元数据缺少 SHA256 时要求用户显式确认（防供应链篡改）
+    if not (sha256 or "").strip():
+        choice = _message_box(
+            f"新版本 {new_version} 的更新元数据未提供 SHA256 校验值，\n"
+            "无法验证安装包完整性。仍要继续下载并安装吗？",
+            0x24,  # MB_ICONQUESTION | MB_YESNO
+        )
+        if choice != 6:  # IDYES
+            _log("Update aborted: missing SHA256, user declined")
+            shutil.rmtree(temp_dir, ignore_errors=True)
+            return False
 
     # Show info message
     _message_box(
@@ -251,7 +264,7 @@ def perform_update(download_url: str, new_version: str, sha256: str = "") -> boo
         # 竞态防护（修复 _MEI python311.dll 加载失败）：
         #   1) Web UI 子进程等仍持有 exe 句柄，rename/copy 会被锁 → 先循环等待全部退出（最长 20s），超时中止；
         #   2) 替换后立即启动时，Defender 实时扫描会锁定刚写入的 exe，引导器解压失败 → 延迟 3s 再启动。
-        script.write_text(
+        script_content = (
             "@echo off\r\n"
             "rem Wait for all old ClaudeBeep processes to exit (max 20s)\r\n"
             "set /a waited=0\r\n"
@@ -279,9 +292,20 @@ def perform_update(download_url: str, new_version: str, sha256: str = "") -> boo
             f'start "" "{current_exe}"\r\n'
             f'del /q "{downloaded_file}"\r\n'
             f'del /q "%~f0"\r\n'
-            f'rmdir /q "{temp_dir}" 2>nul\r\n',
-            encoding="ascii",
+            f'rmdir /q "{temp_dir}" 2>nul\r\n'
         )
+        # M3 修复：脚本中含本机路径，用户名含非 ASCII 字符（如中文）时
+        # ascii 编码必抛 UnicodeEncodeError。cmd.exe 按 ANSI 代码页解析 bat，
+        # 故用 mbcs 写入；仍失败则回退提示手动更新。
+        try:
+            script.write_text(script_content, encoding="mbcs")
+        except (UnicodeEncodeError, LookupError) as enc_err:
+            _log(f"Batch script encoding failed (non-ASCII path): {enc_err}")
+            _message_box(
+                f"自动更新脚本无法处理当前路径（含特殊字符）。\n请手动运行: {downloaded_file}",
+                0x10,
+            )
+            return False
 
         subprocess.Popen(
             ["cmd", "/c", str(script)],

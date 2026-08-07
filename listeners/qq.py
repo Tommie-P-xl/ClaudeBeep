@@ -92,6 +92,10 @@ def _qq_listener(config: dict, stop_event: threading.Event, request_id: str = No
                 ready = json.loads(ready_raw)
                 if ready.get("t") == "READY":
                     _log("[qq] WebSocket 已连接，监听消息...")
+                else:
+                    # L12 修复：握手失败不应继续进入事件循环
+                    _log(f"[qq] WebSocket 握手失败: t={ready.get('t')}")
+                    return
 
                 # 心跳 + 事件循环
                 last_heartbeat = time.time()

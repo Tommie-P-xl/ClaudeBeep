@@ -47,9 +47,25 @@ def _guard_local_only():
     return None
 
 
+def _load_or_create_secret_key() -> str:
+    """L10：持久化 Flask secret_key，避免每次重启后所有 session 失效。"""
+    key_file = RUNTIME_DIR / "secret.key"
+    try:
+        if key_file.exists():
+            key = key_file.read_text(encoding="utf-8").strip()
+            if key:
+                return key
+        RUNTIME_DIR.mkdir(parents=True, exist_ok=True)
+        key = secrets.token_hex(32)
+        key_file.write_text(key, encoding="utf-8")
+        return key
+    except OSError:
+        return secrets.token_hex(32)
+
+
 def create_app() -> Flask:
     app = Flask(__name__, static_folder=str(RESOURCE_DIR / "static"))
-    app.secret_key = secrets.token_hex(16)
+    app.secret_key = _load_or_create_secret_key()
     app.before_request(_guard_local_only)
 
     from config_store import (
@@ -282,7 +298,10 @@ def create_app() -> Flask:
 
     @app.route("/api/config", methods=["PUT"])
     def update_config():
-        data = request.get_json(force=True)
+        data = request.get_json(force=True, silent=True)
+        # L1 修复：非对象 JSON（数组/字符串/null）直接 400，不再 500
+        if not isinstance(data, dict):
+            return jsonify({"ok": False, "error": "请求体必须是 JSON 对象"}), 400
         cfg = load_config()
         # 敏感字段：空值不覆盖已有值
         SENSITIVE_KEYS = {key for fields in CHANNEL_SECRET_FIELDS.values() for key in fields}
@@ -334,15 +353,19 @@ def create_app() -> Flask:
         status = WeixinChannel.get_qr_status()
 
         # 登录成功后自动更新 config.json
+        # L2 修复：仅在 token 变化时写盘——前端每 2 秒轮询本接口，
+        # 原实现会在 confirmed 状态下反复触发完整的 save_config
         if status.get("status") == "confirmed" and status.get("bot_token"):
             cfg = load_config()
-            cfg["channels"]["weixin"]["bot_token"] = status["bot_token"]
-            cfg["channels"]["weixin"]["baseurl"] = status.get("baseurl", "https://ilinkai.weixin.qq.com")
-            cfg["channels"]["weixin"]["ilink_bot_id"] = status.get("ilink_bot_id", "")
-            cfg["channels"]["weixin"]["ilink_user_id"] = status.get("ilink_user_id", "")
-            cfg["channels"]["weixin"].setdefault("to_user_id", "")
-            cfg["channels"]["weixin"]["session_expired"] = False
-            save_config(cfg)
+            wx = cfg["channels"]["weixin"]
+            if wx.get("bot_token") != status["bot_token"]:
+                wx["bot_token"] = status["bot_token"]
+                wx["baseurl"] = status.get("baseurl", "https://ilinkai.weixin.qq.com")
+                wx["ilink_bot_id"] = status.get("ilink_bot_id", "")
+                wx["ilink_user_id"] = status.get("ilink_user_id", "")
+                wx.setdefault("to_user_id", "")
+                wx["session_expired"] = False
+                save_config(cfg)
 
         return jsonify(status)
 
@@ -691,16 +714,21 @@ def create_app() -> Flask:
     @app.route("/api/logs", methods=["GET"])
     def get_logs():
         try:
-            lines = int(request.args.get("lines", 50))
+            max_lines = int(request.args.get("lines", 50))
         except (TypeError, ValueError):
-            lines = 50
-        lines = max(1, min(lines, 500))  # 限制读取行数，防止全量日志被拉取
+            max_lines = 50
+        max_lines = max(1, min(max_lines, 500))  # 限制读取行数，防止全量日志被拉取
         if not LOG_FILE.exists():
             return jsonify({"lines": []})
         try:
-            with open(LOG_FILE, "r", encoding="utf-8") as f:
-                all_lines = f.readlines()
-            return jsonify({"lines": [l.rstrip() for l in all_lines[-lines:]]})
+            # 从文件尾部反向读取，避免全量加载大日志文件
+            with open(LOG_FILE, "rb") as f:
+                f.seek(0, 2)
+                size = f.tell()
+                f.seek(max(0, size - 256 * 1024))
+                tail = f.read().decode("utf-8", errors="replace")
+            all_lines = tail.splitlines()
+            return jsonify({"lines": [l.rstrip() for l in all_lines[-max_lines:]]})
         except Exception:
             return jsonify({"lines": []})
 

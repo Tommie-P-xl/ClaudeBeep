@@ -32,13 +32,17 @@ def get_cached_token(name: str, ttl: float = 6600.0) -> str:
 
 
 def set_cached_token(name: str, token: str) -> None:
-    """写入缓存 token（原子替换，失败静默）。"""
+    """写入缓存 token（原子替换，失败静默）。
+
+    M9 修复：临时文件名带 PID + 随机后缀，避免多进程同时刷新同一渠道
+    token 时互相覆盖对方尚未写完的 tmp 文件。
+    """
     if not token:
         return
     try:
         RUNTIME_DIR.mkdir(parents=True, exist_ok=True)
         path = _cache_file(name)
-        tmp = path.with_name(path.name + ".tmp")
+        tmp = path.with_name(f"{path.name}.{os.getpid()}.{time.time_ns():x}.tmp")
         tmp.write_text(
             json.dumps({"ts": time.time(), "token": token}, ensure_ascii=False),
             encoding="utf-8",

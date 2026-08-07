@@ -7,7 +7,7 @@ import json
 import os
 import sys
 import time
-import random
+import secrets
 import string
 import tempfile
 import threading
@@ -31,13 +31,47 @@ def is_interactive_enabled(config: dict) -> bool:
 
 
 def _generate_id() -> str:
-    """生成唯一请求 ID: req_ + 8位随机hex"""
-    return "req_" + "".join(random.choices("0123456789abcdef", k=8))
+    """生成唯一请求 ID: req_ + 8位随机hex（L9：使用加密安全随机源）"""
+    return "req_" + secrets.token_hex(4)
 
 
 def _get_next_label() -> str:
-    """获取下一个字母标签（A, B, C...），会话内单调递增，不因请求清理而重复"""
+    """获取下一个字母标签（A, B, C...），会话内单调递增，不因请求清理而重复
+
+    M5 修复：计数器的"读-改-写"全程在文件锁内完成，
+    避免两个并发 hook 进程拿到相同标签导致回复串号。
+    """
     _ensure_dirs()
+    lock_f = None
+    if sys.platform == "win32":
+        try:
+            import msvcrt
+            lock_f = open(PENDING_DIR / ".label_seq.lock", "a+b")
+            lock_f.seek(0)
+            msvcrt.locking(lock_f.fileno(), msvcrt.LK_LOCK, 1)
+        except Exception:
+            if lock_f:
+                try:
+                    lock_f.close()
+                except Exception:
+                    pass
+            lock_f = None
+    try:
+        return _get_next_label_unlocked()
+    finally:
+        if lock_f:
+            try:
+                lock_f.seek(0)
+                msvcrt.locking(lock_f.fileno(), msvcrt.LK_UNLCK, 1)
+            except Exception:
+                pass
+            try:
+                lock_f.close()
+            except Exception:
+                pass
+
+
+def _get_next_label_unlocked() -> str:
     # 如果没有 pending 文件，说明是新会话，重置计数器
     existing_pending = list(PENDING_DIR.glob("*.json"))
     if not existing_pending:
@@ -65,9 +99,9 @@ def _get_next_label() -> str:
 
 
 def _ensure_dirs():
-    """确保 pending 和 responses 目录存在"""
-    PENDING_DIR.mkdir(exist_ok=True)
-    RESPONSE_DIR.mkdir(exist_ok=True)
+    """确保 pending 和 responses 目录存在（L8：parents=True 兜底 RUNTIME_DIR 缺失）"""
+    PENDING_DIR.mkdir(parents=True, exist_ok=True)
+    RESPONSE_DIR.mkdir(parents=True, exist_ok=True)
 
 
 # ── 回复解析 ────────────────────────────────────────────
@@ -174,9 +208,9 @@ def _parse_multi_select(reply: str, options: list) -> str:
 
 def _parse_multi_question_reply(reply: str, questions: list) -> str:
     """
-    解析多问题回复（用 | 。或. 分隔每个问题的答案）。
+    解析多问题回复（仅以 "|" 分隔每个问题的答案；R3 起句号/小数点不再作为分隔符）。
     返回 JSON dict 字符串，key 为 field_name，value 为答案文本。
-    例: "1,3|2" 或 "1,3。2" 或 "1,3.2" → '{"q1": "Python,Rust", "q2": "Git"}'
+    例: "1,3|2" → '{"q1": "Python,Rust", "q2": "Git"}'
     """
     parts = [p.strip() for p in reply.split("|") if p.strip()]
     result = {}
@@ -346,14 +380,21 @@ def _is_process_running(pid: int) -> bool:
 
 
 def cleanup_stale():
-    """清理 hook 进程已退出的残留 pending 请求（不影响活跃请求）"""
+    """清理 hook 进程已退出的残留 pending 请求（不影响活跃请求）
+
+    L7 修复：除 PID 存活判断外，超过 24 小时的请求一律清理，
+    防止 Windows PID 复用后残留文件永远不被回收。
+    """
     _ensure_dirs()
+    max_age = 24 * 3600
     for f in PENDING_DIR.glob("*.json"):
         try:
             req = json.loads(f.read_text(encoding="utf-8"))
             pid = req.get("pid", 0)
-            # 只清理进程已退出的请求
-            if pid and not _is_process_running(pid):
+            created_at = float(req.get("created_at", 0) or 0)
+            too_old = bool(created_at) and (time.time() - created_at > max_age)
+            # 只清理进程已退出或已超龄的请求
+            if too_old or (pid and not _is_process_running(pid)):
                 f.unlink()
                 resp = RESPONSE_DIR / f"{req.get('id', '')}.json"
                 resp.unlink(missing_ok=True)
@@ -721,25 +762,31 @@ def wait_for_response(
     show_terminal: bool,
     config: dict = None,
     pending: dict = None,
+    stop_event: threading.Event = None,
+    start_channel_listeners: bool = True,
 ) -> Optional[dict]:
     """
     等待用户响应。
     - 主线程轮询 responses/{id}.json
     - 如果 show_terminal=True，同时启动终端读取线程
-    - 如果 config/pending 提供，启动各渠道临时监听
+    - 如果 config/pending 提供且 start_channel_listeners=True，启动各渠道临时监听
     - 任一来源先写入 response 文件即返回
     - timeout=0 表示无限等待
     - 超时返回 None
+
+    M6：调用方可先自行调用 listener.start_listeners 再发通知（避免发送慢
+    吞掉可回复窗口），然后传入同一个 stop_event 并设 start_channel_listeners=False。
     """
     _ensure_dirs()
     resp_file = RESPONSE_DIR / f"{request_id}.json"
-    poll_interval = 2  # 秒
+    poll_interval = 0.5  # 秒（原 2 秒轮询延迟过高）
 
-    stop_event = threading.Event()
+    if stop_event is None:
+        stop_event = threading.Event()
 
     # 启动各渠道临时监听（仅当交互模式启用且配置提供时）
     listener_threads = []
-    if config and pending:
+    if start_channel_listeners and config and pending:
         try:
             import listener
             listener_threads = listener.start_listeners(config, request_id, pending, stop_event)

@@ -69,7 +69,8 @@ def _credential_values(value: object, key: str = "") -> set[str]:
         )
     ):
         credential = str(value)
-        if credential:
+        # L6 修复：过短的值（如纯数字 ID "1"）不做全文替换，避免误伤错误信息
+        if len(credential) >= 6:
             credentials.add(credential)
     return credentials
 
@@ -110,6 +111,8 @@ def send_event(
     if selected_channels is None:
         selected_channels = collect_channels(config, event.platform)
 
+    # 第一阶段（串行）：平台注入 + 启用检查，均为轻量操作
+    to_send = []
     results = []
     for channel in selected_channels:
         # 注入事件来源平台（Q5：Toast 等渠道按平台显示不同应用名）
@@ -129,7 +132,9 @@ def send_event(
             if observer is not None:
                 observer("disabled", channel, None)
             continue
+        to_send.append(channel)
 
+    def _deliver(channel) -> DeliveryResult:
         if observer is not None:
             observer("sending", channel, None)
         try:
@@ -139,7 +144,15 @@ def send_event(
             success = False
             error = _safe_error(exc, config)
         result = DeliveryResult(channel.name, success, error)
-        results.append(result)
         if observer is not None:
             observer("result", channel, result)
+        return result
+
+    # 第二阶段（并行）：多渠道同时投递，慢渠道不再拖累整体时延
+    if len(to_send) == 1:
+        results.append(_deliver(to_send[0]))
+    elif to_send:
+        from concurrent.futures import ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=len(to_send), thread_name_prefix="notify-send") as pool:
+            results.extend(pool.map(_deliver, to_send))
     return results

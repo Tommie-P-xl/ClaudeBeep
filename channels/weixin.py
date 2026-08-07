@@ -170,33 +170,27 @@ def _load_config_file() -> dict:
     return {}
 
 
-def _save_config_file(cfg: dict) -> None:
-    import config_store
-    config_store.save_config(cfg)
-
-
 def _update_config_field(key: str, value: Any) -> None:
     try:
-        cfg = _load_config_file()
-        wx = cfg.setdefault("channels", {}).setdefault("weixin", {})
-        if wx.get(key) == value:
-            return
-        wx[key] = value
-        _save_config_file(cfg)
+        from config_store import update_channel_fields
+        update_channel_fields("weixin", {key: value})
     except Exception as exc:
         _log(f"[weixin] 更新 config.{key} 失败: {exc}")
 
 
 def _mark_session_timeout() -> None:
     try:
-        cfg = _load_config_file()
-        wx = cfg.setdefault("channels", {}).setdefault("weixin", {})
-        wx["context_token"] = ""
-        wx["session_expired"] = True
-        for integration in cfg.setdefault("integrations", {}).values():
-            if isinstance(integration, dict):
-                integration.setdefault("channels", {})["weixin"] = False
-        _save_config_file(cfg)
+        import config_store
+
+        def _apply(cfg: dict) -> None:
+            wx = cfg.setdefault("channels", {}).setdefault("weixin", {})
+            wx["context_token"] = ""
+            wx["session_expired"] = True
+            for integration in cfg.setdefault("integrations", {}).values():
+                if isinstance(integration, dict):
+                    integration.setdefault("channels", {})["weixin"] = False
+
+        config_store.update_config(_apply)
     except Exception:
         pass
     stop_keepalive()
@@ -293,6 +287,14 @@ def _direct_send(wx_config: dict, title: str, message: str) -> bool:
 
     url = f"{baseurl}/ilink/bot/sendmessage"
 
+    def _redact_body(raw: str) -> str:
+        """日志落盘前剔除响应中可能回显的敏感值（L13）。"""
+        text = raw[:300]
+        for secret in (bot_token, context_token):
+            if secret:
+                text = text.replace(secret, "[redacted]")
+        return text
+
     def _do_send(body: bytes) -> dict:
         headers = {
             "Content-Type": "application/json",
@@ -308,7 +310,7 @@ def _direct_send(wx_config: dict, title: str, message: str) -> bool:
         try:
             resp = urllib.request.urlopen(req, timeout=15)
             resp_body = resp.read().decode("utf-8", errors="replace")
-            _log(f"[weixin] HTTP {resp.status} | 响应: {resp_body[:300]}")
+            _log(f"[weixin] HTTP {resp.status} | 响应: {_redact_body(resp_body)}")
             if 200 <= resp.status < 300:
                 try:
                     result = json.loads(resp_body)
@@ -327,7 +329,7 @@ def _direct_send(wx_config: dict, title: str, message: str) -> bool:
             return {"ok": False, "reason": "api_error"}
         except urllib.error.HTTPError as e:
             resp_body = e.read().decode("utf-8", errors="replace") if e.fp else ""
-            _log(f"[weixin] HTTPError {e.code} | 响应: {resp_body[:300]}")
+            _log(f"[weixin] HTTPError {e.code} | 响应: {_redact_body(resp_body)}")
             return {"ok": False, "reason": "network_error"}
         except urllib.error.URLError as e:
             _log(f"[weixin] URLError: {e.reason}")
@@ -470,21 +472,18 @@ def _init_session_after_login(token: str, baseurl: str):
         ret = data.get("ret", data.get("errcode", 0))
         if ret == 0:
             _log("[weixin] getupdates 初始化成功")
-            import config_store
-            cfg = config_store.load_config()
-            wx = cfg.setdefault("channels", {}).setdefault("weixin", {})
+            from config_store import update_channel_fields
             for msg in data.get("msgs", []):
                 # 提取 context_token
                 ctx = msg.get("context_token", "")
-                if ctx and not wx.get("context_token"):
-                    wx["context_token"] = ctx
-                    _log(f"[weixin] 获取到 context_token")
+                if ctx:
+                    if update_channel_fields("weixin", {"context_token": ctx}):
+                        _log(f"[weixin] 获取到 context_token")
                 # 提取发送者 ID 作为 to_user_id
                 from_user = msg.get("from_user_id", "")
-                if from_user and not wx.get("to_user_id"):
-                    wx["to_user_id"] = from_user
-                    _log(f"[weixin] 获取到 to_user_id: {redact(from_user)}")
-            config_store.save_config(cfg)
+                if from_user:
+                    if update_channel_fields("weixin", {"to_user_id": from_user}):
+                        _log(f"[weixin] 获取到 to_user_id: {redact(from_user)}")
         else:
             _log(f"[weixin] getupdates 初始化失败 ret={ret}")
     except Exception as e:
@@ -570,9 +569,14 @@ def _keepalive_loop() -> None:
                     _mark_session_timeout()
                     return
                 elif ret == -2:
-                    _log("[weixin] 后台轮询 ret=-2，清空 sync_buf 后继续")
+                    failure_count += 1
+                    with _keepalive_lock:
+                        _keepalive_status["last_error"] = "ret=-2 (context_token 过期)"
+                    _log(f"[weixin] 后台轮询 ret=-2，清空 sync_buf，退避后重试 (第 {failure_count} 次)")
                     sync_buf = ""
                     _persist_sync_buf(sync_buf)
+                    # M2 修复：ret=-2 也必须退避，否则服务端持续返回 -2 时形成热循环
+                    time.sleep(min(30, 2 ** min(failure_count, 5)) + random.random())
                 else:
                     failure_count += 1
                     with _keepalive_lock:
@@ -591,10 +595,9 @@ def _keepalive_loop() -> None:
 
 def _persist_sync_buf(sync_buf: str) -> None:
     try:
-        cfg = _load_config_file()
-        wx = cfg.setdefault("channels", {}).setdefault("weixin", {})
-        wx["sync_buf"] = sync_buf
-        _save_config_file(cfg)
+        from config_store import update_channel_fields
+        # update_channel_fields 内部已做"值未变化则不写盘"与文件锁保护
+        update_channel_fields("weixin", {"sync_buf": sync_buf})
     except Exception:
         pass
 
@@ -667,9 +670,11 @@ def _qr_login_loop():
             _login_state["qr_img_url"] = qr_img_url
             _login_state["status"] = "wait"
 
-        # Step 2: 轮询状态
+        # Step 2: 轮询状态（M1 修复：设置总时限，防止用户不扫码时线程永久悬挂、
+        # in_progress 永远为 True 导致后续登录请求被无限拒绝）
         poll_base = ILINK_BASE
-        while True:
+        poll_deadline = time.time() + 180  # 每张二维码最多等待 3 分钟
+        while time.time() < poll_deadline:
             result = _poll_qr_status(qrcode_token, poll_base)
             status = result.get("status", "wait")
 

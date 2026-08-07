@@ -5,6 +5,6 @@ tray / config_store / updater / manifest / installer 的版本号统一引用本
 """
 
 APP_NAME = "ClaudeBeep"
-APP_VERSION = "2.2.1"
+APP_VERSION = "2.3.0"
 GITHUB_OWNER = "Tommie-P-xl"
 GITHUB_REPO = "ClaudeBeep"

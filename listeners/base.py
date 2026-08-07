@@ -6,7 +6,6 @@
 """
 
 import json
-import os
 import threading
 import time
 
@@ -22,22 +21,16 @@ def _log(msg: str):
 # ── 配置辅助 ──────────────────────────────────────────────
 
 def _update_config(channel: str, key: str, value: str):
-    """原子更新 config.json 中指定渠道的字段"""
-    config_file = RUNTIME_DIR / "config.json"
+    """持久化更新指定渠道的字段（H1 修复：统一走 canonical 存储 + 文件锁事务）。
+
+    旧实现直接写 config.json 顶层遗留镜像，下一次 load_config 时镜像会被
+    canonical channels.* 重建覆盖，导致捕获的 ID / token 静默丢失。
+    """
     try:
-        with open(config_file, "r", encoding="utf-8") as f:
-            cfg = json.load(f)
-        if channel not in cfg:
-            cfg[channel] = {}
-        if cfg[channel].get(key) == value:
-            return
-        cfg[channel][key] = value
-        import tempfile
-        tmp_fd, tmp_path = tempfile.mkstemp(dir=str(RUNTIME_DIR), suffix=".tmp")
-        with os.fdopen(tmp_fd, "w", encoding="utf-8") as f:
-            json.dump(cfg, f, ensure_ascii=False, indent=2)
-        os.replace(tmp_path, str(config_file))
-        _log(f"[{channel}] 自动更新 {key}={redact_key_value(key, value)}")
+        from config_store import update_channel_fields
+        changed = update_channel_fields(channel, {key: value})
+        if changed:
+            _log(f"[{channel}] 自动更新 {key}={redact_key_value(key, value)}")
     except Exception as e:
         _log(f"[{channel}] 更新配置失败: {e}")
 

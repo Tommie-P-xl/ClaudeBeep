@@ -61,8 +61,14 @@ class WindowsToastChannel(NotificationChannel):
 
     def _send_powershell(self, title: str, message: str) -> bool:
         """PowerShell + WinRT 发送"""
-        duration_ms = self._toast_config.get("duration_ms", 5000)
-        sound_name = self._toast_config.get("sound", "reminder").lower()
+        # L1 修复：duration_ms 来自配置文件，强制为 int 并限制范围，
+        # 防止畸形值被原样拼入 PowerShell 脚本（语法错误乃至注入）
+        try:
+            duration_ms = int(self._toast_config.get("duration_ms", 5000))
+        except (TypeError, ValueError):
+            duration_ms = 5000
+        duration_ms = max(1000, min(duration_ms, 60000))
+        sound_name = str(self._toast_config.get("sound", "reminder")).lower()
         sound_attr = _SOUND_MAP.get(sound_name, "Reminder")
         audio_src = f"ms-winsoundevent:Notification.{sound_attr}"
         app_id = self._resolve_app_id()

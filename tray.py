@@ -670,17 +670,21 @@ def _ensure_runtime_dirs() -> None:
 
 def _acquire_single_instance() -> bool:
     global _mutex_handle, _tray_lock_handle
-    # 第一道：Windows 全局互斥体（尽力而为，某些权限/会话下可能失效）
-    mutex_ok = True
+    # M7 修复：文件独占锁是唯一权威判定；互斥体仅尽力而为。
+    # 旧实现用 ctypes.windll.kernel32.GetLastError()（未开 use_last_error），
+    # 错误码可能被 ctypes 内部调用覆盖，误报"已在运行"导致托盘无法启动。
     if sys.platform == "win32":
-        kernel32 = ctypes.windll.kernel32
-        _mutex_handle = kernel32.CreateMutexW(None, False, "Global\\ClaudeBeepTray")
-        if kernel32.GetLastError() == 183:
-            mutex_ok = False  # 已有实例持有互斥体
-    # 第二道：文件独占锁兜底（不依赖互斥体权限），从根上杜绝多托盘并存
-    from common.single_instance import acquire_file_lock
-    _tray_lock_handle = acquire_file_lock("tray")
-    return mutex_ok and _tray_lock_handle is not None
+        try:
+            k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+            _mutex_handle = k32.CreateMutexW(None, False, "Global\\ClaudeBeepTray")
+            ctypes.get_last_error()  # 183=ERROR_ALREADY_EXISTS，仅作参考，不影响判定
+        except Exception:
+            pass
+        from common.single_instance import acquire_file_lock
+        _tray_lock_handle = acquire_file_lock("tray")
+        return _tray_lock_handle is not None
+    # 非 Windows 不强制单实例（与 common.single_instance 文档约定一致）
+    return True
 
 
 def _start_background_services() -> None:

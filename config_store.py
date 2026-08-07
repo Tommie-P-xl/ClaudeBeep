@@ -249,7 +249,13 @@ def is_channel_configured(config: dict, channel: str) -> bool:
 
 
 def should_run_weixin_keepalive(config: dict) -> bool:
-    migrated = migrate_config(config)
+    # Use already-migrated config if available, avoiding redundant deepcopy
+    if isinstance(config.get("integrations"), dict) and isinstance(
+        config.get("channels"), dict
+    ):
+        migrated = config
+    else:
+        migrated = migrate_config(config)
     credentials = migrated["channels"]["weixin"]
     # Preserve legacy behavior: login keepalive starts as soon as a bot token exists.
     configured = bool(credentials.get("bot_token"))
@@ -272,6 +278,27 @@ def _refresh_legacy_mirrors(config: dict) -> dict:
     return result
 
 
+def _atomic_write_json_unlocked(path: Path, data: dict) -> None:
+    """原子写 JSON（不加锁）。调用方必须已持有对应锁文件，或确保无并发写。"""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, temp_name = tempfile.mkstemp(
+        prefix=f".{path.name}.", suffix=".tmp", dir=path.parent
+    )
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as handle:
+            json.dump(data, handle, ensure_ascii=False, indent=2)
+            handle.write("\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temp_name, path)
+    except Exception:
+        try:
+            os.unlink(temp_name)
+        except OSError:
+            pass
+        raise
+
+
 def atomic_write_json(path: Path, data: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     lock_path = path.parent / f".{path.name}.lock"
@@ -279,22 +306,7 @@ def atomic_write_json(path: Path, data: dict) -> None:
     with lock_path.open("r+") as lock_f:
         _lock_file(lock_f)
         try:
-            fd, temp_name = tempfile.mkstemp(
-                prefix=f".{path.name}.", suffix=".tmp", dir=path.parent
-            )
-            try:
-                with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as handle:
-                    json.dump(data, handle, ensure_ascii=False, indent=2)
-                    handle.write("\n")
-                    handle.flush()
-                    os.fsync(handle.fileno())
-                os.replace(temp_name, path)
-            except Exception:
-                try:
-                    os.unlink(temp_name)
-                except OSError:
-                    pass
-                raise
+            _atomic_write_json_unlocked(path, data)
         finally:
             _unlock_file(lock_f)
 
@@ -302,9 +314,6 @@ def atomic_write_json(path: Path, data: dict) -> None:
 def load_config(path: Path | None = None) -> dict:
     global _config_cache, _config_mtime, _config_path_cached
 
-    # frozen 模式下首次启动把旧位置配置迁移到 %APPDATA%\ClaudeBeep
-    if path is None:
-        _migrate_legacy_runtime_files()
     config_path = Path(path) if path is not None else CONFIG_FILE
 
     # Return cached copy if file unchanged (mtime-based)
@@ -319,6 +328,11 @@ def load_config(path: Path | None = None) -> dict:
             current_mtime = 0.0
         if current_mtime == _config_mtime:
             return copy.deepcopy(_config_cache)
+
+    # frozen 模式下首次启动把旧位置配置迁移到 %APPDATA%\ClaudeBeep
+    # （仅在缓存未命中后执行，避免每次 load 都多付两次 stat）
+    if path is None:
+        _migrate_legacy_runtime_files()
 
     if not config_path.exists():
         config = copy.deepcopy(DEFAULT_CONFIG)
@@ -360,3 +374,71 @@ def save_config(config: dict, path: Path | None = None) -> None:
         _config_mtime = 0.0
     _config_cache = persisted
     _config_path_cached = config_path
+
+
+def _read_config_no_cache(config_path: Path) -> dict:
+    """绕过 mtime 缓存直接从磁盘读取并迁移配置（供带锁事务使用）。"""
+    if not config_path.exists():
+        return _refresh_legacy_mirrors(copy.deepcopy(DEFAULT_CONFIG))
+    try:
+        with config_path.open("r", encoding="utf-8") as handle:
+            raw = json.load(handle)
+    except (json.JSONDecodeError, OSError) as exc:
+        raise ConfigFileError(f"Unable to read configuration: {config_path}") from exc
+    return _refresh_legacy_mirrors(migrate_config(raw))
+
+
+def update_config(mutator, path: Path | None = None):
+    """在文件锁保护下完成"读-改-写"全过程，避免跨进程丢失更新（M4）。
+
+    mutator 接收迁移后的完整配置 dict，原地修改即可；
+    其返回值作为 update_config 的返回值。mutator 抛异常时不写盘。
+    """
+    global _config_cache, _config_mtime, _config_path_cached
+
+    config_path = Path(path) if path is not None else CONFIG_FILE
+    if path is None:
+        _migrate_legacy_runtime_files()
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+    lock_path = config_path.parent / f".{config_path.name}.lock"
+    lock_path.touch(exist_ok=True)
+    with lock_path.open("r+") as lock_f:
+        _lock_file(lock_f)
+        try:
+            cfg = _read_config_no_cache(config_path)
+            result = mutator(cfg)
+            persisted = _refresh_legacy_mirrors(migrate_config(cfg))
+            _atomic_write_json_unlocked(config_path, persisted)
+        finally:
+            _unlock_file(lock_f)
+
+    # Update cache to reflect newly written data
+    try:
+        _config_mtime = config_path.stat().st_mtime
+    except OSError:
+        _config_mtime = 0.0
+    _config_cache = persisted
+    _config_path_cached = config_path
+    return result
+
+
+def update_channel_fields(channel: str, fields: dict, path: Path | None = None) -> bool:
+    """带锁更新 canonical ``channels.<channel>`` 下的字段（H1 修复后的统一写入入口）。
+
+    所有"自动捕获/自动更新"型写入（listeners、keepalive 等）必须走这里，
+    严禁直接写 config.json 顶层镜像——镜像会在下次 load 时被 canonical 重建覆盖。
+    """
+    if channel not in CHANNEL_NAMES:
+        raise ValueError(f"Unsupported channel: {channel}")
+
+    def _apply(cfg: dict) -> bool:
+        canonical = cfg.setdefault("channels", {}).setdefault(channel, {})
+        changed = False
+        for key, value in fields.items():
+            if canonical.get(key) != value:
+                canonical[key] = value
+                changed = True
+        return changed
+
+    changed = update_config(_apply, path)
+    return bool(changed)

@@ -94,58 +94,6 @@ def _load_claude_settings() -> dict:
     return {}
 
 
-def _find_claude_dir(start: Path) -> Path | None:
-    """从 start 向上查找包含 .claude/ 的目录（类似 git 查找 .git/）"""
-    current = start.resolve()
-    for _ in range(20):
-        claude_dir = current / ".claude"
-        if claude_dir.is_dir():
-            return claude_dir
-        parent = current.parent
-        if parent == current:
-            break
-        current = parent
-    return None
-
-
-def _load_project_settings(cwd: str = "") -> dict:
-    """读取项目级 .claude/settings.local.json 和 .claude/settings.json
-    从 cwd 向上查找 .claude/ 目录（类似 git 查找 .git/）。"""
-    if not cwd:
-        return {}
-    merged = {}
-    claude_dir = _find_claude_dir(Path(cwd))
-    if not claude_dir:
-        return merged
-    for name in ("settings.json", "settings.local.json"):
-        path = claude_dir / name
-        try:
-            if path.exists():
-                with open(path, "r", encoding="utf-8") as f:
-                    data = json.load(f)
-                for k, v in data.items():
-                    if k == "permissions" and isinstance(v, dict) and k in merged:
-                        for pk, pv in v.items():
-                            if pk == "allow" and isinstance(pv, list):
-                                merged[k].setdefault("allow", []).extend(pv)
-                            else:
-                                merged[k][pk] = pv
-                    else:
-                        merged[k] = v
-        except Exception:
-            pass
-    return merged
-
-
-def _load_permissions_allow(cwd: str = "") -> list:
-    """读取 permissions.allow 列表（合并用户级 + 项目级设置）"""
-    allow = _load_claude_settings().get("permissions", {}).get("allow", [])
-    project_allow = _load_project_settings(cwd).get("permissions", {}).get("allow", [])
-    if project_allow:
-        allow = list(set(allow + project_allow))
-    return allow
-
-
 def _get_permission_mode() -> str:
     """
     从 ~/.claude/settings.json 读取 permissions.defaultMode（兜底方案）。

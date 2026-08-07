@@ -34,13 +34,6 @@ from hook_flow import (
     _read_stdin_utf8,
     _is_interaction_enabled,
     _extract_options,
-    _load_claude_settings,
-    _find_claude_dir,
-    _load_project_settings,
-    _load_permissions_allow,
-    _get_permission_mode,
-    _is_auto_approved,
-    _extract_context_text,
 )
 import hook_manager
 
@@ -198,6 +191,17 @@ def main():
             as_elicitation=options_info.get("as_elicitation", False),
         )
 
+        # M6 修复：先启动各渠道回复监听，再发送通知。
+        # 原顺序（先发后听）下，慢渠道发送（如微信队列最长 30s）会压缩可回复窗口，
+        # 甚至漏收监听启动前到达的回复（Telegram 用 offset 跳过历史消息）。
+        import threading as _threading
+        stop_event = _threading.Event()
+        try:
+            import listener
+            listener.start_listeners(config, pending["id"], pending, stop_event)
+        except Exception as e:
+            log(f"启动临时监听失败: {e}")
+
         # 发送带选项的通知
         interactive_message = sanitize_text(interaction.format_notification_message(pending))
         for ch in channels:
@@ -206,12 +210,13 @@ def main():
                 ok = ch.send(title, interactive_message)
                 log(f"[{ch.name}] 发送结果: {'成功' if ok else '失败'}")
 
-        # 等待响应（终端 + 文件轮询竞争）
+        # 等待响应（终端 + 文件轮询竞争）；监听器已在上方启动，这里复用同一 stop_event
         interaction_cfg = config.get("integrations", {}).get("claude_code", {}).get("interaction", {})
         timeout = interaction_cfg.get("timeout_seconds", 0)
         show_terminal = interaction_cfg.get("show_in_terminal", True)
         response = interaction.wait_for_response(
-            pending["id"], timeout, show_terminal, config, pending
+            pending["id"], timeout, show_terminal,
+            stop_event=stop_event, start_channel_listeners=False,
         )
 
         # 清理：只删 pending 文件，保留 response 文件供其他渠道检测"已处理"
