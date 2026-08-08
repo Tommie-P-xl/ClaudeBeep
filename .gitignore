@@ -24,6 +24,7 @@ requirements-dev.txt
 .superpowers/
 .omc/
 .claude/
+CODE_REVIEW.md
 
 # 构建产物
 build/
