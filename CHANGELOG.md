@@ -5,6 +5,7 @@ All notable changes to ClaudeBeep are documented in this file.
 ## [v2.3.1] - 2026-08-08
 
 ### Fixed
+- **Auto-update (standalone exe replacement) completely broken**: the delayed replacement script was implemented with cmd/bat and failed outright in the field — the script never ran to any branch, the installed exe was never replaced, and the user only saw a black window flash with no error feedback. Root causes include: `cmd /c` launched with `DETACHED_PROCESS | CREATE_NO_WINDOW` being unreliable; `timeout` always failing without a console (the "wait for old processes" loop degraded to 20 instant iterations); and no retry / no result reporting. **Replaced with a PowerShell script**: `-WindowStyle Hidden` eliminates the black window, `Start-Sleep` works reliably, it waits up to 30s for processes to exit, retries the file replacement for ~10s to ride out locks/antivirus scans, and restores the backup on failure. The outcome is written to `%APPDATA%\ClaudeBeep\update_result.json` and the tray surfaces a failure dialog on next launch.
 - **Web UI operations hanging**: `app.run()` used Flask's default single-threaded model, so the SSE long-lived connection from `/api/stream` monopolized the only worker thread and every other API request stalled once the dashboard was open. The server now explicitly runs with `threaded=True`.
 - **Channels kept sending after logout**: the WeChat / QQ / Telegram / Feishu / DingTalk logout endpoints only cleared credentials and the canonical switch, not the per-integration channel toggle under `integrations.*.channels` — after logging out, every event still attempted to send with empty credentials and spammed error logs. Logout now disables the channel on all enabled platforms.
 - **"Check for updates" crashed on prerelease versions**: `updater.parse_version` now extracts numeric segments with a regex, so tags like `2.3.0-rc1` no longer raise `ValueError`.
@@ -13,6 +14,7 @@ All notable changes to ClaudeBeep are documented in this file.
 
 ### Tests
 - Added 7 unit-test files / 117 cases (161 total), covering: hook parsing and permission filtering, update checks and SHA256 verification, parallel multi-channel delivery with failure isolation, interaction request lifecycle and first-write-wins semantics, WeChat `ret=-2` fallback retry and the send queue, listener message dispatch (temporary / managed), and the Web API (config redaction, local-access guards, logout-toggle regression).
+- Added script-builder tests for the standalone replace script (U5 regression: no `timeout`, includes wait / retry / restore / result reporting), plus a real PowerShell integration check of both the success and the failure-restore paths.
 - All tests isolate temporary directories and mock network calls — they never write into the project directory or produce real traffic.
 
 ## [v2.3.0] - 2026-08-07

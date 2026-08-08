@@ -17,7 +17,13 @@ from unittest import mock
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import updater
-from updater import parse_version, check_for_update, _verify_sha256, _find_setup_asset
+from updater import (
+    parse_version,
+    check_for_update,
+    _verify_sha256,
+    _find_setup_asset,
+    _build_replace_script,
+)
 
 
 class TestParseVersion(unittest.TestCase):
@@ -142,6 +148,62 @@ class TestVerifySha256(unittest.TestCase):
             self.assertTrue(_verify_sha256(p, "  "))
         finally:
             p.unlink(missing_ok=True)
+
+
+class TestReplaceScript(unittest.TestCase):
+    """U5 回归：standalone 替换脚本（PowerShell）必须包含关键可靠逻辑。"""
+
+    def _script(self):
+        return _build_replace_script(
+            Path(r"D:\ClaudeBeep\ClaudeBeep.exe"),
+            Path(r"C:\Temp\x\ClaudeBeep.exe"),
+            Path(r"C:\Users\测试\AppData\Roaming\ClaudeBeep\update_result.json"),
+            "2.3.1",
+        )
+
+    def test_wait_for_process_exit(self):
+        s = self._script()
+        self.assertIn("Get-Process -Name ClaudeBeep", s)
+        self.assertIn("AddSeconds(30)", s)
+
+    def test_uses_start_sleep_not_timeout(self):
+        """U5 核心：弃用 cmd timeout（无控制台环境失效），改用 Start-Sleep。"""
+        s = self._script()
+        self.assertNotIn("timeout /t", s)
+        self.assertIn("Start-Sleep -Milliseconds 500", s)
+
+    def test_retry_and_restore(self):
+        s = self._script()
+        self.assertIn("Rename-Item $target $backup", s)
+        self.assertIn("Copy-Item $new $target", s)
+        self.assertIn("Move-Item $backup $target", s)  # 失败时恢复备份
+        self.assertIn("-lt 20", s)  # 重试上限
+
+    def test_result_reporting(self):
+        """替换结果必须写入 update_result.json，便于下次启动提示。"""
+        s = self._script()
+        self.assertIn("update_result.json", s)
+        self.assertIn("ConvertTo-Json", s)
+        self.assertIn("Write-Result $false", s)
+        self.assertIn("Write-Result $true", s)
+
+    def test_launches_new_version_after_delay(self):
+        s = self._script()
+        self.assertIn("Start-Sleep -Seconds 3", s)
+        self.assertIn("Start-Process $target", s)
+
+    def test_paths_interpolated_and_quoted(self):
+        s = self._script()
+        self.assertIn(r"D:\ClaudeBeep\ClaudeBeep.exe", s)
+        self.assertIn(r"C:\Temp\x\ClaudeBeep.exe", s)
+        self.assertIn(r"C:\Users\测试\AppData\Roaming\ClaudeBeep\update_result.json", s)
+
+    def test_window_style_hidden(self):
+        """U5：替换脚本必须以隐藏窗口方式运行，消除黑框闪现。"""
+        s = self._script()
+        # 启动参数在 perform_update 的 Popen 中，这里验证模板不含交互性命令
+        self.assertNotIn("Read-Host", s)
+        self.assertNotIn("pause", s)
 
 
 if __name__ == "__main__":

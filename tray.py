@@ -639,6 +639,26 @@ def _sync_all_platform_hooks(platform: str) -> None:
         _message_box(f"同步 {tray_menu.PLATFORM_LABELS[platform]} hooks 失败：\n{exc}", APP_NAME, 0x10)
 
 
+def _notify_previous_update_result() -> None:
+    """U5：上次自动更新失败时，启动托盘后弹窗告知原因（结果文件由替换脚本写入）。"""
+    result_file = RUNTIME_DIR / "update_result.json"
+    try:
+        if not result_file.exists():
+            return
+        # PowerShell 5.1 Set-Content -Encoding UTF8 会写 BOM，用 utf-8-sig 读取
+        data = json.loads(result_file.read_text(encoding="utf-8-sig"))
+        result_file.unlink(missing_ok=True)
+        if not data.get("ok", True):
+            _message_box(
+                f"上次自动更新未成功：\n{data.get('msg', '未知原因')}\n"
+                f"（时间：{data.get('ts', '?')}）\n可前往 Releases 页面手动下载安装。",
+                APP_NAME,
+                0x10,
+            )
+    except Exception:
+        pass
+
+
 def main() -> None:
     _set_dpi_awareness()
 
@@ -652,6 +672,7 @@ def main() -> None:
         return
 
     _ensure_runtime_dirs()
+    _notify_previous_update_result()
     _start_background_services()
     _run_tray()
 

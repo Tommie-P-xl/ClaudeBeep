@@ -19,6 +19,7 @@ import urllib.request
 from pathlib import Path
 
 from version import APP_NAME, GITHUB_OWNER, GITHUB_REPO
+from common.paths import RUNTIME_DIR
 
 
 UPDATE_CHECK_URL = f"https://api.github.com/repos/{GITHUB_OWNER}/{GITHUB_REPO}/releases/latest"
@@ -173,6 +174,82 @@ def _is_installer(filename: str) -> bool:
     return "setup" in filename.lower() or "installer" in filename.lower()
 
 
+# U5 修复：standalone 替换不再使用 cmd/bat（黑框可见、timeout 在无控制台环境
+# 失效导致等待循环退化为瞬间 20 轮、替换无重试无反馈——实测在用户环境完全失败）。
+# 改用系统自带的 PowerShell 脚本：-WindowStyle Hidden 保证无窗口、Start-Sleep 可靠、
+# 内置文件解锁重试与结果回报（写入 RUNTIME_DIR/update_result.json）。
+_REPLACE_SCRIPT_TEMPLATE = r'''$ErrorActionPreference = "Stop"
+$target = '{target}'
+$new = '{new}'
+$resultFile = '{result_file}'
+$backup = "$target.bak"
+
+function Write-Result($ok, $msg) {{
+    try {{
+        $obj = @{{ ok = $ok; msg = $msg; ts = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss") }}
+        Set-Content -Path $resultFile -Value ($obj | ConvertTo-Json) -Encoding UTF8
+    }} catch {{}}
+}}
+
+# 1) 等待所有 ClaudeBeep 进程退出（最长 30 秒），避免 exe 文件句柄占用
+$deadline = (Get-Date).AddSeconds(30)
+while ((Get-Date) -lt $deadline) {{
+    if (-not (Get-Process -Name ClaudeBeep -ErrorAction SilentlyContinue)) {{ break }}
+    Start-Sleep -Milliseconds 500
+}}
+if (Get-Process -Name ClaudeBeep -ErrorAction SilentlyContinue) {{
+    Write-Result $false "等待旧进程退出超时（30s），已中止替换"
+    exit 1
+}}
+
+# 2) 替换 exe；文件被占用 / 杀软扫描锁定时自动重试（最长约 10 秒）。
+#    备份只在首次 rename 时创建，重试期间不得再删除（否则失败后无法恢复）。
+if (Test-Path $backup) {{ Remove-Item $backup -Force -ErrorAction SilentlyContinue }}
+$renamed = $false
+$ok = $false
+for ($i = 0; $i -lt 20; $i++) {{
+    try {{
+        if (-not $renamed) {{
+            if (Test-Path $target) {{ Rename-Item $target $backup -Force -ErrorAction Stop }}
+            $renamed = $true
+        }}
+        Copy-Item $new $target -Force -ErrorAction Stop
+        $ok = $true
+        break
+    }} catch {{
+        Start-Sleep -Milliseconds 500
+    }}
+}}
+if (-not $ok) {{
+    if ($renamed -and (Test-Path $backup)) {{ Move-Item $backup $target -Force -ErrorAction SilentlyContinue }}
+    Write-Result $false "替换 exe 失败（文件可能仍被占用或被安全软件锁定）"
+    exit 1
+}}
+Remove-Item $backup -Force -ErrorAction SilentlyContinue
+Write-Result $true "已更新到 {version}"
+
+# 3) 延迟 3 秒启动新版本，让杀软完成对刚写入 exe 的扫描（启动失败不阻断结果）
+try {{
+    Start-Sleep -Seconds 3
+    Start-Process $target
+}} catch {{}}
+
+# 4) 清理临时文件（失败静默，不阻断替换结果）
+try {{ Remove-Item $new -Force -ErrorAction SilentlyContinue }} catch {{}}
+try {{ Remove-Item $PSCommandPath -Force -ErrorAction SilentlyContinue }} catch {{}}
+'''
+
+
+def _build_replace_script(target: Path, new: Path, result_file: Path, version: str) -> str:
+    """构建 standalone 替换用 PowerShell 脚本内容（纯函数，便于测试）。"""
+    return _REPLACE_SCRIPT_TEMPLATE.format(
+        target=str(target),
+        new=str(new),
+        result_file=str(result_file),
+        version=version,
+    )
+
+
 def _message_box(text: str, flags: int) -> int:
     """显示更新相关消息框，返回用户选择（如 IDYES=6）；失败返回 0。"""
     try:
@@ -248,7 +325,7 @@ def perform_update(download_url: str, new_version: str, sha256: str = "") -> boo
                     f"/DIR={install_dir}",
                 ],
                 cwd=str(temp_dir),
-                creationflags=subprocess.DETACHED_PROCESS,
+                creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NO_WINDOW,
             )
             return True
         except Exception as e:
@@ -258,55 +335,21 @@ def perform_update(download_url: str, new_version: str, sha256: str = "") -> boo
             return False
 
     # ── standalone exe：运行中的程序无法 rename 自身（S4）────
-    # 生成延迟替换脚本，在进程退出后由独立 cmd 完成替换并重启
+    # 生成 PowerShell 延迟替换脚本，在进程退出后由独立 powershell 完成替换并重启。
+    # U5：弃用 cmd/bat 方案（见 _REPLACE_SCRIPT_TEMPLATE 说明）。
     try:
         current_exe = Path(sys.executable).resolve()
-        backup_exe = current_exe.with_suffix(".exe.bak")
-        script = temp_dir / "apply_update.bat"
+        result_file = RUNTIME_DIR / "update_result.json"
+        script = temp_dir / "apply_update.ps1"
 
         _log(f"Replacing standalone exe via delayed script: {current_exe}")
 
-        # 延迟替换脚本：等待旧进程退出 → 备份/替换 → 延迟启动新 exe。
-        # 竞态防护（修复 _MEI python311.dll 加载失败）：
-        #   1) Web UI 子进程等仍持有 exe 句柄，rename/copy 会被锁 → 先循环等待全部退出（最长 20s），超时中止；
-        #   2) 替换后立即启动时，Defender 实时扫描会锁定刚写入的 exe，引导器解压失败 → 延迟 3s 再启动。
-        script_content = (
-            "@echo off\r\n"
-            "rem Wait for all old ClaudeBeep processes to exit (max 20s)\r\n"
-            "set /a waited=0\r\n"
-            ":wait_loop\r\n"
-            'tasklist /fi "imagename eq ClaudeBeep.exe" 2>nul | find /i "ClaudeBeep.exe" >nul\r\n'
-            "if errorlevel 1 goto proceed\r\n"
-            "timeout /t 1 /nobreak >nul\r\n"
-            "set /a waited+=1\r\n"
-            "if %waited% lss 20 goto wait_loop\r\n"
-            f'echo [ClaudeBeep] Timed out waiting for old processes, update aborted > "{temp_dir}\\update_aborted.txt"\r\n'
-            "exit /b 1\r\n"
-            ":proceed\r\n"
-            "timeout /t 1 /nobreak >nul\r\n"
-            f'if exist "{backup_exe}" del /q "{backup_exe}"\r\n'
-            f'rename "{current_exe}" "{backup_exe.name}"\r\n'
-            f'if exist "{current_exe}" del /q "{current_exe}"\r\n'
-            f'copy /y "{downloaded_file}" "{current_exe}" >nul\r\n'
-            f'if not exist "{current_exe}" (\r\n'
-            f'  echo [ClaudeBeep] Replace failed, restoring backup > "{temp_dir}\\update_failed.txt"\r\n'
-            f'  if exist "{backup_exe}" rename "{backup_exe}" "{current_exe.name}"\r\n'
-            "  exit /b 1\r\n"
-            ")\r\n"
-            "rem Let antivirus finish scanning the new exe before launching\r\n"
-            "timeout /t 3 /nobreak >nul\r\n"
-            f'start "" "{current_exe}"\r\n'
-            f'del /q "{downloaded_file}"\r\n'
-            f'del /q "%~f0"\r\n'
-            f'rmdir /q "{temp_dir}" 2>nul\r\n'
-        )
-        # M3 修复：脚本中含本机路径，用户名含非 ASCII 字符（如中文）时
-        # ascii 编码必抛 UnicodeEncodeError。cmd.exe 按 ANSI 代码页解析 bat，
-        # 故用 mbcs 写入；仍失败则回退提示手动更新。
+        script_content = _build_replace_script(current_exe, downloaded_file, result_file, new_version)
+        # PowerShell 5.1 以 UTF-8 BOM 解析 .ps1 最稳妥（路径可能含非 ASCII 字符）
         try:
-            script.write_text(script_content, encoding="mbcs")
-        except (UnicodeEncodeError, LookupError) as enc_err:
-            _log(f"Batch script encoding failed (non-ASCII path): {enc_err}")
+            script.write_bytes(b"\xef\xbb\xbf" + script_content.encode("utf-8"))
+        except UnicodeEncodeError as enc_err:
+            _log(f"PowerShell script encoding failed: {enc_err}")
             _message_box(
                 f"自动更新脚本无法处理当前路径（含特殊字符）。\n请手动运行: {downloaded_file}",
                 0x10,
@@ -314,9 +357,10 @@ def perform_update(download_url: str, new_version: str, sha256: str = "") -> boo
             return False
 
         subprocess.Popen(
-            ["cmd", "/c", str(script)],
+            ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass",
+             "-WindowStyle", "Hidden", "-File", str(script)],
             cwd=str(temp_dir),
-            creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NO_WINDOW,
+            creationflags=subprocess.CREATE_NO_WINDOW,
         )
         return True
     except Exception as e:
