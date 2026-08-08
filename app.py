@@ -63,7 +63,12 @@ def _load_or_create_secret_key() -> str:
         return secrets.token_hex(32)
 
 
-def create_app() -> Flask:
+def create_app(enable_sse_shutdown: bool = True) -> Flask:
+    """创建 Flask 应用。
+
+    enable_sse_shutdown：独立 --ui 进程模式下，浏览器标签页全部关闭后自动退出进程；
+    托盘内嵌模式传 False（服务常驻托盘进程，浏览器关闭不退出）。
+    """
     app = Flask(__name__, static_folder=str(RESOURCE_DIR / "static"))
     app.secret_key = _load_or_create_secret_key()
     app.before_request(_guard_local_only)
@@ -769,7 +774,9 @@ def create_app() -> Flask:
             sys.stderr.flush()
             os._exit(0)
 
-    threading.Thread(target=_watch_sse_shutdown, daemon=True).start()
+    # 仅独立 --ui 进程启用；托盘内嵌时浏览器关闭不能退出托盘进程
+    if enable_sse_shutdown:
+        threading.Thread(target=_watch_sse_shutdown, daemon=True).start()
 
     return app
 

@@ -211,5 +211,24 @@ class TestCredentialValidation(AppApiTestCase):
         self.assertEqual(resp.status_code, 400)
 
 
+class TestEmbeddedUiMode(AppApiTestCase):
+    """MEM 回归：托盘内嵌 UI 模式（enable_sse_shutdown=False）必须正常工作。
+
+    托盘内嵌 Flask 后，浏览器关闭不应退出托盘进程，因此禁用 SSE 自杀线程。
+    """
+
+    def test_create_app_without_sse_shutdown(self):
+        app = app_module.create_app(enable_sse_shutdown=False)
+        app.config["TESTING"] = True
+        client = app.test_client()
+        resp = client.get("/api/status")
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("hooks_installed", resp.get_json())
+
+    def test_create_app_default_keeps_original_behavior(self):
+        # setUp 中 create_app()（默认参数）创建成功，独立 --ui 模式行为不变
+        self.assertIsNotNone(self._app)
+
+
 if __name__ == "__main__":
     unittest.main()

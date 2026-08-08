@@ -36,6 +36,8 @@ from common.channels_registry import CHANNEL_LABELS  # 渠道标签统一来自�
 _mutex_handle = None
 _tray_lock_handle = None  # 单实例文件锁句柄（持有到进程结束，自动释放）
 _ui_process: subprocess.Popen | None = None
+_ui_thread: threading.Thread | None = None
+_ui_server_lock = threading.Lock()
 _stop_event = threading.Event()
 
 # ─── Win32 constants ─────────────────────────────────────────────────────────
@@ -729,22 +731,50 @@ def _start_background_services() -> None:
 
 
 
+def _ensure_ui_server() -> None:
+    """按需启动内嵌 Web UI（Flask 线程）。
+
+    MEM 优化：Web UI 不再启动独立 `--ui` 子进程（每个完整 Python 进程约 30+ MB），
+    改为在托盘进程内以线程方式运行 Flask，仅当用户第一次打开主界面时才启动（延迟初始化），
+    浏览器关闭后服务保持常驻（托盘本来常驻），下次打开直接复用。
+    """
+    global _ui_thread
+    with _ui_server_lock:
+        if _ui_thread is not None and _ui_thread.is_alive():
+            return
+        if _ui_thread is not None:
+            _ui_thread = None  # 上次线程已结束，允许重启
+
+        def _run_ui():
+            try:
+                from app import create_app
+                # 托盘内嵌：浏览器关闭后不退出（create_app 不启动 SSE 自杀线程）
+                app = create_app(enable_sse_shutdown=False)
+                app.run(host="127.0.0.1", port=5100, debug=False, threaded=True)
+            except OSError:
+                pass  # 端口被外部 --ui 实例占用 → 直接复用
+            except Exception:
+                pass
+
+        _ui_thread = threading.Thread(target=_run_ui, daemon=True, name="tray-flask")
+        _ui_thread.start()
+
+
 def _open_ui() -> None:
-    global _ui_process
     # 复用：端口探测确认已有本应用 UI 服务（含外部直接启动的 --ui 实例），
-    # 直接打开浏览器，不重复启动 Flask 进程（根治多实例）
+    # 直接打开浏览器，不重复启动 Flask（根治多实例）
     from common.single_instance import is_ui_running
     if is_ui_running():
         webbrowser.open("http://localhost:5100")
         return
-    if _ui_process and _ui_process.poll() is None:
-        webbrowser.open("http://localhost:5100")
-        return
-    if getattr(sys, "frozen", False):
-        cmd = [str(Path(sys.executable).resolve()), "--ui"]
-    else:
-        cmd = [sys.executable, str(SCRIPT_DIR / "notify.py"), "--ui"]
-    _ui_process = subprocess.Popen(cmd, cwd=str(SCRIPT_DIR), creationflags=_creationflags())
+    # 托盘内嵌 Flask（不再 Popen 独立子进程）
+    _ensure_ui_server()
+    # 等待服务就绪（最多 3 秒），避免浏览器先于服务加载
+    for _ in range(15):
+        if is_ui_running():
+            break
+        time.sleep(0.2)
+    webbrowser.open("http://localhost:5100")
 
 
 def _creationflags() -> int:
