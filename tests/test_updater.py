@@ -188,9 +188,25 @@ class TestReplaceScript(unittest.TestCase):
         self.assertIn("Write-Result $true", s)
 
     def test_launches_new_version_after_delay(self):
+        """U7：新 exe 启动前必须等待文件解锁（杀软扫描完成），并带验证。"""
         s = self._script()
-        self.assertIn("Start-Sleep -Seconds 3", s)
+        self.assertIn("Wait-FileUnlocked", s)
+        self.assertIn("[System.IO.File]::Open($path, 'Open', 'Read', 'None')", s)
         self.assertIn("Start-Process $target", s)
+
+    def test_launch_retries_on_error_dialog(self):
+        """U7：引导器弹出 Error 对话框（Failed to load Python DLL）时应关闭并重试。"""
+        s = self._script()
+        self.assertIn("-lt 3", s)  # 最多 3 次启动尝试
+        self.assertIn("MainWindowTitle -eq 'Error'", s)
+        self.assertIn("CloseMainWindow", s)
+        self.assertIn("$_.Kill()", s)
+
+    def test_launch_failure_reports_manual_run(self):
+        """U7：启动彻底失败时结果文件必须提示手动运行。"""
+        s = self._script()
+        self.assertIn("请手动运行: $target", s)
+        self.assertIn("新版本启动失败（引导器解压异常）", s)
 
     def test_paths_interpolated_and_quoted(self):
         s = self._script()

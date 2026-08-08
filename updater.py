@@ -228,15 +228,59 @@ if (-not $ok) {{
 Remove-Item $backup -Force -ErrorAction SilentlyContinue
 Write-Result $true "已更新到 {version}"
 
-# 3) 延迟 3 秒启动新版本，让杀软完成对刚写入 exe 的扫描（启动失败不阻断结果）
-try {{
-    Start-Sleep -Seconds 3
-    Start-Process $target
-}} catch {{}}
+# 3) 启动新版本。
+#    U7：修复 "Failed to load Python DLL" 弹窗——新 exe 刚写入时杀软实时扫描
+#    仍会锁定二进制，固定等待 3 秒不可靠。改为：轮询等待文件可独占打开
+#    （扫描完成）→ 启动 → 验证进程是否正常起来（无 "Error" 弹窗）→ 失败自动重试。
+function Wait-FileUnlocked($path, $seconds) {{
+    $deadline = (Get-Date).AddSeconds($seconds)
+    while ((Get-Date) -lt $deadline) {{
+        try {{
+            $fs = [System.IO.File]::Open($path, 'Open', 'Read', 'None')
+            $fs.Close()
+            return $true
+        }} catch {{
+            Start-Sleep -Milliseconds 500
+        }}
+    }}
+    return $false
+}}
 
-# 4) 清理临时文件（失败静默，不阻断替换结果）
+$launched = $false
+for ($attempt = 0; $attempt -lt 3; $attempt++) {{
+    if (-not (Wait-FileUnlocked $target 15)) {{
+        Write-Result $false "新 exe 一直被占用（可能被杀毒软件锁定），请稍后手动运行: $target"
+        exit 1
+    }}
+    Start-Sleep -Seconds 2
+    Start-Process $target -ErrorAction SilentlyContinue
+    # 观察 10 秒：出现 ClaudeBeep 进程且无 "Error" 弹窗 → 启动成功
+    $deadline = (Get-Date).AddSeconds(10)
+    while ((Get-Date) -lt $deadline) {{
+        Start-Sleep -Milliseconds 500
+        $procs = @(Get-Process -Name ClaudeBeep -ErrorAction SilentlyContinue)
+        if ($procs.Count -eq 0) {{ continue }}
+        $errWin = $procs | Where-Object {{ $_.MainWindowTitle -eq 'Error' }}
+        if (-not $errWin) {{
+            $launched = $true
+            break
+        }}
+        # 引导器弹出错误对话框（如 Failed to load Python DLL）→ 关闭并终止残留进程后重试
+        $errWin | ForEach-Object {{ try {{ $_.CloseMainWindow() | Out-Null }} catch {{}} }}
+        $procs | ForEach-Object {{ try {{ $_.Kill() }} catch {{}} }}
+        break
+    }}
+    if ($launched) {{ break }}
+}}
+
+# 4) 清理临时文件（失败静默，不阻断结果）
 try {{ Remove-Item $new -Force -ErrorAction SilentlyContinue }} catch {{}}
 try {{ Remove-Item $PSCommandPath -Force -ErrorAction SilentlyContinue }} catch {{}}
+
+if (-not $launched) {{
+    Write-Result $false "新版本启动失败（引导器解压异常），请手动运行: $target"
+    exit 1
+}}
 '''
 
 
