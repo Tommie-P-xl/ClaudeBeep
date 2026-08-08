@@ -2,6 +2,19 @@
 
 All notable changes to ClaudeBeep are documented in this file.
 
+## [v2.3.1] - 2026-08-08
+
+### Fixed
+- **Web UI operations hanging**: `app.run()` used Flask's default single-threaded model, so the SSE long-lived connection from `/api/stream` monopolized the only worker thread and every other API request stalled once the dashboard was open. The server now explicitly runs with `threaded=True`.
+- **Channels kept sending after logout**: the WeChat / QQ / Telegram / Feishu / DingTalk logout endpoints only cleared credentials and the canonical switch, not the per-integration channel toggle under `integrations.*.channels` — after logging out, every event still attempted to send with empty credentials and spammed error logs. Logout now disables the channel on all enabled platforms.
+- **"Check for updates" crashed on prerelease versions**: `updater.parse_version` now extracts numeric segments with a regex, so tags like `2.3.0-rc1` no longer raise `ValueError`.
+- **WeChat QR polling CPU spin**: the login status poll loop now backs off 1s on fast-failing paths instead of spinning hot for up to 180 seconds.
+- **DingTalk sent-success false positives**: sending now validates the response business `code == 0`, so an HTTP 200 with an expired token / invalid args is no longer reported as success (aligned with QQ / Feishu / Telegram).
+
+### Tests
+- Added 7 unit-test files / 117 cases (161 total), covering: hook parsing and permission filtering, update checks and SHA256 verification, parallel multi-channel delivery with failure isolation, interaction request lifecycle and first-write-wins semantics, WeChat `ret=-2` fallback retry and the send queue, listener message dispatch (temporary / managed), and the Web API (config redaction, local-access guards, logout-toggle regression).
+- All tests isolate temporary directories and mock network calls — they never write into the project directory or produce real traffic.
+
 ## [v2.3.0] - 2026-08-07
 
 ### Fixed
@@ -88,6 +101,7 @@ All notable changes to ClaudeBeep are documented in this file.
 - Notification delivery boundary (notification_core.py)
 - Native Win32 tray menus with dark mode support
 
+[v2.3.1]: https://github.com/Tommie-P-xl/ClaudeBeep/releases/tag/v2.3.1
 [v2.3.0]: https://github.com/Tommie-P-xl/ClaudeBeep/releases/tag/v2.3.0
 [v2.2.1]: https://github.com/Tommie-P-xl/ClaudeBeep/releases/tag/v2.2.1
 [v2.2.0]: https://github.com/Tommie-P-xl/ClaudeBeep/releases/tag/v2.2.0

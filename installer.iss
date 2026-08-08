@@ -1,7 +1,7 @@
 #define MyAppName "ClaudeBeep"
 ; 版本号默认值，构建时由 build.ps1 通过 /DMyAppVersion= 注入（M1）
 #ifndef MyAppVersion
-#define MyAppVersion "2.3.0"
+#define MyAppVersion "2.3.1"
 #endif
 #define MyAppExeName "ClaudeBeep.exe"
 

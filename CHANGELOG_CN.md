@@ -2,6 +2,19 @@
 
 本文件记录 ClaudeBeep 的历次版本更新内容。
 
+## [v2.3.1] - 2026-08-08
+
+### 修复
+- **Web UI 操作卡死**：`app.run()` 此前使用 Flask 默认单线程模型，`/api/stream` 的 SSE 长连接会独占唯一处理线程，导致管理界面打开后其他 API 请求全部挂起。现在显式开启 `threaded=True`。
+- **注销渠道后仍尝试发送**：微信 / QQ / Telegram / 飞书 / 钉钉的 logout API 此前只清空凭据与 canonical 开关，未关闭 `integrations.*.channels` 下的渠道开关，注销后每次事件仍会以空凭据反复尝试发送并刷错误日志。现在注销时同步关闭所有已启用平台下的对应渠道。
+- **"检查更新"在预发布版本号下报错**：`updater.parse_version` 改用正则提取数字段，`2.3.0-rc1` 这类版本号不再触发 `ValueError`。
+- **微信扫码登录 CPU 空转**：二维码状态轮询在服务端快速失败路径下增加 1s 间隔退避，不再 180 秒内空转打满 CPU。
+- **钉钉发送误报成功**：发送消息现在校验响应业务 `code == 0`，HTTP 200 但 token 失效 / 参数错误时不再被误判为成功（与 QQ / 飞书 / Telegram 渠道行为对齐）。
+
+### 测试
+- 新增 7 个单元测试文件、117 个用例（总计 161 个），覆盖：hook 解析与权限过滤、更新判断与 SHA256 校验、多渠道并行投递与失败隔离、交互请求生命周期与"先到先生效"、微信 ret=-2 降级重试与发送队列、监听器消息分发（临时 / 常驻）、Web API（配置脱敏 / 本地访问防护 / 注销开关回归）。
+- 所有测试隔离临时目录并 mock 网络请求，运行时不写项目目录、不产生真实流量。
+
 ## [v2.3.0] - 2026-08-07
 
 ### 修复
@@ -88,6 +101,7 @@
 - 通知投递边界（notification_core.py）
 - 原生 Win32 托盘菜单，支持深色模式
 
+[v2.3.1]: https://github.com/Tommie-P-xl/ClaudeBeep/releases/tag/v2.3.1
 [v2.3.0]: https://github.com/Tommie-P-xl/ClaudeBeep/releases/tag/v2.3.0
 [v2.2.1]: https://github.com/Tommie-P-xl/ClaudeBeep/releases/tag/v2.2.1
 [v2.2.0]: https://github.com/Tommie-P-xl/ClaudeBeep/releases/tag/v2.2.0
