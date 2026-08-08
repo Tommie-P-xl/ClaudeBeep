@@ -1,4 +1,4 @@
-# ClaudeBeep v2.3.2
+# ClaudeBeep v2.3.3
 
 <p align="center">
   <img src="assets/icon.png" width="128" alt="ClaudeBeep Logo">
@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-v2.3.2-blue" alt="Version">
+  <img src="https://img.shields.io/badge/version-v2.3.3-blue" alt="Version">
   <img src="https://img.shields.io/badge/python-3.10+-green" alt="Python">
   <img src="https://img.shields.io/badge/platform-Windows-lightgrey" alt="Platform">
   <img src="https://img.shields.io/badge/license-MIT-brightgreen" alt="License">
@@ -130,7 +130,7 @@ iLink Bot API 采用**双层令牌架构**：
 
 ## 安装
 
-从 [Releases](https://github.com/Tommie-P-xl/ClaudeBeep/releases/tag/v2.3.2) 下载最新的 `ClaudeBeep-Setup-*.exe` 并运行安装程序。
+从 [Releases](https://github.com/Tommie-P-xl/ClaudeBeep/releases/tag/v2.3.3) 下载最新的 `ClaudeBeep-Setup-*.exe` 并运行安装程序。
 
 安装程序包含：
 - `ClaudeBeep.exe` — 主程序
@@ -188,8 +188,8 @@ python notify.py --test        # 测试所有已启用渠道
 推送版本标签触发 GitHub Actions 工作流：
 
 ```
-git tag v2.3.2
-git push origin v2.3.2
+git tag v2.3.3
+git push origin v2.3.3
 ```
 
 工作流步骤：
@@ -205,7 +205,7 @@ git push origin v2.3.2
 ```json
 {
   "app": {
-    "version": "2.3.2",
+    "version": "2.3.3",
     "auto_cleanup": true,
     "cleanup_interval_hours": 12,
     "update_repo": "Tommie-P-xl/ClaudeBeep"

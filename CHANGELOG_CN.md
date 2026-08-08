@@ -2,6 +2,12 @@
 
 本文件记录 ClaudeBeep 的历次版本更新内容。
 
+## [v2.3.3] - 2026-08-08
+
+### 修复
+- **自动更新后偶发 "Failed to load Python DLL" 弹窗**：standalone 替换完成后，新 exe 在固定等待 3 秒后启动，但杀软（Defender）实时扫描仍可能锁定刚写入的二进制，导致 PyInstaller 引导器解压 `python311.dll` 失败（v2.2.1 同类问题复发——固定时长等待不可靠）。现在替换脚本改为：**轮询等待新 exe 可独占打开（最多 15 秒，扫描完成即继续）→ 启动 → 验证进程正常出现且无错误弹窗（最长 10 秒）→ 失败自动关闭弹窗并重试（最多 3 次）→ 彻底失败时在结果文件写入"请手动运行"提示**。托盘下次启动仍会弹窗告知更新结果。
+- 附带：等待逻辑经真实集成验证（替换成功 + 启动检测 + 结果回报 + 临时文件清理），172 个单元测试全部通过。
+
 ## [v2.3.2] - 2026-08-08
 
 ### 性能
@@ -109,6 +115,7 @@
 - 通知投递边界（notification_core.py）
 - 原生 Win32 托盘菜单，支持深色模式
 
+[v2.3.3]: https://github.com/Tommie-P-xl/ClaudeBeep/releases/tag/v2.3.3
 [v2.3.2]: https://github.com/Tommie-P-xl/ClaudeBeep/releases/tag/v2.3.2
 [v2.3.1]: https://github.com/Tommie-P-xl/ClaudeBeep/releases/tag/v2.3.1
 [v2.3.0]: https://github.com/Tommie-P-xl/ClaudeBeep/releases/tag/v2.3.0

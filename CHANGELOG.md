@@ -2,6 +2,12 @@
 
 All notable changes to ClaudeBeep are documented in this file.
 
+## [v2.3.3] - 2026-08-08
+
+### Fixed
+- **Intermittent "Failed to load Python DLL" popup after auto-update**: after the standalone replacement, the new exe was launched after a fixed 3-second wait, but antivirus (Defender) real-time scanning could still lock the freshly written binary, making the PyInstaller bootloader fail to extract `python311.dll` (a recurrence of the v2.2.1 issue — fixed-time waits are unreliable). The replacement script now **polls until the new exe can be opened exclusively (up to 15s, i.e. until the scan finishes) → launches it → verifies the process appears without an error dialog (up to 10s) → closes any error dialog and retries on failure (up to 3 attempts) → writes a "run manually" hint to the result file on final failure**. The tray still surfaces the update outcome on next launch.
+- The wait logic was verified with a real integration run (replace + launch detection + result reporting + temp cleanup); all 172 unit tests pass.
+
 ## [v2.3.2] - 2026-08-08
 
 ### Performance
@@ -109,6 +115,7 @@ All notable changes to ClaudeBeep are documented in this file.
 - Notification delivery boundary (notification_core.py)
 - Native Win32 tray menus with dark mode support
 
+[v2.3.3]: https://github.com/Tommie-P-xl/ClaudeBeep/releases/tag/v2.3.3
 [v2.3.2]: https://github.com/Tommie-P-xl/ClaudeBeep/releases/tag/v2.3.2
 [v2.3.1]: https://github.com/Tommie-P-xl/ClaudeBeep/releases/tag/v2.3.1
 [v2.3.0]: https://github.com/Tommie-P-xl/ClaudeBeep/releases/tag/v2.3.0
