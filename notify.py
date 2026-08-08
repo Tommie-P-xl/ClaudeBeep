@@ -134,7 +134,7 @@ def main():
         app = create_app()
         webbrowser.open("http://localhost:5100")
         try:
-            app.run(host="127.0.0.1", port=5100, debug=False)
+            app.run(host="127.0.0.1", port=5100, debug=False, threaded=True)
         except OSError:
             # 端口被占用（启动竞态）：说明已有实例在服务，直接复用
             webbrowser.open("http://localhost:5100")

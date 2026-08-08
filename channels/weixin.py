@@ -729,6 +729,10 @@ def _qr_login_loop():
             else:
                 pass  # 未知状态，继续轮询
 
+            # B4 修复：网络错误/未知状态时 _poll_qr_status 会立即返回，
+            # 若服务端持续快速失败，无 sleep 会在 180 秒内空转打满 CPU。
+            time.sleep(1)
+
     with _login_lock:
         _login_state["error"] = "登录失败"
         _login_state["status"] = "error"

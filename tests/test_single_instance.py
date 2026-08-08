@@ -4,14 +4,17 @@
 import json
 import os
 import sys
+import tempfile
 import threading
 import unittest
 from http.server import BaseHTTPRequestHandler, HTTPServer
+from pathlib import Path
+from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from common.single_instance import acquire_file_lock, is_ui_running, port_in_use
-from common.paths import RUNTIME_DIR
+from common import single_instance as si_module
 
 
 class _MockHandler(BaseHTTPRequestHandler):
@@ -47,12 +50,13 @@ class _MockServer:
 
 
 class TestFileLock(unittest.TestCase):
+    def setUp(self):
+        # 隔离锁文件目录，避免在项目目录留下 test_instance.lock
+        self._tmp = Path(tempfile.mkdtemp())
+        self.enterContext(mock.patch.object(si_module, "RUNTIME_DIR", self._tmp))
+
     def tearDown(self):
-        lock_path = RUNTIME_DIR / "test_instance.lock"
-        try:
-            lock_path.unlink(missing_ok=True)
-        except OSError:
-            pass
+        (self._tmp / "test_instance.lock").unlink(missing_ok=True)
 
     def test_second_acquire_fails(self):
         """第一个持有者存在时，第二次获取必须失败（多实例被拒绝）。"""

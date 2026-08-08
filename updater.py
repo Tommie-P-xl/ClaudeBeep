@@ -9,6 +9,7 @@ Update flow:
 """
 import hashlib
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -26,6 +27,9 @@ LATEST_JSON_URL = (
     f"/releases/latest/download/latest.json"
 )
 
+# B3 修复：只提取前三个数字段，容忍 "v2.3.0-rc1" / "2.3.0.1-beta" 等后缀
+_VERSION_RE = re.compile(r"(\d+)(?:\.(\d+))?(?:\.(\d+))?")
+
 
 def _log(msg: str):
     try:
@@ -40,9 +44,11 @@ def _log(msg: str):
 
 
 def parse_version(v: str) -> tuple:
-    v = v.lstrip("v")
-    parts = v.split(".")
-    return tuple(int(p) for p in parts[:3])
+    """解析版本号，返回 (major, minor, patch)；无法解析时返回 (0, 0, 0)。"""
+    m = _VERSION_RE.match(str(v).lstrip("v"))
+    if not m:
+        return (0, 0, 0)
+    return tuple(int(g) if g else 0 for g in m.groups())
 
 
 def _fetch_json(url: str, timeout: int = 15) -> dict | None:

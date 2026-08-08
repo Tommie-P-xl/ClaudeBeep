@@ -386,6 +386,11 @@ def create_app() -> Flask:
         cfg["channels"]["weixin"]["ilink_user_id"] = ""
         cfg["channels"]["weixin"]["to_user_id"] = ""
         cfg["channels"]["weixin"]["enabled"] = False
+        # B2 修复：注销时必须同时关闭各集成下的渠道开关，
+        # 否则 runtime_channel_config 会用 integration 开关覆盖 canonical 的 enabled，
+        # 导致注销后仍会尝试空凭据发送。
+        for _platform in PLATFORMS:
+            cfg["integrations"][_platform]["channels"]["weixin"] = False
         save_config(cfg)
         return jsonify({"ok": True, "message": "微信登录信息已清除"})
 
@@ -435,6 +440,8 @@ def create_app() -> Flask:
         cfg["channels"]["qq"]["app_secret"] = ""
         cfg["channels"]["qq"]["target_id"] = ""
         cfg["channels"]["qq"]["enabled"] = False
+        for _platform in PLATFORMS:
+            cfg["integrations"][_platform]["channels"]["qq"] = False
         save_config(cfg)
         return jsonify({"ok": True, "message": "QQ Bot 信息已清除"})
 
@@ -482,6 +489,8 @@ def create_app() -> Flask:
         cfg["channels"]["telegram"]["bot_token"] = ""
         cfg["channels"]["telegram"]["chat_id"] = ""
         cfg["channels"]["telegram"]["enabled"] = False
+        for _platform in PLATFORMS:
+            cfg["integrations"][_platform]["channels"]["telegram"] = False
         save_config(cfg)
         return jsonify({"ok": True, "message": "Telegram 信息已清除"})
 
@@ -531,6 +540,8 @@ def create_app() -> Flask:
         cfg["channels"]["feishu"]["app_secret"] = ""
         cfg["channels"]["feishu"]["receive_id"] = ""
         cfg["channels"]["feishu"]["enabled"] = False
+        for _platform in PLATFORMS:
+            cfg["integrations"][_platform]["channels"]["feishu"] = False
         save_config(cfg)
         return jsonify({"ok": True, "message": "飞书信息已清除"})
 
@@ -581,6 +592,8 @@ def create_app() -> Flask:
         cfg["channels"]["dingtalk"]["client_secret"] = ""
         cfg["channels"]["dingtalk"]["user_id"] = ""
         cfg["channels"]["dingtalk"]["enabled"] = False
+        for _platform in PLATFORMS:
+            cfg["integrations"][_platform]["channels"]["dingtalk"] = False
         save_config(cfg)
         return jsonify({"ok": True, "message": "钉钉信息已清除"})
 
@@ -797,7 +810,9 @@ if __name__ == "__main__":
         app = create_app()
         webbrowser.open("http://localhost:5100")
         try:
-            app.run(host="127.0.0.1", port=5100, debug=False)
+            # B1 修复：Flask app.run 默认单线程，/api/stream 的 SSE 长连接会
+            # 独占唯一处理线程导致其他 API 全部挂起，必须显式开启多线程。
+            app.run(host="127.0.0.1", port=5100, debug=False, threaded=True)
         except OSError:
             # 端口被占用（启动竞态）：已有实例在服务，直接复用
             webbrowser.open("http://localhost:5100")

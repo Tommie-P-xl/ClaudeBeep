@@ -103,8 +103,11 @@ class DingTalkChannel(NotificationChannel):
         try:
             resp = urllib.request.urlopen(req, timeout=15)
             data = json.loads(resp.read().decode("utf-8"))
-            _log(f"[dingtalk] sendMessage ok")
-            return True
+            # C1 修复：钉钉 HTTP 200 时业务 code 仍可能非 0（token 失效/参数错误），
+            # 必须校验 code == 0 才算发送成功，否则会误报成功。
+            ok = data.get("code") == 0
+            _log(f"[dingtalk] sendMessage code={data.get('code')}")
+            return ok
         except urllib.error.HTTPError as e:
             resp_body = e.read().decode("utf-8", errors="replace") if e.fp else ""
             _log(f"[dingtalk] HTTPError {e.code}: {resp_body[:200]}")
