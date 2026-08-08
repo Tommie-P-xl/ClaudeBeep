@@ -2,6 +2,12 @@
 
 本文件记录 ClaudeBeep 的历次版本更新内容。
 
+## [v2.3.2] - 2026-08-08
+
+### 性能
+- **内存占用与进程数优化（MEM）**：Web UI 此前以独立的 `--ui` 子进程运行（每个完整 Python 进程约 30+ MB）。现在并入托盘进程，以线程方式内嵌 Flask（`threaded=True`），首次打开主界面时才按需启动；浏览器关闭后服务保持常驻，下次打开直接复用。实测（同机）：**进程数 3 → 2，私有内存合计 67.15 MB → 49.02 MB（打开 UI 后，-27%）/ 41.47 MB（未打开，-38%），工作集 127.3 MB → 100.2 MB（-21%）**，Web UI 功能不受影响（`/api/status` 200）。
+- 独立 `--ui` 启动模式保留（`create_app(enable_sse_shutdown=True)` 默认行为不变），外部直接启动仍可"浏览器全关后自动退出"。
+
 ## [v2.3.1] - 2026-08-08
 
 ### 修复
@@ -103,6 +109,7 @@
 - 通知投递边界（notification_core.py）
 - 原生 Win32 托盘菜单，支持深色模式
 
+[v2.3.2]: https://github.com/Tommie-P-xl/ClaudeBeep/releases/tag/v2.3.2
 [v2.3.1]: https://github.com/Tommie-P-xl/ClaudeBeep/releases/tag/v2.3.1
 [v2.3.0]: https://github.com/Tommie-P-xl/ClaudeBeep/releases/tag/v2.3.0
 [v2.2.1]: https://github.com/Tommie-P-xl/ClaudeBeep/releases/tag/v2.2.1

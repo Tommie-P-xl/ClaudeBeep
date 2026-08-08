@@ -2,6 +2,12 @@
 
 All notable changes to ClaudeBeep are documented in this file.
 
+## [v2.3.2] - 2026-08-08
+
+### Performance
+- **Memory & process-count optimization (MEM)**: the Web UI used to run as a separate `--ui` child process (a full Python process, ~30+ MB). It is now embedded in the tray process as a Flask thread (`threaded=True`), started on demand the first time the dashboard is opened; the service stays resident after the browser closes so the next open is instant. Measured on the same machine: **processes 3 → 2, total private memory 67.15 MB → 49.02 MB (dashboard open, -27%) / 41.47 MB (closed, -38%), working set 127.3 MB → 100.2 MB (-21%)**; Web UI functionality unaffected (`/api/status` 200).
+- The standalone `--ui` mode is preserved (`create_app(enable_sse_shutdown=True)` remains the default), so an externally launched UI still exits after all browser tabs close.
+
 ## [v2.3.1] - 2026-08-08
 
 ### Fixed
@@ -103,6 +109,7 @@ All notable changes to ClaudeBeep are documented in this file.
 - Notification delivery boundary (notification_core.py)
 - Native Win32 tray menus with dark mode support
 
+[v2.3.2]: https://github.com/Tommie-P-xl/ClaudeBeep/releases/tag/v2.3.2
 [v2.3.1]: https://github.com/Tommie-P-xl/ClaudeBeep/releases/tag/v2.3.1
 [v2.3.0]: https://github.com/Tommie-P-xl/ClaudeBeep/releases/tag/v2.3.0
 [v2.2.1]: https://github.com/Tommie-P-xl/ClaudeBeep/releases/tag/v2.2.1

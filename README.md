@@ -1,4 +1,4 @@
-# ClaudeBeep v2.3.1
+# ClaudeBeep v2.3.2
 
 <p align="center">
   <img src="assets/icon.png" width="128" alt="ClaudeBeep Logo">
@@ -13,7 +13,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-v2.3.1-blue" alt="Version">
+  <img src="https://img.shields.io/badge/version-v2.3.2-blue" alt="Version">
   <img src="https://img.shields.io/badge/python-3.10+-green" alt="Python">
   <img src="https://img.shields.io/badge/platform-Windows-lightgrey" alt="Platform">
   <img src="https://img.shields.io/badge/license-MIT-brightgreen" alt="License">
@@ -130,7 +130,7 @@ The iLink Bot API uses a **dual-layer token architecture**:
 
 ## Installation
 
-Download the latest `ClaudeBeep-Setup-*.exe` from [Releases](https://github.com/Tommie-P-xl/ClaudeBeep/releases/tag/v2.3.1) and run the installer.
+Download the latest `ClaudeBeep-Setup-*.exe` from [Releases](https://github.com/Tommie-P-xl/ClaudeBeep/releases/tag/v2.3.2) and run the installer.
 
 The installer includes:
 - `ClaudeBeep.exe` — main application
@@ -188,8 +188,8 @@ This creates `dist/ClaudeBeep.exe` (single-file, windowed, UPX-compressed).
 Pushing a version tag triggers the GitHub Actions workflow:
 
 ```
-git tag v2.3.1
-git push origin v2.3.1
+git tag v2.3.2
+git push origin v2.3.2
 ```
 
 The workflow:
@@ -205,7 +205,7 @@ The workflow:
 ```json
 {
   "app": {
-    "version": "2.3.1",
+    "version": "2.3.2",
     "auto_cleanup": true,
     "cleanup_interval_hours": 12,
     "update_repo": "Tommie-P-xl/ClaudeBeep"
